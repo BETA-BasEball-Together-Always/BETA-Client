@@ -11,22 +11,22 @@ const {width,height} = Dimensions.get('window');
 
 /** 1) 팀 목록에 teamKey 추가(매핑용) */
 const teams = [
-  { id: '1', teamKey: 'KIWOOM', name: '키움 히어로즈', logo: require('../../assets/images/PhotoBooth/Select/Kiwoom.png') },
-  { id: '2', teamKey: 'DOOSAN', name: '두산 베어스',  logo: require('../../assets/images/PhotoBooth/Select/Doosan.png') },
-  { id: '3', teamKey: 'LOTTE',  name: '롯데 자이언츠', logo: require('../../assets/images/PhotoBooth/Select/Lotte.png') },
-  { id: '4', teamKey: 'SAMSUNG',name: '삼성 라이온즈', logo: require('../../assets/images/PhotoBooth/Select/Samsung.png') },
-  { id: '5', teamKey: 'HANHWA', name: '한화 이글스',  logo: require('../../assets/images/PhotoBooth/Select/Hanhwa.png') },
-  { id: '6', teamKey: 'KIA',    name: 'KIA 타이거즈', logo: require('../../assets/images/PhotoBooth/Select/KIA.png') },
-  { id: '7', teamKey: 'LG',     name: 'LG 트윈스',    logo: require('../../assets/images/PhotoBooth/Select/LG.png') },
-  { id: '8', teamKey: 'SSG',    name: 'SSG 랜더스',   logo: require('../../assets/images/PhotoBooth/Select/SSG.png') },
-  { id: '9', teamKey: 'NC',     name: 'NC 다이노스',  logo: require('../../assets/images/PhotoBooth/Select/NC.png') },
-  { id: '10',teamKey: 'KT',     name: 'KT 위즈',      logo: require('../../assets/images/PhotoBooth/Select/KT.png') },
+  { id: '1', teamKey: 'KIWOOM', name: '키움 히어로즈', logo: require('../../assets/images/PhotoBooth/Icons/Kiwoom.png') },
+  { id: '2', teamKey: 'DOOSAN', name: '두산 베어스',  logo: require('../../assets/images/PhotoBooth/Icons/Doosan.png') },
+  { id: '3', teamKey: 'LOTTE',  name: '롯데 자이언츠', logo: require('../../assets/images/PhotoBooth/Icons/Lotte.png') },
+  { id: '4', teamKey: 'SAMSUNG',name: '삼성 라이온즈', logo: require('../../assets/images/PhotoBooth/Icons/Samsung.png') },
+  { id: '5', teamKey: 'HANHWA', name: '한화 이글스',  logo: require('../../assets/images/PhotoBooth/Icons/Hanhwa.png') },
+  { id: '6', teamKey: 'KIA',    name: 'KIA 타이거즈', logo: require('../../assets/images/PhotoBooth/Icons/KIA.png') },
+  { id: '7', teamKey: 'LG',     name: 'LG 트윈스',    logo: require('../../assets/images/PhotoBooth/Icons/LG.png') },
+  { id: '8', teamKey: 'SSG',    name: 'SSG 랜더스',   logo: require('../../assets/images/PhotoBooth/Icons/SSG.png') },
+  { id: '9', teamKey: 'NC',     name: 'NC 다이노스',  logo: require('../../assets/images/PhotoBooth/Icons/NC.png') },
+  { id: '10',teamKey: 'KT',     name: 'KT 위즈',      logo: require('../../assets/images/PhotoBooth/Icons/KT.png') },
 ];
 
 /** 2) 프레임 종류 정의(아이디만 사용; 이미지는 아래 FRAME_IMAGES에서 고름) */
 const frames = [
-  { id: '2x2', name: '2x2' },
-  { id: '1x4', name: '1x4' },
+  { id: '2x2', name: '2 x 2' },
+  { id: '1x4', name: '1 x 4' },
 ];
 
 /** 3) 팀별 프레임 이미지 매핑 (모두 미리 require) */
