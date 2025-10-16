@@ -10,7 +10,7 @@ const RootNavigator = () => {
 //   const accessToken = useAuthStore((state) => state.accessToken);
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName='Main'>
       {/* {accessToken ? ( */}
         <Stack.Screen name="Main" component={MainTabNavigator} />
       {/* ) : ( */}

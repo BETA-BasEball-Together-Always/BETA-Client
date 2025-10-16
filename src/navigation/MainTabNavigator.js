@@ -5,8 +5,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/Home/HomeScreen';
 import CommunityScreen from '../screens/Community/CommunityScreen';
-import PhotoBoothScreen from '../screens/PhotoBooth/PhotoBoothScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
+import PhotoBoothStack from './PhotoBoothStack';
 
 // 각 화면 import (실제 경로에 맞게 변경)
 
@@ -22,7 +22,7 @@ const COLORS = {
 export default function MainTabNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="PhotoBooth"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
@@ -50,7 +50,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="PhotoBooth"
-        component={PhotoBoothScreen}
+        component={PhotoBoothStack}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="camera-outline" size={size ?? 24} color={color ?? COLORS.icon} />

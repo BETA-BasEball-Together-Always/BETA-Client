@@ -1,14 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
-const PhotoBoothScreen = () => {
+const ShareScreen = () => {
   return (
     <View>
-      <Text>PhotoBoothScreen</Text>
+      <Text>ShareScreen</Text>
     </View>
   )
 }
 
-export default PhotoBoothScreen
+export default ShareScreen
 
 const styles = StyleSheet.create({})
