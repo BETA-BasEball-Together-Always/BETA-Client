@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, StatusBar, D
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TeamCard from './components/TeamCard';
 import FrameCard from './components/FrameCard';
-import photoBoothStore from '../../stores/photoBoothStore';
+import photoBoothStore from '../../../stores/photoBoothStore';
 
 const CARD_BG = '#1A1A1A';
 
@@ -11,16 +11,16 @@ const {width,height} = Dimensions.get('window');
 
 /** 1) 팀 목록에 teamKey 추가(매핑용) */
 const teams = [
-  { id: '1', teamKey: 'KIWOOM', name: '키움 히어로즈', logo: require('../../assets/images/PhotoBooth/Icons/Kiwoom.png') },
-  { id: '2', teamKey: 'DOOSAN', name: '두산 베어스',  logo: require('../../assets/images/PhotoBooth/Icons/Doosan.png') },
-  { id: '3', teamKey: 'LOTTE',  name: '롯데 자이언츠', logo: require('../../assets/images/PhotoBooth/Icons/Lotte.png') },
-  { id: '4', teamKey: 'SAMSUNG',name: '삼성 라이온즈', logo: require('../../assets/images/PhotoBooth/Icons/Samsung.png') },
-  { id: '5', teamKey: 'HANHWA', name: '한화 이글스',  logo: require('../../assets/images/PhotoBooth/Icons/Hanhwa.png') },
-  { id: '6', teamKey: 'KIA',    name: 'KIA 타이거즈', logo: require('../../assets/images/PhotoBooth/Icons/KIA.png') },
-  { id: '7', teamKey: 'LG',     name: 'LG 트윈스',    logo: require('../../assets/images/PhotoBooth/Icons/LG.png') },
-  { id: '8', teamKey: 'SSG',    name: 'SSG 랜더스',   logo: require('../../assets/images/PhotoBooth/Icons/SSG.png') },
-  { id: '9', teamKey: 'NC',     name: 'NC 다이노스',  logo: require('../../assets/images/PhotoBooth/Icons/NC.png') },
-  { id: '10',teamKey: 'KT',     name: 'KT 위즈',      logo: require('../../assets/images/PhotoBooth/Icons/KT.png') },
+  { id: '1', teamKey: 'KIWOOM', name: '키움 히어로즈', logo: require('../../../assets/images/PhotoBooth/Icons/Kiwoom.png') },
+  { id: '2', teamKey: 'DOOSAN', name: '두산 베어스',  logo: require('../../../assets/images/PhotoBooth/Icons/Doosan.png') },
+  { id: '3', teamKey: 'LOTTE',  name: '롯데 자이언츠', logo: require('../../../assets/images/PhotoBooth/Icons/Lotte.png') },
+  { id: '4', teamKey: 'SAMSUNG',name: '삼성 라이온즈', logo: require('../../../assets/images/PhotoBooth/Icons/Samsung.png') },
+  { id: '5', teamKey: 'HANHWA', name: '한화 이글스',  logo: require('../../../assets/images/PhotoBooth/Icons/Hanhwa.png') },
+  { id: '6', teamKey: 'KIA',    name: 'KIA 타이거즈', logo: require('../../../assets/images/PhotoBooth/Icons/KIA.png') },
+  { id: '7', teamKey: 'LG',     name: 'LG 트윈스',    logo: require('../../../assets/images/PhotoBooth/Icons/LG.png') },
+  { id: '8', teamKey: 'SSG',    name: 'SSG 랜더스',   logo: require('../../../assets/images/PhotoBooth/Icons/SSG.png') },
+  { id: '9', teamKey: 'NC',     name: 'NC 다이노스',  logo: require('../../../assets/images/PhotoBooth/Icons/NC.png') },
+  { id: '10',teamKey: 'KT',     name: 'KT 위즈',      logo: require('../../../assets/images/PhotoBooth/Icons/KT.png') },
 ];
 
 /** 2) 프레임 종류 정의(아이디만 사용; 이미지는 아래 FRAME_IMAGES에서 고름) */
@@ -32,48 +32,48 @@ const frames = [
 /** 3) 팀별 프레임 이미지 매핑 (모두 미리 require) */
 const FRAME_IMAGES = {
   BASE: { // 팀 미선택 시 사용할 기본 프레임
-    '2x2': require('../../assets/images/PhotoBooth/Frames/base/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/base/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/base/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/base/1x4.png'),
   },
   KIWOOM: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/kiwoom/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/kiwoom/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/kiwoom/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/kiwoom/1x4.png'),
   },
   DOOSAN: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/doosan/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/doosan/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/doosan/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/doosan/1x4.png'),
   },
   LOTTE: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/lotte/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/lotte/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/lotte/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/lotte/1x4.png'),
   },
   SAMSUNG: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/samsung/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/samsung/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/samsung/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/samsung/1x4.png'),
   },
   HANHWA: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/hanhwa/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/hanhwa/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/hanhwa/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/hanhwa/1x4.png'),
   },
   KIA: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/kia/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/kia/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/kia/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/kia/1x4.png'),
   },
   LG: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/lg/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/lg/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/lg/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/lg/1x4.png'),
   },
   SSG: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/ssg/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/ssg/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/ssg/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/ssg/1x4.png'),
   },
   NC: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/nc/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/nc/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/nc/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/nc/1x4.png'),
   },
   KT: {
-    '2x2': require('../../assets/images/PhotoBooth/Frames/kt/2x2.png'),
-    '1x4': require('../../assets/images/PhotoBooth/Frames/kt/1x4.png'),
+    '2x2': require('../../../assets/images/PhotoBooth/Frames/kt/2x2.png'),
+    '1x4': require('../../../assets/images/PhotoBooth/Frames/kt/1x4.png'),
   },
 };
 
