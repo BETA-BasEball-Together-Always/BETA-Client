@@ -12,7 +12,7 @@ const PhotoBoothStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Select">
       <Stack.Screen name="Select" component={SelectScreen} />
-      <Stack.Screen name="Camera" component={CameraScreen} />
+      <Stack.Screen name="Camera" options={{tabBarStyle: { display: 'none' }}} component={CameraScreen} />
       <Stack.Screen name="Edit" component={EditScreen} />
       <Stack.Screen name="Share" component={ShareScreen} />
     </Stack.Navigator>
