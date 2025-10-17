@@ -13,17 +13,34 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "야구네컷 촬영을 위해 카메라 접근이 필요합니다.",
+        "NSPhotoLibraryAddUsageDescription": "편집된 야구네컷을 사진 보관함에 저장합니다."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.bmbx08.Beta"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "react-native-vision-camera"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cb0869cf-b218-49c9-a57c-e29944ee41fb"
+      }
+    },
+    "owner": "bmbx08"
   }
 }
