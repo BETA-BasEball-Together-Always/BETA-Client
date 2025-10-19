@@ -30,12 +30,12 @@ function IconWithLabel({ onPress, children, text, color = '#FFF' }) {
   );
 }
 
+  const { width: screenW } = Dimensions.get('window');
 
 export default function CameraScreen({ navigation, route }) {
   // const { frameType = '2x2' } = route?.params ?? {};
   const { selectedFrame } = photoBoothStore();
   const insets = useSafeAreaInsets();
-  console.log("selectedFrame: ", selectedFrame);
   // permission
   const { hasPermission, requestPermission } = useCameraPermission();
   useEffect(() => { if (!hasPermission) requestPermission(); }, [hasPermission, requestPermission]);
@@ -58,7 +58,6 @@ export default function CameraScreen({ navigation, route }) {
   const zoomAnim = useSharedValue(1);  
 
   // aspect
-  const { width: screenW } = Dimensions.get('window');
   const previewAspect = useMemo(() => {
     if (!selectedFrame?.name) return 7 / 10; // 기본값 (예방용)
 
@@ -182,7 +181,9 @@ export default function CameraScreen({ navigation, route }) {
   // 4장 완료 → 편집으로
   useEffect(() => {
     if (photos.length === 4) {
-      navigation.replace('EditScreen', { photos });
+      const uris = photos.map(p => Platform.OS === 'android' ? `file://${p.path}` : p.path);
+      photoBoothStore.getState().setCapturedPhotos(uris);
+      navigation.replace('Edit');
     }
   }, [photos, navigation, selectedFrame]);
 
@@ -307,15 +308,16 @@ function SvgButton({ onPress, children }) {
 
 /* ---------- 스타일 ---------- */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B0B0B' },
+  container: { flex: 1, backgroundColor: '#0B0B0B', justifyContent: 'space-between' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B0B0B' },
 
   topBar: {
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: screenW *0.05,
     justifyContent: 'space-between',
+    paddingTop: 20
   },
   topIcon: { minWidth: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 
@@ -324,7 +326,8 @@ const styles = StyleSheet.create({
   countdownWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   countdownText: { fontSize: 96, fontWeight: '700', color: '#fff' },
 
-  bottomBar: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 22, paddingBottom: 24 },
+  // bottomBar: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 22, paddingBottom: 24 },
+  bottomBar: { justifyContent:'flex-end', paddingHorizontal: 22, paddingBottom: 24 },  
   indicatorArea: { position: 'absolute', left: 22, bottom: 24, alignItems: 'center', width: 64 },
   thumbWrap: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#fff' },
   thumb: { width: '100%', height: '100%' },
