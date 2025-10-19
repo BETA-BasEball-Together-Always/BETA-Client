@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions, ActivityIn
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import photoBoothStore from '../../../stores/photoBoothStore';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay } from 'react-native-reanimated';
 
 // ▼▼▼ SVG 아이콘 임포트 ▼▼▼
 import BackIcon from '../../../assets/images/PhotoBooth/Camera/Icons/BackArrow.svg';
@@ -52,6 +53,8 @@ export default function CameraScreen({ navigation, route }) {
   const [isShooting, setIsShooting] = useState(false);
   const [photos, setPhotos] = useState([]); // VisionCamera PhotoFile[]
   const [countdown, setCountdown] = useState(0);
+
+  const flashOverlayOpacity = useSharedValue(0);
 
   // aspect
   const { width: screenW } = Dimensions.get('window');
@@ -107,6 +110,9 @@ export default function CameraScreen({ navigation, route }) {
   const actuallyTake = useCallback(async () => {
     if (!cameraRef.current) return null;
     try {
+      flashOverlayOpacity.value = 1;
+      flashOverlayOpacity.value = withDelay(50, withTiming(0, { duration: 250 }));
+
       const photo = await cameraRef.current.takePhoto({
         flash, // 'on' | 'off' | 'auto'
         enableShutterSound: true,
@@ -118,6 +124,10 @@ export default function CameraScreen({ navigation, route }) {
       return null;
     }
   }, [flash]);
+
+  const flashOverlayStyle = useAnimatedStyle(() => ({
+    opacity: flashOverlayOpacity.value,
+  }));
 
   const takeOne = useCallback(async () => {
     if (isShooting) return;
@@ -214,6 +224,15 @@ export default function CameraScreen({ navigation, route }) {
           isActive
           photo
           enableZoomGesture
+        />
+        {/* Flash overlay animation */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: '#fff' },
+            flashOverlayStyle,
+          ]}
         />
         {/* Beauty overlay - 간단한 밝기 효과 (원하면 제거 가능) */}
         {beauty && <View pointerEvents="none" style={styles.beautyOverlay} />}
