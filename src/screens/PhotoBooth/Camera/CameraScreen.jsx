@@ -55,6 +55,7 @@ export default function CameraScreen({ navigation, route }) {
   const [countdown, setCountdown] = useState(0);
 
   const flashOverlayOpacity = useSharedValue(0);
+  const zoomAnim = useSharedValue(1);  
 
   // aspect
   const { width: screenW } = Dimensions.get('window');
@@ -113,6 +114,11 @@ export default function CameraScreen({ navigation, route }) {
       flashOverlayOpacity.value = 1;
       flashOverlayOpacity.value = withDelay(50, withTiming(0, { duration: 250 }));
 
+      // ✅ 촬영 순간 살짝 줌인
+      zoomAnim.value = withTiming(1.05, { duration: 100 }, () => {
+        zoomAnim.value = withTiming(1, { duration: 150 });
+      });
+
       const photo = await cameraRef.current.takePhoto({
         flash, // 'on' | 'off' | 'auto'
         enableShutterSound: true,
@@ -128,6 +134,10 @@ export default function CameraScreen({ navigation, route }) {
   const flashOverlayStyle = useAnimatedStyle(() => ({
     opacity: flashOverlayOpacity.value,
   }));
+
+  const zoomStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: zoomAnim.value }],
+  }));  
 
   const takeOne = useCallback(async () => {
     if (isShooting) return;
@@ -217,14 +227,16 @@ export default function CameraScreen({ navigation, route }) {
 
       {/* Preview */}
       <View style={[styles.previewWrap, { height: previewHeight }]}>
-        <Camera
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive
-          photo
-          enableZoomGesture
-        />
+        <Animated.View style={[StyleSheet.absoluteFill, zoomStyle]}>   
+          <Camera
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive
+            photo
+            enableZoomGesture
+          />
+        </Animated.View>     
         {/* Flash overlay animation */}
         <Animated.View
           pointerEvents="none"
