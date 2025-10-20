@@ -25,8 +25,8 @@ const teams = [
 
 /** 2) 프레임 종류 정의(아이디만 사용; 이미지는 아래 FRAME_IMAGES에서 고름) */
 const frames = [
-  { id: '2x2', name: '2 x 2' },
-  { id: '1x4', name: '1 x 4' },
+  { id: '2x2', name: '2x2' },
+  { id: '1x4', name: '1x4' },
 ];
 
 /** 3) 팀별 프레임 이미지 매핑 (모두 미리 require) */
