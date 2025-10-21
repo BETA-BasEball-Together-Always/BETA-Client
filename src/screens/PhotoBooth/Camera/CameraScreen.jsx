@@ -57,6 +57,32 @@ export default function CameraScreen({ navigation, route }) {
   const flashOverlayOpacity = useSharedValue(0);
   const zoomAnim = useSharedValue(1);  
 
+  // ===== 9:16(세로) 실제 촬영용 포맷 선택 =====
+  const format9x16 = useMemo(() => {
+    if (!device?.formats) return null;
+    const targetAR = 9 / 16; // 세로 9:16
+    let best = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const f of device.formats) {
+      const w = f.photoWidth ?? 0;
+      const h = f.photoHeight ?? 0;
+      if (!w || !h) continue;
+      // 세로 기준 비율(가로/세로). 세로가 더 긴 상태 가정
+      const ar = (Math.min(w, h) / Math.max(w, h));
+      const score = Math.abs(ar - (9 / 16)); // 0.5625와의 차이
+      // 더 9:16에 가깝고, 해상도가 큰 것을 우선
+      const area = w * h;
+      if (
+        score < bestScore ||
+        (Math.abs(score - bestScore) < 1e-6 && best && area > (best.photoWidth * best.photoHeight))
+      ) {
+        best = f;
+        bestScore = score;
+      }
+    }
+    return best;
+  }, [device]);  
+
   // aspect
   const previewAspect = useMemo(() => {
     if (!selectedFrame?.name) return 7 / 10; // 기본값 (예방용)
@@ -123,6 +149,13 @@ export default function CameraScreen({ navigation, route }) {
         enableShutterSound: true,
         qualityPrioritization: 'quality',
       });
+
+      // ✅ 촬영 직후 테스트 로그 추가
+      if (photo) {
+        console.log('📸 photo size:', photo.width, photo.height);
+        console.log('🎞️ chosen format:', format9x16?.photoWidth, format9x16?.photoHeight);
+      }
+
       return photo;
     } catch (e) {
       console.warn('takePhoto error', e);
@@ -142,6 +175,10 @@ export default function CameraScreen({ navigation, route }) {
     if (isShooting) return;
     setIsShooting(true);
     const p = await actuallyTake();
+    if (p) {
+      console.log('photo size:', p.width, p.height);              // 결과 사진 크기
+      console.log('chosen format:', format9x16?.photoWidth, format9x16?.photoHeight); // 선택된 포맷
+    }    
     if (p) setPhotos(prev => [...prev, p]);
     setIsShooting(false);
   }, [actuallyTake, isShooting]);
@@ -236,6 +273,8 @@ export default function CameraScreen({ navigation, route }) {
             isActive
             photo
             enableZoomGesture
+            // ✅ 실제 촬영은 9:16 비율에 가장 가까운 포맷으로 고정
+            format={format9x16 ?? undefined}            
           />
         </Animated.View>     
         {/* Flash overlay animation */}
