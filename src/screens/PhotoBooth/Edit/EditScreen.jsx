@@ -2,7 +2,8 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Image, ImageBackground, StyleSheet,
-  Dimensions, FlatList, Animated, Easing, PanResponder
+  Dimensions, FlatList, Animated, Easing, PanResponder,
+  ScrollView
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import photoBoothStore from '../../../stores/photoBoothStore';
@@ -80,7 +81,7 @@ export default function EditScreen() {
   // ── 오버레이 애니메이션/드래그 ──
   const overlayY = useRef(new Animated.Value(HIDDEN_Y)).current;
   const currentY = useRef(0);
-  const isOverlayOpen = activeTool === 'photo' || activeTool === 'frame';
+  const isOverlayOpen = activeTool === 'photo' || activeTool === 'frame' || activeTool === 'sticker';
 
   useEffect(() => {
     Animated.timing(overlayY, {
@@ -147,35 +148,81 @@ export default function EditScreen() {
   };
 
   // 오버레이 콘텐츠 스위치
-  const renderOverlayContent = () => {
-    if (activeTool === 'frame') {
-      return (
-        <View style={styles.frameOptionsRow}>
-          {FRAME_OPTIONS.map(opt => (
-            <FrameOptionCard key={opt.id} id={opt.id} label={opt.label} />
-          ))}
-        </View>
-      );
-    }
-    // default: photo
+const renderOverlayContent = () => {
+  // 1️⃣ 프레임
+  if (activeTool === 'frame') {
     return (
-      <FlatList
-        horizontal
-        data={capturedPhotos.slice(0, 4)}
-        keyExtractor={(u, idx) => `${u}-${idx}`}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => onPressThumb(item)} activeOpacity={0.8}>
-            <View style={styles.thumb}>
-              <Image source={{ uri: item }} style={styles.thumbImg} resizeMode="cover" />
-            </View>
-          </TouchableOpacity>
-        )}
-        showsHorizontalScrollIndicator={false}
-      />
+      <View style={styles.frameOptionsRow}>
+        {FRAME_OPTIONS.map(opt => (
+          <FrameOptionCard key={opt.id} id={opt.id} label={opt.label} />
+        ))}
+      </View>
     );
-  };
+  }
+
+  // 2️⃣ 스티커
+  if (activeTool === 'sticker') {
+    const stickers = [
+      require('../../../assets/images/PhotoBooth/Stickers/icon1.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon2.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon3.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon4.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon5.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon6.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon7.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/icon8.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/textbubble1.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/textbubble2.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/textbubble3.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/textbubble4.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/textbubble5.png'),
+      require('../../../assets/images/PhotoBooth/Stickers/textbubble6.png'),
+    ];
+
+    const onPressSticker = (src) => {
+      console.log('스티커 선택:', src);
+      // TODO: 선택 시 프레임 위에 스티커 추가 로직 연결
+    };
+
+    return (
+      <ScrollView
+        style={styles.stickerScroll}
+        contentContainerStyle={styles.stickerContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {stickers.map((src, idx) => (
+          <TouchableOpacity
+            key={idx}
+            style={styles.stickerItem}
+            onPress={() => onPressSticker(src)}
+            activeOpacity={0.8}
+          >
+            <Image source={src} style={styles.stickerImg} resizeMode="contain" />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    );
+  }
+
+  // 3️⃣ 기본: 사진
+  return (
+    <FlatList
+      horizontal
+      data={capturedPhotos.slice(0, 4)}
+      keyExtractor={(u, idx) => `${u}-${idx}`}
+      contentContainerStyle={{ paddingHorizontal: 16 }}
+      ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+      renderItem={({ item }) => (
+        <TouchableOpacity onPress={() => onPressThumb(item)} activeOpacity={0.8}>
+          <View style={styles.thumb}>
+            <Image source={{ uri: item }} style={styles.thumbImg} resizeMode="cover" />
+          </View>
+        </TouchableOpacity>
+      )}
+      showsHorizontalScrollIndicator={false}
+    />
+  );
+};
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -342,4 +389,29 @@ const styles = StyleSheet.create({
   frameCardImg: { width: '100%', height: 90 },
   frameCardLabel: { marginTop: 6, fontSize: 12, color: '#BDBDBD' },
   frameCardLabelActive: { color: '#000', fontWeight: '700' },
+  // 스티커 오버레이 관련
+  stickerScroll: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  stickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    rowGap: 12,
+    columnGap: 12,
+    paddingBottom: 24,
+  },
+  stickerItem: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stickerImg: {
+    width: '80%',
+    height: '80%',
+  },  
 });
