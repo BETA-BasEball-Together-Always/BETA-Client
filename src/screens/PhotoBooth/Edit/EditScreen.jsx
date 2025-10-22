@@ -3,7 +3,8 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Image, ImageBackground, StyleSheet,
   Dimensions, FlatList, Animated, Easing, PanResponder,
-  ScrollView
+  ScrollView,
+  Pressable
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import photoBoothStore from '../../../stores/photoBoothStore';
@@ -36,6 +37,13 @@ export default function EditScreen() {
     
   const hiddenYRef = useRef(hiddenY);
   useEffect(() => { hiddenYRef.current = hiddenY; }, [hiddenY]);  
+
+   // 스티커 상태
+   const [stickers, setStickers] = useState([]); // { id, src, x, y, scale, rotation, size }[]
+   const [selectedStickerId, setSelectedStickerId] = useState(null);
+ 
+   // 프레임 박스 레이아웃(스티커 기본 위치/좌표 계산용)
+   const [frameLayout, setFrameLayout] = useState({ x: 0, y: 0, w: 0, h: 0 });
 
   // 편집용 로컬 사진(교체 반영)
   const [photosLocal, setPhotosLocal] = useState(() => capturedPhotos.slice(0, 4));
@@ -188,8 +196,17 @@ const renderOverlayContent = () => {
     ];
 
     const onPressSticker = (src) => {
-      console.log('스티커 선택:', src);
-      // TODO: 선택 시 프레임 위에 스티커 추가 로직 연결
+      // 프레임 중앙에 기본 배치
+      const id = Date.now().toString();
+      const baseSize = 80;        // 기준 크기(px)
+      const cx = frameLayout.w ? frameLayout.w / 2 : 120; // 중앙 x (프레임 상대)
+      const cy = frameLayout.h ? frameLayout.h / 2 : 120; // 중앙 y
+      setStickers((prev) => [
+        ...prev,
+        { id, src, x: cx, y: cy, scale: 1, rotation: 0, size: baseSize },
+      ]);
+      setSelectedStickerId(id);
+      setActiveTool('none'); // 선택 후 오버레이 닫기 (원하면 유지해도 됨)
     };
 
     return (
@@ -245,9 +262,17 @@ const renderOverlayContent = () => {
       </View>
 
       {/* 캔버스 */}
-      <View style={styles.canvasArea}>
+      <Pressable style={styles.canvasArea} onPress={() => setSelectedStickerId(null)}>    
         {frameSource ? (
-          <ImageBackground source={frameSource} style={[styles.frameBox, frameStyle]} resizeMode="contain">
+          <ImageBackground 
+            source={frameSource} 
+            style={[styles.frameBox, frameStyle]} 
+            resizeMode="contain"
+            onLayout={(e) => {
+              const { x, y, width: w, height: h } = e.nativeEvent.layout;
+              setFrameLayout({ x, y, w, h });
+            }}
+          >
             {photosLocal.map((uri, i) => (
               <TouchableOpacity
                 key={i}
@@ -259,11 +284,27 @@ const renderOverlayContent = () => {
                 {selectedSlot === i && <View style={styles.selectedOverlay} pointerEvents="none" />}
               </TouchableOpacity>
             ))}
+            {/* 스티커들 */}
+            {stickers.map((st) => (
+              <StickerItem
+                key={st.id}
+                item={st}
+                selected={selectedStickerId === st.id}
+                onSelect={() => setSelectedStickerId(st.id)}
+                onUpdate={(patch) => {
+                  setStickers((prev) => prev.map(s => s.id === st.id ? { ...s, ...patch } : s));
+                }}
+                onDelete={() => {
+                  setStickers((prev) => prev.filter(s => s.id !== st.id));
+                  if (selectedStickerId === st.id) setSelectedStickerId(null);
+                }}
+              />
+            ))}            
           </ImageBackground>
         ) : (
           <Text style={{ color: '#aaa' }}>프레임 이미지를 찾을 수 없어요</Text>
         )}
-      </View>
+      </Pressable>
 
       {/* 오버레이 (사진/프레임 공용) */}
       <Animated.View
@@ -298,6 +339,167 @@ function ToolItem({ label, active, onPress, Icon }) {
       <Icon width={28} height={28} color={iconColor} />
       <Text style={[styles.toolLabel, active && styles.toolLabelActive]}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+
+/** ───────── StickerItem: 이동/스케일/회전 + 삭제 ───────── */
+function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
+  const { x, y, scale, rotation, size, src } = item;
+
+  // 로컬 애니메이션 값 (부드러운 드래그)
+  const pos = useRef(new Animated.ValueXY({ x, y })).current;
+  const scl = useRef(new Animated.Value(scale)).current;
+  const rot = useRef(new Animated.Value(rotation)).current;
+
+  // id가 바뀔 때(새 스티커)만 초기 위치/변환 적용
+  const prevIdRef = useRef(item.id);
+  useEffect(() => {
+    if (prevIdRef.current !== item.id) {
+      pos.setValue({ x, y });
+      scl.setValue(scale);
+      rot.setValue(rotation);
+      prevIdRef.current = item.id;
+    }
+  }, [item.id, x, y, scale, rotation, pos, scl, rot]);
+
+  // 중심 기준으로 배치 (top/left는 나중에 transform으로 처리)
+  const half = (size * scale) / 2;
+
+  // 드래그 시작 정보 (스티커 중심좌표, 손가락-중심 오프셋)
+  const start = useRef({ x: 0, y: 0, offX: 0, offY: 0 }).current;  
+  const movePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        onSelect?.();
+        // ✅ Animated의 "현재 렌더 값"을 기준으로 사용
+        const curPos = typeof pos.__getValue === 'function' ? pos.__getValue() : { x, y };
+        const curScale = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
+        const curRot   = typeof rot.__getValue === 'function' ? rot.__getValue() : rotation;
+        start.x = curPos.x;
+        start.y = curPos.y;
+
+        // 손가락-중심 오프셋 (현재 scale/rotation 반영)
+        const lx = evt.nativeEvent.locationX; // 0..size (로컬)
+        const ly = evt.nativeEvent.locationY;
+        const cx = size / 2, cy = size / 2;
+        const localX = lx - cx, localY = ly - cy;
+        const s = curScale;
+        const cos = Math.cos(curRot), sin = Math.sin(curRot);
+        // 로컬→월드 오프셋: R(θ) * (s * [localX, localY])
+        const offX = (localX * s) * cos - (localY * s) * sin;
+        const offY = (localX * s) * sin + (localY * s) * cos;
+        start.offX = offX;
+        start.offY = offY;        
+      },
+      onPanResponderMove: (_, g) => {
+        pos.setValue({ x: start.x + g.dx, y: start.y + g.dy });
+      },
+      onPanResponderRelease: (_, g) => {
+        onUpdate?.({ x: start.x + g.dx, y: start.y + g.dy });
+      },
+    })
+  ).current;
+
+  // 스케일/회전 제스처 (좌하단 핸들)
+  const tfStart = useRef({
+    cx: 0, cy: 0,    // 중심(화면 좌표는 아님, 상대 거리만 쓰므로 OK)
+    v0x: 0, v0y: 0,  // 시작 벡터 (center->handle)
+    dist0: 1, ang0: 0,
+    scale0: 1, rot0: 0,
+  }).current;
+
+  const transformPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        onSelect?.();
+        // 시작 시점의 기하값
+        tfStart.scale0 = scale;
+        tfStart.rot0 = rotation;
+
+        // 현재 크기/회전 적용된 실제 핸들 위치 벡터(대략): 좌하단 = (-half, +half)
+        const h = (size * tfStart.scale0) / 2;
+        const ang = tfStart.rot0;
+        const vx =  h, vy =  h; // ✅ 회전 전 '우하단' 벡터
+        // 회전 적용 (2D 회전)
+        const cos = Math.cos(ang), sin = Math.sin(ang);
+        tfStart.v0x = vx * cos - vy * sin;
+        tfStart.v0y = vx * sin + vy * cos;
+
+        tfStart.dist0 = Math.hypot(tfStart.v0x, tfStart.v0y);
+        tfStart.ang0  = Math.atan2(tfStart.v0y, tfStart.v0x);
+      },
+      onPanResponderMove: (_, g) => {
+        // 핸들을 dx,dy만큼 움직였다고 가정 → 벡터에 더함
+        const vx = tfStart.v0x + g.dx;
+        const vy = tfStart.v0y + g.dy;
+
+        const dist = Math.max(10, Math.hypot(vx, vy));
+        const ang  = Math.atan2(vy, vx);
+
+        const scaleNew = Math.min(4, Math.max(0.3, (dist / tfStart.dist0) * tfStart.scale0));
+        const rotNew   = tfStart.rot0 + (ang - tfStart.ang0);
+
+        scl.setValue(scaleNew);
+        rot.setValue(rotNew);
+      },
+      onPanResponderRelease: (_, g) => {
+        // 최종값 계산을 한 번 더
+        const vx = tfStart.v0x + g.dx;
+        const vy = tfStart.v0y + g.dy;
+        const dist = Math.max(10, Math.hypot(vx, vy));
+        const ang  = Math.atan2(vy, vx);
+        const scaleNew = Math.min(4, Math.max(0.3, (dist / tfStart.dist0) * tfStart.scale0));
+        const rotNew   = tfStart.rot0 + (ang - tfStart.ang0);
+        onUpdate?.({ scale: scaleNew, rotation: rotNew });
+      },
+    })
+  ).current;
+
+  // transform 스타일 (center 기준)
+  const animatedStyle = {
+    position: 'absolute',
+    left: 0, top: 0,
+    transform: [
+      { translateX: Animated.subtract(pos.x, Animated.multiply(scl, size / 2)) },
+      { translateY: Animated.subtract(pos.y, Animated.multiply(scl, size / 2)) },
+      {
+        rotate: rot.interpolate({
+          inputRange: [-Math.PI, Math.PI],
+          outputRange: ['-180deg', '180deg'],
+        }),
+      },
+      { scale: scl },
+    ],
+  };
+
+  return (
+    <Animated.View style={[animatedStyle, { width: size, height: size }]}>
+      {/* 본체(드래그 영역) */}
+      <View
+        {...movePan.panHandlers}
+        style={{ width: '100%', height: '100%' }}
+        collapsable={false}
+      >
+        <Image source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+        {/* 선택 시 아웃라인/핸들 */}
+        {selected && (
+          <>
+            <View style={styles.stickerOutline} pointerEvents="none" />
+            {/* 좌상단 삭제(X) */}
+            <TouchableOpacity style={[styles.handle, styles.handleTL]} onPress={onDelete} activeOpacity={0.8}>
+              <Text style={styles.handleText}>×</Text>
+            </TouchableOpacity>
+            {/* ✅ 우하단 변형(스케일/회전) */}
+            <View style={[styles.handle, styles.handleBR]} {...transformPan.panHandlers}>           
+              <Text style={styles.handleText}>↔︎</Text>
+            </View>
+          </>
+        )}
+      </View>
+    </Animated.View>
   );
 }
 
@@ -418,4 +620,31 @@ const styles = StyleSheet.create({
     width: '80%',
     height: '80%',
   },  
+  stickerOutline: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    borderStyle: 'dashed',
+    borderRadius: 6,
+  },
+  handle: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderWidth: 1,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  handleText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  handleTL: { left: -11, top: -11 },      // 좌상단
+  handleBR: { right: -11, bottom: -11 },  // ✅ 우하단  
 });
