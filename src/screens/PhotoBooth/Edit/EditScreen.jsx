@@ -17,35 +17,44 @@ const OVERLAY_HEIGHT = 150;
 const HIDDEN_Y = OVERLAY_HEIGHT + 24;
 const SNAP_THRESHOLD = 48;
 
+const FRAME_OPTIONS = [
+  { id: '2x2', label: '2×2' },
+  { id: '1x4', label: '1×4' },
+];
+
 export default function EditScreen() {
   const insets = useSafeAreaInsets();
-  const { selectedTeam, selectedFrame, capturedPhotos } = photoBoothStore();
+  const store = photoBoothStore();
+  const { selectedTeam, selectedFrame, capturedPhotos } = store;
 
-  const [activeTool, setActiveTool] = useState('photo');
+  const [activeTool, setActiveTool] = useState('photo'); // 'photo' | 'frame' | 'sticker' | 'text' | 'none'
   const [bottomBarH, setBottomBarH] = useState(86);
 
-  // ✅ 편집용 로컬 배열 (4장)
-  const [photosLocal, setPhotosLocal] = useState(() => capturedPhotos.slice(0,4));
-  useEffect(() => { setPhotosLocal(capturedPhotos.slice(0,4)); }, [capturedPhotos]);
+  // 편집용 로컬 사진(교체 반영)
+  const [photosLocal, setPhotosLocal] = useState(() => capturedPhotos.slice(0, 4));
+  useEffect(() => { setPhotosLocal(capturedPhotos.slice(0, 4)); }, [capturedPhotos]);
 
-  // ✅ 현재 프레임에서 교체할 슬롯 인덱스
+  // 현재 프레임 슬롯 중 교체 대상
   const [selectedSlot, setSelectedSlot] = useState(null);
 
   const teamKey = selectedTeam?.teamKey ?? 'base';
   const frameKey = selectedFrame?.id ?? '2x2';
 
+  // 프레임 이미지
   const frameSource = useMemo(() => {
     const theme = FRAMES[teamKey] || FRAMES.base;
     return theme?.[frameKey] || FRAMES.base?.[frameKey] || null;
   }, [teamKey, frameKey]);
 
+  // 프레임 크기/비율
   const frameW = width * 0.9;
   const frameH = height * 0.7;
-  const aspect = frameKey === '1x4' ? 1 / 3 : 2 / 3;
+  const aspect = frameKey === '1x4' ? 1 / 3 : 2 / 3; // 1x4=1:3, 2x2=2:3
   const frameStyle = frameKey === '1x4'
     ? { height: frameH, aspectRatio: aspect }
     : { width: frameW, aspectRatio: aspect };
 
+  // 슬롯 좌표
   const slots = useMemo(() => {
     if (frameKey === '1x4') {
       return [
@@ -65,18 +74,22 @@ export default function EditScreen() {
 
   const handleSave = () => {
     console.log('[EditScreen] save pressed');
-    // 필요 시 store에 덮어쓰기: photoBoothStore.getState().setCapturedPhotos(photosLocal);
+    // 필요시 store 반영: photoBoothStore.getState().setCapturedPhotos(photosLocal);
   };
 
-  // ── 오버레이 애니메이션 + 드래그 핸들 ──
+  // ── 오버레이 애니메이션/드래그 ──
   const overlayY = useRef(new Animated.Value(HIDDEN_Y)).current;
   const currentY = useRef(0);
+  const isOverlayOpen = activeTool === 'photo' || activeTool === 'frame';
+
   useEffect(() => {
-    const toValue = activeTool === 'photo' ? 0 : HIDDEN_Y;
     Animated.timing(overlayY, {
-      toValue, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      toValue: isOverlayOpen ? 0 : HIDDEN_Y,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
     }).start();
-  }, [activeTool, overlayY]);
+  }, [isOverlayOpen, overlayY]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -100,21 +113,68 @@ export default function EditScreen() {
     })
   ).current;
 
-  // ✅ 프레임 사진 탭 → 슬롯 선택 + 회색 오버레이 표시 + 사진 탭 자동 활성화
-  const onPressFramePhoto = (idx: number) => {
+  // 프레임 슬롯 탭 → 교체 대상 선택 + 사진 탭 표시
+  const onPressFramePhoto = (idx) => {
     setSelectedSlot(idx);
-    setActiveTool('photo'); // 사진 오버레이 띄우기
+    setActiveTool('photo');
   };
 
-  // ✅ 오버레이 썸네일 탭 → 선택 슬롯 치환 후 오버레이(회색) 해제
-  const onPressThumb = (uri: string) => {
+  // 사진 썸네일 탭 → 선택 슬롯 교체 후 선택 해제
+  const onPressThumb = (uri) => {
     if (selectedSlot === null) return;
     setPhotosLocal(prev => {
       const next = [...prev];
       next[selectedSlot] = uri;
       return next;
     });
-    setSelectedSlot(null); // 회색 오버레이 제거
+    setSelectedSlot(null);
+  };
+
+  // 프레임 옵션 카드
+  const FrameOptionCard = ({ id, label }) => {
+    const src = (FRAMES[teamKey] || FRAMES.base)?.[id] || FRAMES.base[id];
+    const active = frameKey === id;
+    return (
+      <TouchableOpacity
+        onPress={() => store.setSelectedFrame({ id, name: id })}
+        activeOpacity={0.9}
+        style={[styles.frameCard, active && styles.frameCardActive]}
+      >
+        <Image source={src} style={styles.frameCardImg} resizeMode="contain" />
+        <Text style={[styles.frameCardLabel, active && styles.frameCardLabelActive]}>{label}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // 오버레이 콘텐츠 스위치
+  const renderOverlayContent = () => {
+    if (activeTool === 'frame') {
+      return (
+        <View style={styles.frameOptionsRow}>
+          {FRAME_OPTIONS.map(opt => (
+            <FrameOptionCard key={opt.id} id={opt.id} label={opt.label} />
+          ))}
+        </View>
+      );
+    }
+    // default: photo
+    return (
+      <FlatList
+        horizontal
+        data={capturedPhotos.slice(0, 4)}
+        keyExtractor={(u, idx) => `${u}-${idx}`}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+        renderItem={({ item }) => (
+          <TouchableOpacity onPress={() => onPressThumb(item)} activeOpacity={0.8}>
+            <View style={styles.thumb}>
+              <Image source={{ uri: item }} style={styles.thumbImg} resizeMode="cover" />
+            </View>
+          </TouchableOpacity>
+        )}
+        showsHorizontalScrollIndicator={false}
+      />
+    );
   };
 
   return (
@@ -127,7 +187,7 @@ export default function EditScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 편집 캔버스 */}
+      {/* 캔버스 */}
       <View style={styles.canvasArea}>
         {frameSource ? (
           <ImageBackground source={frameSource} style={[styles.frameBox, frameStyle]} resizeMode="contain">
@@ -139,7 +199,6 @@ export default function EditScreen() {
                 onPress={() => onPressFramePhoto(i)}
               >
                 <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                {/* 선택된 슬롯에만 회색 오버레이 */}
                 {selectedSlot === i && <View style={styles.selectedOverlay} pointerEvents="none" />}
               </TouchableOpacity>
             ))}
@@ -149,30 +208,16 @@ export default function EditScreen() {
         )}
       </View>
 
-      {/* 사진 오버레이 */}
+      {/* 오버레이 (사진/프레임 공용) */}
       <Animated.View
-        pointerEvents={activeTool === 'photo' ? 'auto' : 'none'}
+        pointerEvents={isOverlayOpen ? 'auto' : 'none'}
         style={[
           styles.overlayWrap,
           { transform: [{ translateY: overlayY }], bottom: bottomBarH },
         ]}
       >
         <View style={styles.overlayHandle} {...panResponder.panHandlers} />
-        <FlatList
-          horizontal
-          data={capturedPhotos.slice(0,4)} // 교체 후보(현재는 촬영된 4장)
-          keyExtractor={(u, idx) => `${u}-${idx}`}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => onPressThumb(item)} activeOpacity={0.8}>
-              <View style={styles.thumb}>
-                <Image source={{ uri: item }} style={styles.thumbImg} resizeMode="cover" />
-              </View>
-            </TouchableOpacity>
-          )}
-          showsHorizontalScrollIndicator={false}
-        />
+        {renderOverlayContent()}
       </Animated.View>
 
       {/* 하단 툴바 */}
@@ -201,14 +246,25 @@ function ToolItem({ label, active, onPress, Icon }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: 'black' },
+
   topBar: {
-    height: 56, justifyContent: 'center', alignItems: 'center',
-    borderBottomColor: 'rgba(255,255,255,0.08)', borderBottomWidth: StyleSheet.hairlineWidth,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   topTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   saveBtn: {
-    position: 'absolute', right: 16, top: 10, paddingHorizontal: 12, height: 32,
-    borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    right: 16,
+    top: 10,
+    paddingHorizontal: 12,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 
@@ -216,17 +272,21 @@ const styles = StyleSheet.create({
   frameBox: { position: 'relative', overflow: 'hidden' },
   photo: { position: 'absolute' },
 
-  // 선택된 슬롯 회색 오버레이
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(128, 128, 128, 0.5)',
-    // borderRadius: 6,
+    backgroundColor: 'rgba(128,128,128,0.45)',
+    borderRadius: 6,
   },
 
   bottomBar: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-around',
-    paddingHorizontal: 16, paddingVertical: 8, gap: 10,
-    borderTopColor: 'rgba(255,255,255,0.08)', borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-around',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: StyleSheet.hairlineWidth,
     backgroundColor: 'black',
   },
   toolItem: { alignItems: 'center', justifyContent: 'center' },
@@ -234,18 +294,52 @@ const styles = StyleSheet.create({
   toolLabelActive: { color: '#FFFFFF', fontWeight: '700' },
 
   overlayWrap: {
-    position: 'absolute', left: 0, right: 0, height: OVERLAY_HEIGHT,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    position: 'absolute',
+    left: 0, right: 0,
+    height: OVERLAY_HEIGHT,
+    backgroundColor: 'rgba(0,0,0,0.6)',   // 60% 투명
     borderTopLeftRadius: 14, borderTopRightRadius: 14,
     paddingTop: 8, paddingBottom: 12,
-    shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 16,
+    shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: -4 },
+    elevation: 16,
   },
   overlayHandle: {
-    alignSelf: 'center', width: 36, height: 4, borderRadius: 2,
+    alignSelf: 'center',
+    width: 36, height: 4, borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.25)', marginBottom: 10,
   },
-  thumb: {
-    width: 78, height: 108, borderRadius: 10, overflow: 'hidden', backgroundColor: '#222',
-  },
+
+  // 사진 썸네일
+  thumb: { width: 78, height: 108, borderRadius: 10, overflow: 'hidden', backgroundColor: '#222' },
   thumbImg: { width: '100%', height: '100%', opacity: 1 },
+
+  // 프레임 옵션
+  // frameOptionsRow: {
+  //   flexDirection: 'row',
+  //   paddingHorizontal: 16,
+  //   gap: 12,
+  // },
+  frameOptionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly', // ← 좌우 여백 포함 균등 정렬
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+
+  frameCard: {
+    width: 108,
+    height: 128,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  frameCardActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  frameCardImg: { width: '100%', height: 90 },
+  frameCardLabel: { marginTop: 6, fontSize: 12, color: '#BDBDBD' },
+  frameCardLabelActive: { color: '#000', fontWeight: '700' },
 });
