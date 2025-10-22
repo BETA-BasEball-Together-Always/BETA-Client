@@ -14,8 +14,8 @@ import StickersIcon from '../../../assets/images/PhotoBooth/Edit/stickers.svg';
 import TextIcon     from '../../../assets/images/PhotoBooth/Edit/text.svg';
 
 const { width, height } = Dimensions.get('window');
-const OVERLAY_HEIGHT = 150;
-const HIDDEN_Y = OVERLAY_HEIGHT + 24;
+// 탭에 따라 달라지는 오버레이 높이
+const getOverlayHeight = (tool) => (tool === 'sticker' ? 250 : 150);
 const SNAP_THRESHOLD = 48;
 
 const FRAME_OPTIONS = [
@@ -30,6 +30,12 @@ export default function EditScreen() {
 
   const [activeTool, setActiveTool] = useState('photo'); // 'photo' | 'frame' | 'sticker' | 'text' | 'none'
   const [bottomBarH, setBottomBarH] = useState(86);
+  // 현재 탭 기준 오버레이 높이/숨김 Y
+  const overlayHeight = getOverlayHeight(activeTool);
+  const hiddenY = overlayHeight + 24;
+    
+  const hiddenYRef = useRef(hiddenY);
+  useEffect(() => { hiddenYRef.current = hiddenY; }, [hiddenY]);  
 
   // 편집용 로컬 사진(교체 반영)
   const [photosLocal, setPhotosLocal] = useState(() => capturedPhotos.slice(0, 4));
@@ -79,18 +85,20 @@ export default function EditScreen() {
   };
 
   // ── 오버레이 애니메이션/드래그 ──
-  const overlayY = useRef(new Animated.Value(HIDDEN_Y)).current;
+  // 처음엔 닫힌 상태로 시작
+  const overlayY = useRef(new Animated.Value(hiddenY)).current;  
   const currentY = useRef(0);
   const isOverlayOpen = activeTool === 'photo' || activeTool === 'frame' || activeTool === 'sticker';
 
+  // 탭/높이 변경 시 새 hiddenY에 맞춰 열림/닫힘 목표값 갱신
   useEffect(() => {
     Animated.timing(overlayY, {
-      toValue: isOverlayOpen ? 0 : HIDDEN_Y,
+      toValue: isOverlayOpen ? 0 : hiddenY,
       duration: 220,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [isOverlayOpen, overlayY]);
+  }, [isOverlayOpen, hiddenY, overlayY]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -98,13 +106,13 @@ export default function EditScreen() {
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 2,
       onPanResponderGrant: () => overlayY.stopAnimation(v => { currentY.current = v; }),
       onPanResponderMove: (_, g) => {
-        const next = Math.min(HIDDEN_Y, Math.max(0, currentY.current + g.dy));
+        const next = Math.min(hiddenYRef.current, Math.max(0, currentY.current + g.dy));        
         overlayY.setValue(next);
       },
       onPanResponderRelease: (_, g) => {
-        const shouldClose = g.dy > SNAP_THRESHOLD || currentY.current + g.dy > HIDDEN_Y * 0.5;
+        const shouldClose = g.dy > SNAP_THRESHOLD || currentY.current + g.dy > hiddenYRef.current * 0.5;
         Animated.timing(overlayY, {
-          toValue: shouldClose ? HIDDEN_Y : 0,
+          toValue: shouldClose ? hiddenYRef.current : 0,
           duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true,
         }).start(() => { if (shouldClose) setActiveTool('none'); });
       },
@@ -185,22 +193,24 @@ const renderOverlayContent = () => {
     };
 
     return (
-      <ScrollView
-        style={styles.stickerScroll}
-        contentContainerStyle={styles.stickerContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {stickers.map((src, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={styles.stickerItem}
-            onPress={() => onPressSticker(src)}
-            activeOpacity={0.8}
-          >
-            <Image source={src} style={styles.stickerImg} resizeMode="contain" />
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={{flex:1, width: '100%', justifyContent: 'center'}}>
+        <ScrollView
+          style={styles.stickerScroll}
+          contentContainerStyle={styles.stickerContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {stickers.map((src, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={styles.stickerItem}
+              onPress={() => onPressSticker(src)}
+              activeOpacity={0.8}
+            >
+              <Image source={src} style={styles.stickerImg} resizeMode="contain" />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
     );
   }
 
@@ -260,7 +270,7 @@ const renderOverlayContent = () => {
         pointerEvents={isOverlayOpen ? 'auto' : 'none'}
         style={[
           styles.overlayWrap,
-          { transform: [{ translateY: overlayY }], bottom: bottomBarH },
+          { height: overlayHeight, transform: [{ translateY: overlayY }], bottom: bottomBarH },
         ]}
       >
         <View style={styles.overlayHandle} {...panResponder.panHandlers} />
@@ -343,8 +353,7 @@ const styles = StyleSheet.create({
   overlayWrap: {
     position: 'absolute',
     left: 0, right: 0,
-    height: OVERLAY_HEIGHT,
-    backgroundColor: 'rgba(0,0,0,0.6)',   // 60% 투명
+    backgroundColor: 'rgba(0,0,0,0.8)',   // 60% 투명
     borderTopLeftRadius: 14, borderTopRightRadius: 14,
     paddingTop: 8, paddingBottom: 12,
     shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: -4 },
@@ -361,11 +370,6 @@ const styles = StyleSheet.create({
   thumbImg: { width: '100%', height: '100%', opacity: 1 },
 
   // 프레임 옵션
-  // frameOptionsRow: {
-  //   flexDirection: 'row',
-  //   paddingHorizontal: 16,
-  //   gap: 12,
-  // },
   frameOptionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -397,7 +401,7 @@ const styles = StyleSheet.create({
   stickerContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     rowGap: 12,
     columnGap: 12,
     paddingBottom: 24,
