@@ -13,6 +13,21 @@ import ImagesIcon   from '../../../assets/images/PhotoBooth/Edit/images.svg';
 import FramesIcon   from '../../../assets/images/PhotoBooth/Edit/frames.svg';
 import StickersIcon from '../../../assets/images/PhotoBooth/Edit/stickers.svg';
 import TextIcon     from '../../../assets/images/PhotoBooth/Edit/text.svg';
+import icon1 from '../../../assets/images/PhotoBooth/Stickers/svg/icon1.svg';
+import icon2 from '../../../assets/images/PhotoBooth/Stickers/svg/icon2.svg';
+import icon3 from '../../../assets/images/PhotoBooth/Stickers/svg/icon3.svg';
+import icon4 from '../../../assets/images/PhotoBooth/Stickers/svg/icon4.svg';
+import icon5 from '../../../assets/images/PhotoBooth/Stickers/svg/icon5.svg';
+import icon6 from '../../../assets/images/PhotoBooth/Stickers/svg/icon6.svg';
+import icon7 from '../../../assets/images/PhotoBooth/Stickers/svg/icon7.svg';
+import icon8 from '../../../assets/images/PhotoBooth/Stickers/svg/icon8.svg';
+import textbubble1 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble1.svg';
+import textbubble2 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble2.svg';
+import textbubble3 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble3.svg';
+import textbubble4 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble4.svg';
+import textbubble5 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble5.svg';
+import textbubble6 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble6.svg';
+
 
 const { width, height } = Dimensions.get('window');
 // 탭에 따라 달라지는 오버레이 높이
@@ -21,7 +36,7 @@ const SNAP_THRESHOLD = 48;
 
 const FRAME_OPTIONS = [
   { id: '2x2', label: '2×2' },
-  { id: '1x4', label: '1×4' },
+  { id: '1x4', label: '1x4' },
 ];
 
 export default function EditScreen() {
@@ -176,37 +191,35 @@ const renderOverlayContent = () => {
     );
   }
 
-  // 2️⃣ 스티커
+  // 2️⃣ 스티커 (SVG로 교체)
   if (activeTool === 'sticker') {
-    const stickers = [
-      require('../../../assets/images/PhotoBooth/Stickers/icon1.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon2.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon3.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon4.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon5.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon6.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon7.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/icon8.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/textbubble1.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/textbubble2.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/textbubble3.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/textbubble4.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/textbubble5.png'),
-      require('../../../assets/images/PhotoBooth/Stickers/textbubble6.png'),
+    // 실제 프로젝트 경로/파일명에 맞춰 SVG 컴포넌트 목록을 구성
+    const svgStickerComps = [
+      icon1,icon2,icon3,icon4,icon5,icon6,icon7,icon8,textbubble1,textbubble2,textbubble3,textbubble4,textbubble5,textbubble6
+      // 필요에 따라 더 추가
     ];
 
-    const onPressSticker = (src) => {
-      // 프레임 중앙에 기본 배치
+    const onPressStickerSvg = (SvgComp) => {
       const id = Date.now().toString();
-      const baseSize = 80;        // 기준 크기(px)
-      const cx = frameLayout.w ? frameLayout.w / 2 : 120; // 중앙 x (프레임 상대)
-      const cy = frameLayout.h ? frameLayout.h / 2 : 120; // 중앙 y
+      const baseSize = 80;
+      const cx = frameLayout.w ? frameLayout.w / 2 : 120;
+      const cy = frameLayout.h ? frameLayout.h / 2 : 120;
+
       setStickers((prev) => [
         ...prev,
-        { id, src, x: cx, y: cy, scale: 1, rotation: 0, size: baseSize },
+        {
+          id,
+          kind: 'svg',
+          Svg: SvgComp,
+          x: cx,
+          y: cy,
+          scale: 1,
+          rotation: 0,
+          size: baseSize,
+        },
       ]);
       setSelectedStickerId(id);
-      setActiveTool('none'); // 선택 후 오버레이 닫기 (원하면 유지해도 됨)
+      setActiveTool('none');
     };
 
     return (
@@ -216,14 +229,15 @@ const renderOverlayContent = () => {
           contentContainerStyle={styles.stickerContainer}
           showsVerticalScrollIndicator={false}
         >
-          {stickers.map((src, idx) => (
+          {svgStickerComps.map((SvgComp, idx) => (
             <TouchableOpacity
               key={idx}
               style={styles.stickerItem}
-              onPress={() => onPressSticker(src)}
+              onPress={() => onPressStickerSvg(SvgComp)}
               activeOpacity={0.8}
             >
-              <Image source={src} style={styles.stickerImg} resizeMode="contain" />
+              {/* 썸네일은 SVG 컴포넌트를 그대로 축소 렌더 */}
+              <SvgComp width={40} height={40} preserveAspectRatio="xMidYMid meet" />
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -345,53 +359,52 @@ function ToolItem({ label, active, onPress, Icon }) {
 
 /** ───────── StickerItem: 이동/스케일/회전 + 삭제 ───────── */
 function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
-  const { x, y, scale, rotation, size, src } = item;
+  const { x, y, scale, rotation, size, src, Svg, kind = 'raster' } = item;
 
-  // 로컬 애니메이션 값 (부드러운 드래그)
   const pos = useRef(new Animated.ValueXY({ x, y })).current;
   const scl = useRef(new Animated.Value(scale)).current;
   const rot = useRef(new Animated.Value(rotation)).current;
 
-  // id가 바뀔 때(새 스티커)만 초기 위치/변환 적용
-  const prevIdRef = useRef(item.id);
+  // ❗️ props ↔ Animated 값 동기화 (부모 state가 바뀌면 반영)
   useEffect(() => {
-    if (prevIdRef.current !== item.id) {
-      pos.setValue({ x, y });
-      scl.setValue(scale);
-      rot.setValue(rotation);
-      prevIdRef.current = item.id;
-    }
-  }, [item.id, x, y, scale, rotation, pos, scl, rot]);
+    const cur = typeof pos.x.__getValue === 'function' ? pos.x.__getValue() : x;
+    if (Math.abs(cur - x) > 1e-3) pos.x.setValue(x);
+  }, [x, pos.x]);
+  useEffect(() => {
+    const cur = typeof pos.y.__getValue === 'function' ? pos.y.__getValue() : y;
+    if (Math.abs(cur - y) > 1e-3) pos.y.setValue(y);
+  }, [y, pos.y]);
 
-  // 중심 기준으로 배치 (top/left는 나중에 transform으로 처리)
-  const half = (size * scale) / 2;
+  useEffect(() => {
+    const cur = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
+    if (Math.abs(cur - scale) > 1e-3) scl.setValue(scale);
+  }, [scale, scl]);
 
-  // 드래그 시작 정보 (스티커 중심좌표, 손가락-중심 오프셋)
-  const start = useRef({ x: 0, y: 0, offX: 0, offY: 0 }).current;  
+  useEffect(() => {
+    const cur = typeof rot.__getValue === 'function' ? rot.__getValue() : rotation;
+    if (Math.abs(cur - rotation) > 1e-3) rot.setValue(rotation);
+  }, [rotation, rot]);
+
+  const start = useRef({ x: 0, y: 0, offX: 0, offY: 0 }).current;
   const movePan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         onSelect?.();
-        // ✅ Animated의 "현재 렌더 값"을 기준으로 사용
         const curPos = typeof pos.__getValue === 'function' ? pos.__getValue() : { x, y };
         const curScale = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
         const curRot   = typeof rot.__getValue === 'function' ? rot.__getValue() : rotation;
-        start.x = curPos.x;
-        start.y = curPos.y;
+        start.x = curPos.x; start.y = curPos.y;
 
-        // 손가락-중심 오프셋 (현재 scale/rotation 반영)
-        const lx = evt.nativeEvent.locationX; // 0..size (로컬)
+        const lx = evt.nativeEvent.locationX;
         const ly = evt.nativeEvent.locationY;
         const cx = size / 2, cy = size / 2;
         const localX = lx - cx, localY = ly - cy;
         const s = curScale;
         const cos = Math.cos(curRot), sin = Math.sin(curRot);
-        // 로컬→월드 오프셋: R(θ) * (s * [localX, localY])
         const offX = (localX * s) * cos - (localY * s) * sin;
         const offY = (localX * s) * sin + (localY * s) * cos;
-        start.offX = offX;
-        start.offY = offY;        
+        start.offX = offX; start.offY = offY;
       },
       onPanResponderMove: (_, g) => {
         pos.setValue({ x: start.x + g.dx, y: start.y + g.dy });
@@ -402,12 +415,8 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
     })
   ).current;
 
-  // 스케일/회전 제스처 (좌하단 핸들)
   const tfStart = useRef({
-    cx: 0, cy: 0,    // 중심(화면 좌표는 아님, 상대 거리만 쓰므로 OK)
-    v0x: 0, v0y: 0,  // 시작 벡터 (center->handle)
-    dist0: 1, ang0: 0,
-    scale0: 1, rot0: 0,
+    v0x: 0, v0y: 0, dist0: 1, ang0: 0, scale0: 1, rot0: 0,
   }).current;
 
   const transformPan = useRef(
@@ -415,27 +424,25 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
       onStartShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
         onSelect?.();
-        // 시작 시점의 기하값
-        tfStart.scale0 = scale;
-        tfStart.rot0 = rotation;
 
-        // 현재 크기/회전 적용된 실제 핸들 위치 벡터(대략): 좌하단 = (-half, +half)
+        // ✅ "현재 보이는 값"을 기준으로 시작값을 설정 (초기화 방지 핵심)
+        tfStart.scale0 = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
+        tfStart.rot0   = typeof rot.__getValue === 'function' ? rot.__getValue() : rotation;
+
+        // 현재 크기/회전에서의 핸들 기준 벡터 계산
         const h = (size * tfStart.scale0) / 2;
         const ang = tfStart.rot0;
-        const vx =  h, vy =  h; // ✅ 회전 전 '우하단' 벡터
-        // 회전 적용 (2D 회전)
+        // 우하단 핸들 벡터(회전 전): (h, h)
         const cos = Math.cos(ang), sin = Math.sin(ang);
-        tfStart.v0x = vx * cos - vy * sin;
-        tfStart.v0y = vx * sin + vy * cos;
+        tfStart.v0x =  h * cos - h * sin;
+        tfStart.v0y =  h * sin + h * cos;
 
         tfStart.dist0 = Math.hypot(tfStart.v0x, tfStart.v0y);
         tfStart.ang0  = Math.atan2(tfStart.v0y, tfStart.v0x);
       },
       onPanResponderMove: (_, g) => {
-        // 핸들을 dx,dy만큼 움직였다고 가정 → 벡터에 더함
         const vx = tfStart.v0x + g.dx;
         const vy = tfStart.v0y + g.dy;
-
         const dist = Math.max(10, Math.hypot(vx, vy));
         const ang  = Math.atan2(vy, vx);
 
@@ -446,19 +453,19 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
         rot.setValue(rotNew);
       },
       onPanResponderRelease: (_, g) => {
-        // 최종값 계산을 한 번 더
         const vx = tfStart.v0x + g.dx;
         const vy = tfStart.v0y + g.dy;
         const dist = Math.max(10, Math.hypot(vx, vy));
         const ang  = Math.atan2(vy, vx);
         const scaleNew = Math.min(4, Math.max(0.3, (dist / tfStart.dist0) * tfStart.scale0));
         const rotNew   = tfStart.rot0 + (ang - tfStart.ang0);
+
+        // 부모 state에 최종값 기록 (다음 진입 시에도 유지)
         onUpdate?.({ scale: scaleNew, rotation: rotNew });
       },
     })
   ).current;
 
-  // transform 스타일 (center 기준)
   const animatedStyle = {
     position: 'absolute',
     left: 0, top: 0,
@@ -477,23 +484,26 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
 
   return (
     <Animated.View style={[animatedStyle, { width: size, height: size }]}>
-      {/* 본체(드래그 영역) */}
       <View
         {...movePan.panHandlers}
         style={{ width: '100%', height: '100%' }}
         collapsable={false}
       >
-        <Image source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-        {/* 선택 시 아웃라인/핸들 */}
+        {kind === 'svg' && Svg ? (
+          // ✅ SVG 스티커 본체
+          <Svg width="100%" height="100%" preserveAspectRatio="xMidYMid meet" />
+        ) : (
+          // (호환) 기존 래스터 스티커도 계속 지원
+          <Image source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+        )}
+
         {selected && (
           <>
             <View style={styles.stickerOutline} pointerEvents="none" />
-            {/* 좌상단 삭제(X) */}
             <TouchableOpacity style={[styles.handle, styles.handleTL]} onPress={onDelete} activeOpacity={0.8}>
               <Text style={styles.handleText}>×</Text>
             </TouchableOpacity>
-            {/* ✅ 우하단 변형(스케일/회전) */}
-            <View style={[styles.handle, styles.handleBR]} {...transformPan.panHandlers}>           
+            <View style={[styles.handle, styles.handleBR]} {...transformPan.panHandlers}>
               <Text style={styles.handleText}>↔︎</Text>
             </View>
           </>
@@ -502,6 +512,7 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
     </Animated.View>
   );
 }
+
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: 'black' },
