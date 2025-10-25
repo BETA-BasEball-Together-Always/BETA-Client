@@ -31,8 +31,9 @@ import textbubble6 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubb
 
 const { width, height } = Dimensions.get('window');
 // 탭에 따라 달라지는 오버레이 높이
-const getOverlayHeight = (tool) => (tool === 'sticker' ? 250 : 150);
-const SNAP_THRESHOLD = 48;
+// 텍스트 탭도 버튼이 커서 살짝 여유 있게
+const getOverlayHeight = (tool) =>
+  (tool === 'sticker' || tool === 'text') ? 250 : 150;const SNAP_THRESHOLD = 48;
 
 const FRAME_OPTIONS = [
   { id: '2x2', label: '2×2' },
@@ -53,10 +54,14 @@ export default function EditScreen() {
   const hiddenYRef = useRef(hiddenY);
   useEffect(() => { hiddenYRef.current = hiddenY; }, [hiddenY]);  
 
-   // 스티커 상태
-   const [stickers, setStickers] = useState([]); // { id, src, x, y, scale, rotation, size }[]
-   const [selectedStickerId, setSelectedStickerId] = useState(null);
+  // 스티커 상태
+  const [stickers, setStickers] = useState([]); // { id, src, x, y, scale, rotation, size }[]
+  const [selectedStickerId, setSelectedStickerId] = useState(null);
  
+  // ─ 텍스트 상태 ─
+  const [texts, setTexts] = useState([]); // { id, text, x, y, scale, rotation, size, color, weight }[]
+  const [selectedTextId, setSelectedTextId] = useState(null);
+
    // 프레임 박스 레이아웃(스티커 기본 위치/좌표 계산용)
    const [frameLayout, setFrameLayout] = useState({ x: 0, y: 0, w: 0, h: 0 });
 
@@ -111,7 +116,7 @@ export default function EditScreen() {
   // 처음엔 닫힌 상태로 시작
   const overlayY = useRef(new Animated.Value(hiddenY)).current;  
   const currentY = useRef(0);
-  const isOverlayOpen = activeTool === 'photo' || activeTool === 'frame' || activeTool === 'sticker';
+  const isOverlayOpen = ['photo', 'frame', 'sticker', 'text'].includes(activeTool);
 
   // 탭/높이 변경 시 새 hiddenY에 맞춰 열림/닫힘 목표값 갱신
   useEffect(() => {
@@ -245,6 +250,43 @@ const renderOverlayContent = () => {
     );
   }
 
+  // 4️⃣ 텍스트
+  if (activeTool === 'text') {
+    const onAddText = () => {
+      const id = Date.now().toString();
+      const baseSize = 160; // 텍스트 박스 기준 사이즈(스케일 기준점)
+      const cx = frameLayout.w ? frameLayout.w / 2 : 140;
+      const cy = frameLayout.h ? frameLayout.h / 2 : 140;
+      setTexts(prev => [
+        ...prev,
+        {
+          id,
+          text: '텍스트',
+          x: cx,
+          y: cy,
+          scale: 1,
+          rotation: 0,
+          size: baseSize,
+          color: '#FFFFFF',
+          weight: '700', // or '400'
+        },
+      ]);
+      setSelectedTextId(id);
+      // 필요시 오버레이 닫기
+      // setActiveTool('none');
+    };
+
+    return (
+      <View style={{ flex: 1, paddingHorizontal: 16, justifyContent: 'center' }}>
+        <TouchableOpacity style={styles.addTextButton} onPress={onAddText} activeOpacity={0.85}>
+          <Text style={styles.addTextPlus}>＋</Text>
+          <Text style={styles.addTextLabel}>텍스트 추가</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+
   // 3️⃣ 기본: 사진
   return (
     <FlatList
@@ -276,7 +318,14 @@ const renderOverlayContent = () => {
       </View>
 
       {/* 캔버스 */}
-      <Pressable style={styles.canvasArea} onPress={() => setSelectedStickerId(null)}>    
+      <Pressable 
+        style={styles.canvasArea} 
+        onPress={() => {
+          setSelectedStickerId(null)
+          setSelectedTextId(null);    // ← 텍스트 선택 해제
+          setSelectedSlot(null);        
+        }}
+      >    
         {frameSource ? (
           <ImageBackground 
             source={frameSource} 
@@ -313,7 +362,23 @@ const renderOverlayContent = () => {
                   if (selectedStickerId === st.id) setSelectedStickerId(null);
                 }}
               />
-            ))}            
+            ))}    
+            {/* 텍스트들 */}
+            {texts.map(t => (
+              <TextItem
+                key={t.id}
+                item={t}
+                selected={selectedTextId === t.id}
+                onSelect={() => setSelectedTextId(t.id)}
+                onUpdate={(patch) => {
+                  setTexts(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x));
+                }}
+                onDelete={() => {
+                  setTexts(prev => prev.filter(x => x.id !== t.id));
+                  if (selectedTextId === t.id) setSelectedTextId(null);
+                }}
+              />
+            ))}                    
           </ImageBackground>
         ) : (
           <Text style={{ color: '#aaa' }}>프레임 이미지를 찾을 수 없어요</Text>
@@ -513,6 +578,146 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
   );
 }
 
+function TextItem({ item, selected, onSelect, onUpdate, onDelete }) {
+  const { id, text, x, y, scale, rotation, size, color = '#FFF', weight = '700' } = item;
+
+  const pos = useRef(new Animated.ValueXY({ x, y })).current;
+  const scl = useRef(new Animated.Value(scale)).current;
+  const rot = useRef(new Animated.Value(rotation)).current;
+
+  // 부모 state ↔ Animated 값 동기화
+  useEffect(() => {
+    const cur = typeof pos.x.__getValue === 'function' ? pos.x.__getValue() : x;
+    if (Math.abs(cur - x) > 1e-3) pos.x.setValue(x);
+  }, [x, pos.x]);
+  useEffect(() => {
+    const cur = typeof pos.y.__getValue === 'function' ? pos.y.__getValue() : y;
+    if (Math.abs(cur - y) > 1e-3) pos.y.setValue(y);
+  }, [y, pos.y]);
+  useEffect(() => {
+    const cur = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
+    if (Math.abs(cur - scale) > 1e-3) scl.setValue(scale);
+  }, [scale, scl]);
+  useEffect(() => {
+    const cur = typeof rot.__getValue === 'function' ? rot.__getValue() : rotation;
+    if (Math.abs(cur - rotation) > 1e-3) rot.setValue(rotation);
+  }, [rotation, rot]);
+
+  // 새 텍스트 생성 시 초기화
+  const prevIdRef = useRef(id);
+  useEffect(() => {
+    if (prevIdRef.current !== id) {
+      pos.setValue({ x, y });
+      scl.setValue(scale);
+      rot.setValue(rotation);
+      prevIdRef.current = id;
+    }
+  }, [id]); // eslint-disable-line
+
+  // 이동 제스처
+  const start = useRef({ x: 0, y: 0 }).current;
+  const movePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        onSelect?.();
+        const curPos = typeof pos.__getValue === 'function' ? pos.__getValue() : { x, y };
+        start.x = curPos.x; start.y = curPos.y;
+      },
+      onPanResponderMove: (_, g) => {
+        pos.setValue({ x: start.x + g.dx, y: start.y + g.dy });
+      },
+      onPanResponderRelease: (_, g) => {
+        onUpdate?.({ x: start.x + g.dx, y: start.y + g.dy });
+      },
+    })
+  ).current;
+
+  // 크기/회전 제스처 (우하단 핸들) — 스티커와 동일
+  const tfStart = useRef({ v0x: 0, v0y: 0, dist0: 1, ang0: 0, scale0: 1, rot0: 0 }).current;
+  const transformPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        onSelect?.();
+        tfStart.scale0 = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
+        tfStart.rot0   = typeof rot.__getValue === 'function' ? rot.__getValue() : rotation;
+
+        const h = (size * tfStart.scale0) / 2;
+        const ang = tfStart.rot0;
+        const cos = Math.cos(ang), sin = Math.sin(ang);
+        tfStart.v0x =  h * cos - h * sin;
+        tfStart.v0y =  h * sin + h * cos;
+
+        tfStart.dist0 = Math.hypot(tfStart.v0x, tfStart.v0y);
+        tfStart.ang0  = Math.atan2(tfStart.v0y, tfStart.v0x);
+      },
+      onPanResponderMove: (_, g) => {
+        const vx = tfStart.v0x + g.dx;
+        const vy = tfStart.v0y + g.dy;
+        const dist = Math.max(10, Math.hypot(vx, vy));
+        const ang  = Math.atan2(vy, vx);
+        const scaleNew = Math.min(4, Math.max(0.3, (dist / tfStart.dist0) * tfStart.scale0));
+        const rotNew   = tfStart.rot0 + (ang - tfStart.ang0);
+        scl.setValue(scaleNew);
+        rot.setValue(rotNew);
+      },
+      onPanResponderRelease: (_, g) => {
+        const vx = tfStart.v0x + g.dx;
+        const vy = tfStart.v0y + g.dy;
+        const dist = Math.max(10, Math.hypot(vx, vy));
+        const ang  = Math.atan2(vy, vx);
+        const scaleNew = Math.min(4, Math.max(0.3, (dist / tfStart.dist0) * tfStart.scale0));
+        const rotNew   = tfStart.rot0 + (ang - tfStart.ang0);
+        onUpdate?.({ scale: scaleNew, rotation: rotNew });
+      },
+    })
+  ).current;
+
+  // 중심 기준 transform (스티커와 동일)
+  const animatedStyle = {
+    position: 'absolute',
+    left: 0, top: 0,
+    transform: [
+      { translateX: Animated.subtract(pos.x, Animated.multiply(scl, size / 2)) },
+      { translateY: Animated.subtract(pos.y, Animated.multiply(scl, size / 2)) },
+      {
+        rotate: rot.interpolate({
+          inputRange: [-Math.PI, Math.PI],
+          outputRange: ['-180deg', '180deg'],
+        }),
+      },
+      { scale: scl },
+    ],
+  };
+
+  return (
+    <Animated.View style={[animatedStyle, { width: size, minWidth: 60 }]}>
+      <View
+        {...movePan.panHandlers}
+        style={{ paddingHorizontal: 8, paddingVertical: 4, alignItems: 'center', justifyContent: 'center' }}
+        collapsable={false}
+      >
+        <Text style={{ color, fontSize: 24, fontWeight: weight }} numberOfLines={2} ellipsizeMode="tail">
+          {text}
+        </Text>
+
+        {selected && (
+          <>
+            <View style={styles.stickerOutline} pointerEvents="none" />
+            <TouchableOpacity style={[styles.handle, styles.handleTL]} onPress={onDelete} activeOpacity={0.8}>
+              <Text style={styles.handleText}>×</Text>
+            </TouchableOpacity>
+            <View style={[styles.handle, styles.handleBR]} {...transformPan.panHandlers}>
+              <Text style={styles.handleText}>↔︎</Text>
+            </View>
+          </>
+        )}
+      </View>
+    </Animated.View>
+  );
+}
+
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: 'black' },
@@ -658,4 +863,23 @@ const styles = StyleSheet.create({
   },
   handleTL: { left: -11, top: -11 },      // 좌상단
   handleBR: { right: -11, bottom: -11 },  // ✅ 우하단  
+  addTextButton: {
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#F2F2F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  addTextPlus: {
+    color: '#111',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  addTextLabel: {
+    color: '#111',
+    fontSize: 16,
+    fontWeight: '700',
+  },  
 });
