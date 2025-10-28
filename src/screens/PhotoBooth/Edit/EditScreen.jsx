@@ -33,7 +33,7 @@ const { width, height } = Dimensions.get('window');
 // 탭에 따라 달라지는 오버레이 높이
 // 텍스트 탭도 버튼이 커서 살짝 여유 있게
 const getOverlayHeight = (tool) =>
-  (tool === 'sticker' || tool === 'text') ? 250 : 150;const SNAP_THRESHOLD = 48;
+  tool=== 'photo'? 140 : (tool === 'text' ? 100 : (tool === 'sticker' ? 250 : 150));const SNAP_THRESHOLD = 48;
 
 const FRAME_OPTIONS = [
   { id: '2x2', label: '2×2' },
@@ -117,6 +117,7 @@ export default function EditScreen() {
   const overlayY = useRef(new Animated.Value(hiddenY)).current;  
   const currentY = useRef(0);
   const isOverlayOpen = ['photo', 'frame', 'sticker', 'text'].includes(activeTool);
+  const showHandle = activeTool === 'sticker';
 
   // 탭/높이 변경 시 새 hiddenY에 맞춰 열림/닫힘 목표값 갱신
   useEffect(() => {
@@ -184,128 +185,129 @@ export default function EditScreen() {
   };
 
   // 오버레이 콘텐츠 스위치
-const renderOverlayContent = () => {
-  // 1️⃣ 프레임
-  if (activeTool === 'frame') {
-    return (
-      <View style={styles.frameOptionsRow}>
-        {FRAME_OPTIONS.map(opt => (
-          <FrameOptionCard key={opt.id} id={opt.id} label={opt.label} />
-        ))}
-      </View>
-    );
-  }
-
-  // 2️⃣ 스티커 (SVG로 교체)
-  if (activeTool === 'sticker') {
-    // 실제 프로젝트 경로/파일명에 맞춰 SVG 컴포넌트 목록을 구성
-    const svgStickerComps = [
-      icon1,icon2,icon3,icon4,icon5,icon6,icon7,icon8,textbubble1,textbubble2,textbubble3,textbubble4,textbubble5,textbubble6
-      // 필요에 따라 더 추가
-    ];
-
-    const onPressStickerSvg = (SvgComp) => {
-      const id = Date.now().toString();
-      const baseSize = 80;
-      const cx = frameLayout.w ? frameLayout.w / 2 : 120;
-      const cy = frameLayout.h ? frameLayout.h / 2 : 120;
-
-      setStickers((prev) => [
-        ...prev,
-        {
-          id,
-          kind: 'svg',
-          Svg: SvgComp,
-          x: cx,
-          y: cy,
-          scale: 1,
-          rotation: 0,
-          size: baseSize,
-        },
-      ]);
-      setSelectedStickerId(id);
-      setActiveTool('none');
-    };
-
-    return (
-      <View style={{flex:1, width: '100%', justifyContent: 'center'}}>
-        <ScrollView
-          style={styles.stickerScroll}
-          contentContainerStyle={styles.stickerContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {svgStickerComps.map((SvgComp, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={styles.stickerItem}
-              onPress={() => onPressStickerSvg(SvgComp)}
-              activeOpacity={0.8}
-            >
-              {/* 썸네일은 SVG 컴포넌트를 그대로 축소 렌더 */}
-              <SvgComp width={40} height={40} preserveAspectRatio="xMidYMid meet" />
+  const renderOverlayContent = () => {
+    // 1️⃣ 사진
+    if (activeTool === 'photo') {
+      return (
+        <FlatList
+          horizontal
+          data={capturedPhotos.slice(0, 4)}
+          keyExtractor={(u, idx) => `${u}-${idx}`}
+          contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center' }}
+          ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => onPressThumb(item)} activeOpacity={0.8}>
+              <View style={styles.thumb}>
+                <Image source={{ uri: item }} style={styles.thumbImg} resizeMode="cover" />
+              </View>
             </TouchableOpacity>
+          )}
+          showsHorizontalScrollIndicator={false}
+        />
+      );
+    }
+
+    // 2️⃣ 프레임
+    if (activeTool === 'frame') {
+      return (
+        <View style={styles.frameOptionsRow}>
+          {FRAME_OPTIONS.map(opt => (
+            <FrameOptionCard key={opt.id} id={opt.id} label={opt.label} />
           ))}
-        </ScrollView>
-      </View>
-    );
-  }
+        </View>
+      );
+    }
 
-  // 4️⃣ 텍스트
-  if (activeTool === 'text') {
-    const onAddText = () => {
-      const id = Date.now().toString();
-      const baseSize = 160; // 텍스트 박스 기준 사이즈(스케일 기준점)
-      const cx = frameLayout.w ? frameLayout.w / 2 : 140;
-      const cy = frameLayout.h ? frameLayout.h / 2 : 140;
-      setTexts(prev => [
-        ...prev,
-        {
-          id,
-          text: '텍스트',
-          x: cx,
-          y: cy,
-          scale: 1,
-          rotation: 0,
-          size: baseSize,
-          color: '#FFFFFF',
-          weight: '700', // or '400'
-        },
-      ]);
-      setSelectedTextId(id);
-      // 필요시 오버레이 닫기
-      // setActiveTool('none');
-    };
+    //  3️⃣스티커 (SVG로 교체)
+    if (activeTool === 'sticker') {
+      // 실제 프로젝트 경로/파일명에 맞춰 SVG 컴포넌트 목록을 구성
+      const svgStickerComps = [
+        icon1,icon2,icon3,icon4,icon5,icon6,icon7,icon8,textbubble1,textbubble2,textbubble3,textbubble4,textbubble5,textbubble6
+        // 필요에 따라 더 추가
+      ];
 
-    return (
-      <View style={{ flex: 1, paddingHorizontal: 16, justifyContent: 'center' }}>
-        <TouchableOpacity style={styles.addTextButton} onPress={onAddText} activeOpacity={0.85}>
-          <Text style={styles.addTextPlus}>＋</Text>
-          <Text style={styles.addTextLabel}>텍스트 추가</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+      const onPressStickerSvg = (SvgComp) => {
+        const id = Date.now().toString();
+        const baseSize = 80;
+        const cx = frameLayout.w ? frameLayout.w / 2 : 120;
+        const cy = frameLayout.h ? frameLayout.h / 2 : 120;
 
+        setStickers((prev) => [
+          ...prev,
+          {
+            id,
+            kind: 'svg',
+            Svg: SvgComp,
+            x: cx,
+            y: cy,
+            scale: 1,
+            rotation: 0,
+            size: baseSize,
+          },
+        ]);
+        setSelectedStickerId(id);
+        setActiveTool('none');
+      };
 
-  // 3️⃣ 기본: 사진
-  return (
-    <FlatList
-      horizontal
-      data={capturedPhotos.slice(0, 4)}
-      keyExtractor={(u, idx) => `${u}-${idx}`}
-      contentContainerStyle={{ paddingHorizontal: 16 }}
-      ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
-      renderItem={({ item }) => (
-        <TouchableOpacity onPress={() => onPressThumb(item)} activeOpacity={0.8}>
-          <View style={styles.thumb}>
-            <Image source={{ uri: item }} style={styles.thumbImg} resizeMode="cover" />
-          </View>
-        </TouchableOpacity>
-      )}
-      showsHorizontalScrollIndicator={false}
-    />
-  );
-};
+      return (
+        <View style={{flex:1, width: '100%', justifyContent: 'center'}}>
+          <ScrollView
+            style={styles.stickerScroll}
+            contentContainerStyle={styles.stickerContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {svgStickerComps.map((SvgComp, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.stickerItem}
+                onPress={() => onPressStickerSvg(SvgComp)}
+                activeOpacity={0.8}
+              >
+                {/* 썸네일은 SVG 컴포넌트를 그대로 축소 렌더 */}
+                <SvgComp width={40} height={40} preserveAspectRatio="xMidYMid meet" />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      );
+    }
+
+    // 4️⃣ 텍스트
+    if (activeTool === 'text') {
+      const onAddText = () => {
+        const id = Date.now().toString();
+        const baseSize = 160; // 텍스트 박스 기준 사이즈(스케일 기준점)
+        const cx = frameLayout.w ? frameLayout.w / 2 : 140;
+        const cy = frameLayout.h ? frameLayout.h / 2 : 140;
+        setTexts(prev => [
+          ...prev,
+          {
+            id,
+            text: '텍스트',
+            x: cx,
+            y: cy,
+            scale: 1,
+            rotation: 0,
+            size: baseSize,
+            color: '#FFFFFF',
+            weight: '700', // or '400'
+          },
+        ]);
+        setSelectedTextId(id);
+        // 필요시 오버레이 닫기
+        // setActiveTool('none');
+      };
+
+      return (
+        <View style={{ flex: 1, paddingHorizontal: width*0.06, justifyContent: 'center', width: '100%'}}>
+          <TouchableOpacity style={styles.addTextButton} onPress={onAddText} activeOpacity={0.85}>
+            <Text style={styles.addTextPlus}>＋</Text>
+            <Text style={styles.addTextLabel}>텍스트 추가</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -347,42 +349,43 @@ const renderOverlayContent = () => {
                 {selectedSlot === i && <View style={styles.selectedOverlay} pointerEvents="none" />}
               </TouchableOpacity>
             ))}
-            {/* 스티커들 */}
-            {stickers.map((st) => (
-              <StickerItem
-                key={st.id}
-                item={st}
-                selected={selectedStickerId === st.id}
-                onSelect={() => setSelectedStickerId(st.id)}
-                onUpdate={(patch) => {
-                  setStickers((prev) => prev.map(s => s.id === st.id ? { ...s, ...patch } : s));
-                }}
-                onDelete={() => {
-                  setStickers((prev) => prev.filter(s => s.id !== st.id));
-                  if (selectedStickerId === st.id) setSelectedStickerId(null);
-                }}
-              />
-            ))}    
-            {/* 텍스트들 */}
-            {texts.map(t => (
-              <TextItem
-                key={t.id}
-                item={t}
-                selected={selectedTextId === t.id}
-                onSelect={() => setSelectedTextId(t.id)}
-                onUpdate={(patch) => {
-                  setTexts(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x));
-                }}
-                onDelete={() => {
-                  setTexts(prev => prev.filter(x => x.id !== t.id));
-                  if (selectedTextId === t.id) setSelectedTextId(null);
-                }}
-              />
-            ))}                    
+
           </ImageBackground>
         ) : (
           <Text style={{ color: '#aaa' }}>프레임 이미지를 찾을 수 없어요</Text>
         )}
+        {/* 스티커들 */}
+        {stickers.map((st) => (
+          <StickerItem
+            key={st.id}
+            item={st}
+            selected={selectedStickerId === st.id}
+            onSelect={() => setSelectedStickerId(st.id)}
+            onUpdate={(patch) => {
+              setStickers((prev) => prev.map(s => s.id === st.id ? { ...s, ...patch } : s));
+            }}
+            onDelete={() => {
+              setStickers((prev) => prev.filter(s => s.id !== st.id));
+              if (selectedStickerId === st.id) setSelectedStickerId(null);
+            }}
+          />
+        ))}    
+        {/* 텍스트들 */}
+        {texts.map(t => (
+          <TextItem
+            key={t.id}
+            item={t}
+            selected={selectedTextId === t.id}
+            onSelect={() => setSelectedTextId(t.id)}
+            onUpdate={(patch) => {
+              setTexts(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x));
+            }}
+            onDelete={() => {
+              setTexts(prev => prev.filter(x => x.id !== t.id));
+              if (selectedTextId === t.id) setSelectedTextId(null);
+            }}
+          />
+        ))}        
       </Pressable>
 
       {/* 오버레이 (사진/프레임 공용) */}
@@ -390,10 +393,18 @@ const renderOverlayContent = () => {
         pointerEvents={isOverlayOpen ? 'auto' : 'none'}
         style={[
           styles.overlayWrap,
-          { height: overlayHeight, transform: [{ translateY: overlayY }], bottom: bottomBarH },
+          {
+            height: overlayHeight,
+            transform: [{ translateY: overlayY }],
+            bottom: bottomBarH,
+            // 핸들이 없으면 위 여백 제거
+            paddingTop: showHandle ? 8 : 0,
+          },
         ]}
       >
-        <View style={styles.overlayHandle} {...panResponder.panHandlers} />
+        {showHandle && (
+          <View style={styles.overlayHandle} {...panResponder.panHandlers} />
+        )}        
         {renderOverlayContent()}
       </Animated.View>
 
@@ -743,7 +754,7 @@ const styles = StyleSheet.create({
   },
   saveText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 
-  canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  canvasArea: { flex: 1, alignItems: 'center', justifyContent: 'center',  overflow: 'hidden' },
   frameBox: { position: 'relative', overflow: 'hidden' },
   photo: { position: 'absolute' },
 
@@ -773,7 +784,9 @@ const styles = StyleSheet.create({
     left: 0, right: 0,
     backgroundColor: 'rgba(0,0,0,0.8)',   // 60% 투명
     borderTopLeftRadius: 14, borderTopRightRadius: 14,
-    paddingTop: 8, paddingBottom: 12,
+    justifyContent: 'center',
+    alignItems: 'center', 
+    // paddingBottom: 12,
     shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: -4 },
     elevation: 16,
   },
@@ -793,7 +806,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-evenly', // ← 좌우 여백 포함 균등 정렬
     width: '100%',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
 
   frameCard: {
@@ -864,8 +877,10 @@ const styles = StyleSheet.create({
   handleTL: { left: -11, top: -11 },      // 좌상단
   handleBR: { right: -11, bottom: -11 },  // ✅ 우하단  
   addTextButton: {
-    height: 56,
-    borderRadius: 12,
+    width: '100%',
+    // height: 50,
+    paddingVertical: 10,
+    borderRadius: 6,
     backgroundColor: '#F2F2F2',
     flexDirection: 'row',
     alignItems: 'center',
