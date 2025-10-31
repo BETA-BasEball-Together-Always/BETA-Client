@@ -90,7 +90,13 @@ const SelectScreen = ({ navigation }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
 
-    const { setSelectedTeam: setGlobalTeam, setSelectedFrame: setGlobalFrame } = photoBoothStore();  
+  const { setSelectedTeam: setGlobalTeam, setSelectedFrame: setGlobalFrame } = photoBoothStore();  
+
+  const { prefetch } = usePrefetchEditFonts();
+
+  useEffect(() => {
+    prefetch(); // 유휴 시간에 미리 로드
+  }, []);
 
   const handleNext = () => {
     if (selectedTeam && selectedFrame) {

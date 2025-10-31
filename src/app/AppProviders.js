@@ -10,6 +10,11 @@ import {
   onlineManager,
   focusManager,
 } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+
+// 스플래시가 폰트 로드 전 자동으로 사라지지 않도록 고정
+SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,7 +30,14 @@ const queryClient = new QueryClient({
 });
 
 const AppProviders = ({children}) => {
-  /* 네트워크 연결 상태를 TanStack Query에 알려줌(동기화용) */
+  // 1) 전역 폰트 로드 (NotoSansKR 3종)
+  const [fontsLoaded] = useFonts({
+    NotoSansKR_Regular: require('../assets/fonts/NotoSansKR-Regular.ttf'),
+    NotoSansKR_Medium:  require('../assets/fonts/NotoSansKR-Medium.ttf'),
+    NotoSansKR_Bold:    require('../assets/fonts/NotoSansKR-Bold.ttf'),
+  });
+
+  // 2) 네트워크 연결 상태를 TanStack Query에 알려줌(동기화용) */
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
       const online = !!state.isConnected && !!state.isInternetReachable;
@@ -41,6 +53,12 @@ const AppProviders = ({children}) => {
     });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);  
 
   return (
     <SafeAreaProvider>
