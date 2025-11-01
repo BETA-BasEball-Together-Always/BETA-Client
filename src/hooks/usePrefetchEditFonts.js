@@ -9,10 +9,10 @@ export function usePrefetchEditFonts() {
   const prefetch = async () => {
     if (loadedRef.current) return;
     await Font.loadAsync({
-      Surround_Bold:    require("../../assets/fonts/Surround-Bold.ttf"),
-      Dohyeon_Regular:  require("../../assets/fonts/Dohyeon-Regular.ttf"),
-      Myungjo_Medium:   require("../../assets/fonts/Myungjo-Medium.ttf"),
-      MeetMe_Regular:   require("../../assets/fonts/MeetMe-Regular.ttf"),
+      Surround_Bold:    require("../assets/fonts/Surround-Bold.ttf"),
+      Dohyeon_Regular:  require("../assets/fonts/Dohyeon-Regular.ttf"),
+      Myungjo_Medium:   require("../assets/fonts/Myungjo-Medium.ttf"),
+      MeetMe_Regular:   require("../assets/fonts/MeetMe-Regular.ttf"),
     });
     loadedRef.current = true;
   };

@@ -40,6 +40,14 @@ const FRAME_OPTIONS = [
   { id: '1x4', label: '1x4' },
 ];
 
+// 텍스트 스타일 옵션
+const FONT_OPTIONS = [
+  { key: '400', label: '기본(보통)', weight: '400' },
+  { key: '700', label: '기본(굵게)', weight: '700' },
+  { key: '900', label: '기본(매우 굵게)', weight: '900' },
+];
+const TEXT_COLORS = ['#FFFFFF', '#E5E5E5', '#000000', '#FF3B30', '#FFD60A', '#34C759', '#0A84FF', '#8E8E93'];
+
 export default function EditScreen() {
   const insets = useSafeAreaInsets();
   const store = photoBoothStore();
@@ -47,12 +55,6 @@ export default function EditScreen() {
 
   const [activeTool, setActiveTool] = useState('photo'); // 'photo' | 'frame' | 'sticker' | 'text' | 'none'
   const [bottomBarH, setBottomBarH] = useState(86);
-  // 현재 탭 기준 오버레이 높이/숨김 Y
-  const overlayHeight = getOverlayHeight(activeTool);
-  const hiddenY = overlayHeight + 24;
-    
-  const hiddenYRef = useRef(hiddenY);
-  useEffect(() => { hiddenYRef.current = hiddenY; }, [hiddenY]);  
 
   // 스티커 상태
   const [stickers, setStickers] = useState([]); // { id, src, x, y, scale, rotation, size }[]
@@ -60,7 +62,44 @@ export default function EditScreen() {
  
   // ─ 텍스트 상태 ─
   const [texts, setTexts] = useState([]); // { id, text, x, y, scale, rotation, size, color, weight }[]
-  const [selectedTextId, setSelectedTextId] = useState(null);
+  const [selectedTextId, setSelectedTextId] = useState(null);  
+  
+  const selectSticker = React.useCallback((id) => {
+    setSelectedStickerId(id);
+    setSelectedTextId(null);     // 텍스트 선택 해제
+    setSelectedSlot(null);       // 슬롯 강조도 해제(선택 충돌 방지)
+  }, []);
+
+  const selectText = React.useCallback((id) => {
+    setSelectedTextId(id);
+    setSelectedStickerId(null);  // 스티커 선택 해제
+    setSelectedSlot(null);
+  }, []);
+
+  // 탭 전환 시 선택 상태 정리 (슬롯 보존 옵션)
+  const changeTool = React.useCallback((tool, opts = {}) => {
+    const { preserveSlot = false } = opts;
+    setSelectedStickerId(null);
+    setSelectedTextId(null);
+    if (!preserveSlot) setSelectedSlot(null); // ← 기본은 초기화, 필요 시 보존
+    setActiveTool(tool);
+  }, []);
+
+  // 텍스트 선택 패널일 때 높이(스크린샷 느낌) 우선 적용
+  const isTextStylePanel = selectedTextId !== null;
+  // 현재 탭 기준 오버레이 높이/숨김 Y
+  const overlayHeight = isTextStylePanel ? 140 : getOverlayHeight(activeTool);  
+  const hiddenY = overlayHeight + 24;
+    
+  const hiddenYRef = useRef(hiddenY);
+  useEffect(() => { hiddenYRef.current = hiddenY; }, [hiddenY]);  
+
+
+
+  const selectedText = useMemo(
+    () => texts.find(t => t.id === selectedTextId) || null,
+    [texts, selectedTextId]
+  );
 
    // 프레임 박스 레이아웃(스티커 기본 위치/좌표 계산용)
    const [frameLayout, setFrameLayout] = useState({ x: 0, y: 0, w: 0, h: 0 });
@@ -116,7 +155,8 @@ export default function EditScreen() {
   // 처음엔 닫힌 상태로 시작
   const overlayY = useRef(new Animated.Value(hiddenY)).current;  
   const currentY = useRef(0);
-  const isOverlayOpen = ['photo', 'frame', 'sticker', 'text'].includes(activeTool);
+  const isOverlayOpen = ['photo', 'frame', 'sticker', 'text'].includes(activeTool) || selectedTextId !== null;
+
   const showHandle = activeTool === 'sticker';
 
   // 탭/높이 변경 시 새 hiddenY에 맞춰 열림/닫힘 목표값 갱신
@@ -154,7 +194,7 @@ export default function EditScreen() {
   // 프레임 슬롯 탭 → 교체 대상 선택 + 사진 탭 표시
   const onPressFramePhoto = (idx) => {
     setSelectedSlot(idx);
-    setActiveTool('photo');
+    changeTool('photo', { preserveSlot: true }); 
   };
 
   // 사진 썸네일 탭 → 선택 슬롯 교체 후 선택 해제
@@ -184,8 +224,70 @@ export default function EditScreen() {
     );
   };
 
+  function TextStylePanel() {
+    if (!selectedText) return null;
+
+    const onPickWeight = (w) => {
+      setTexts(prev => prev.map(x => x.id === selectedText.id ? { ...x, weight: w } : x));
+    };
+    const onPickColor = (c) => {
+      setTexts(prev => prev.map(x => x.id === selectedText.id ? { ...x, color: c } : x));
+    };
+
+    return (
+      <View style={styles.textPanelWrap}>
+        {/* 폰트(가중치) 영역 */}
+        <View style={styles.textPanelRow}>
+          <Text style={styles.panelTitle}>폰트</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fontRow}>
+            {FONT_OPTIONS.map(opt => {
+              const active = selectedText.weight === opt.weight;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => onPickWeight(opt.weight)}
+                  activeOpacity={0.85}
+                  style={[styles.fontChip, active && styles.fontChipActive]}
+                >
+                  <Text style={[styles.fontChipLabel, active && styles.fontChipLabelActive, { fontWeight: opt.weight }]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* 색상 영역 */}
+        <View style={[styles.textPanelRow, { marginTop: 8 }]}>
+          <Text style={styles.panelTitle}>색상</Text>
+          <View style={styles.colorRow}>
+            {TEXT_COLORS.map((c) => {
+              const active = selectedText.color?.toLowerCase() === c.toLowerCase();
+              return (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => onPickColor(c)}
+                  activeOpacity={0.8}
+                  style={[styles.swatch, { backgroundColor: c }, active && styles.swatchActive]}
+                />
+              );
+            })}
+            {/* more 버튼 자리(추후 ColorPicker 연결) */}
+            <View style={styles.moreBox}><Text style={styles.moreText}>more</Text></View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   // 오버레이 콘텐츠 스위치
   const renderOverlayContent = () => {
+    // 텍스트가 선택된 경우: 스타일 패널 우선
+    if (isTextStylePanel) {
+      return <TextStylePanel />;
+    }
+
     // 1️⃣ 사진
     if (activeTool === 'photo') {
       return (
@@ -246,7 +348,8 @@ export default function EditScreen() {
           },
         ]);
         setSelectedStickerId(id);
-        setActiveTool('none');
+        setSelectedTextId(null);   // ⬅️ 추가
+        // setActiveTool('none');
       };
 
       return (
@@ -294,6 +397,7 @@ export default function EditScreen() {
           },
         ]);
         setSelectedTextId(id);
+        setSelectedStickerId(null);
         // 필요시 오버레이 닫기
         // setActiveTool('none');
       };
@@ -360,7 +464,7 @@ export default function EditScreen() {
             key={st.id}
             item={st}
             selected={selectedStickerId === st.id}
-            onSelect={() => setSelectedStickerId(st.id)}
+            onSelect={() => selectSticker(st.id)}
             onUpdate={(patch) => {
               setStickers((prev) => prev.map(s => s.id === st.id ? { ...s, ...patch } : s));
             }}
@@ -376,7 +480,7 @@ export default function EditScreen() {
             key={t.id}
             item={t}
             selected={selectedTextId === t.id}
-            onSelect={() => setSelectedTextId(t.id)}
+            onSelect={() => selectText(t.id)}
             onUpdate={(patch) => {
               setTexts(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x));
             }}
@@ -413,10 +517,10 @@ export default function EditScreen() {
         style={[styles.bottomBar, { paddingBottom: insets.bottom + 8 }]}
         onLayout={e => setBottomBarH(e.nativeEvent.layout.height)}
       >
-        <ToolItem label="사진"   Icon={ImagesIcon}   active={activeTool === 'photo'}   onPress={() => setActiveTool('photo')} />
-        <ToolItem label="프레임" Icon={FramesIcon}   active={activeTool === 'frame'}   onPress={() => setActiveTool('frame')} />
-        <ToolItem label="스티커" Icon={StickersIcon} active={activeTool === 'sticker'} onPress={() => setActiveTool('sticker')} />
-        <ToolItem label="텍스트" Icon={TextIcon}     active={activeTool === 'text'}    onPress={() => setActiveTool('text')} />
+        <ToolItem label="사진"   Icon={ImagesIcon}   active={activeTool === 'photo'}   onPress={() => changeTool('photo')} />
+        <ToolItem label="프레임" Icon={FramesIcon}   active={activeTool === 'frame'}   onPress={() => changeTool('frame')} />
+        <ToolItem label="스티커" Icon={StickersIcon} active={activeTool === 'sticker'} onPress={() => changeTool('sticker')} />
+        <ToolItem label="텍스트" Icon={TextIcon}     active={activeTool === 'text'}    onPress={() => changeTool('text')} />
       </View>
     </View>
   );
@@ -896,5 +1000,71 @@ const styles = StyleSheet.create({
     color: '#111',
     fontSize: 16,
     fontWeight: '700',
+  },  
+  // 텍스트 스타일 패널
+  textPanelWrap: {
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+  textPanelRow: {
+    width: '100%',
+  },
+  panelTitle: {
+    color: '#CFCFCF',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  fontRow: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  fontChip: {
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fontChipActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  fontChipLabel: {
+    color: '#BDBDBD',
+    fontSize: 13,
+  },
+  fontChipLabelActive: {
+    color: '#000',
+    fontWeight: '700',
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  swatchActive: {
+    borderColor: '#FFFFFF',
+    borderWidth: 2,
+  },
+  moreBox: {
+    marginLeft: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreText: {
+    color: '#E5E5E5',
+    fontSize: 12,
+    fontWeight: '600',
   },  
 });

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, StatusBar, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TeamCard from './components/TeamCard';
 import FrameCard from './components/FrameCard';
 import photoBoothStore from '../../../stores/photoBoothStore';
 import { FRAMES } from '../../../utils/framesMap';
+import { usePrefetchEditFonts } from '../../../hooks/usePrefetchEditFonts';
 
 const CARD_BG = '#1A1A1A';
 
