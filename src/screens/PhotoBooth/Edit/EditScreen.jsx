@@ -4,7 +4,8 @@ import {
   View, Text, TouchableOpacity, Image, ImageBackground, StyleSheet,
   Dimensions, FlatList, Animated, Easing, PanResponder,
   ScrollView,
-  Pressable
+  Pressable,
+  TextInput
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import photoBoothStore from '../../../stores/photoBoothStore';
@@ -40,13 +41,16 @@ const FRAME_OPTIONS = [
   { id: '1x4', label: '1x4' },
 ];
 
-// 텍스트 스타일 옵션
-const FONT_OPTIONS = [
-  { key: '400', label: '기본(보통)', weight: '400' },
-  { key: '700', label: '기본(굵게)', weight: '700' },
-  { key: '900', label: '기본(매우 굵게)', weight: '900' },
+
+// ✅ 편집 화면에서 사용할 5개 폰트(Expo Font loadAsync의 key와 동일해야 함)
+const FONT_FAMILY_OPTIONS = [
+  { key: 'NotoSansKR_Regular',     label: 'Noto Sans KR', family: 'NotoSansKR_Regular' },
+  { key: 'Surround_Bold',  label: 'Surround',     family: 'Surround_Bold' },
+  { key: 'Dohyeon_Regular',label: 'Do Hyeon',     family: 'Dohyeon_Regular' },
+  { key: 'Myungjo_Medium', label: 'Myungjo',      family: 'Myungjo_Medium' },
+  { key: 'MeetMe_Regular', label: 'Meet Me',      family: 'MeetMe_Regular' },
 ];
-const TEXT_COLORS = ['#FFFFFF', '#E5E5E5', '#000000', '#FF3B30', '#FFD60A', '#34C759', '#0A84FF', '#8E8E93'];
+const TEXT_COLORS = ['#FFFFFF', '#C1C1C1', '#000000', '#E84A5F', '#FFF280', '#9ED4FF', '#C6A3FF', '#FFC8D8'];
 
 export default function EditScreen() {
   const insets = useSafeAreaInsets();
@@ -63,32 +67,97 @@ export default function EditScreen() {
   // ─ 텍스트 상태 ─
   const [texts, setTexts] = useState([]); // { id, text, x, y, scale, rotation, size, color, weight }[]
   const [selectedTextId, setSelectedTextId] = useState(null);  
+  const draftsRef = useRef(new Map()); // id -> latest draft string  
+
+  const [editingTextId, setEditingTextId] = useState(null);
   
   const selectSticker = React.useCallback((id) => {
+    if (editingTextId) {
+      const draft = draftsRef.current.get(editingTextId);
+      commitEditText(
+        editingTextId,
+        draft ?? (texts.find(t => t.id === editingTextId)?.text ?? '')
+      );
+    }
     setSelectedStickerId(id);
-    setSelectedTextId(null);     // 텍스트 선택 해제
-    setSelectedSlot(null);       // 슬롯 강조도 해제(선택 충돌 방지)
-  }, []);
+    setSelectedTextId(null);
+    setEditingTextId(null);
+    setSelectedSlot(null);
+  }, [editingTextId, texts]);
 
   const selectText = React.useCallback((id) => {
+    // 다른 텍스트 편집 중이면 먼저 저장
+    if (editingTextId && editingTextId !== id) {
+      const draft = draftsRef.current.get(editingTextId);
+      commitEditText(editingTextId, draft ?? (texts.find(t => t.id === editingTextId)?.text ?? ''));
+    }
     setSelectedTextId(id);
-    setSelectedStickerId(null);  // 스티커 선택 해제
+    setSelectedStickerId(null);
     setSelectedSlot(null);
-  }, []);
+  }, [editingTextId, texts]);
 
   // 탭 전환 시 선택 상태 정리 (슬롯 보존 옵션)
   const changeTool = React.useCallback((tool, opts = {}) => {
-    const { preserveSlot = false } = opts;
-    setSelectedStickerId(null);
-    setSelectedTextId(null);
-    if (!preserveSlot) setSelectedSlot(null); // ← 기본은 초기화, 필요 시 보존
+    const { preserveSlot = false, preserveSelection = false } = opts;
+    // 편집 중 자동 저장은 'text'로 전환할 때는 하지 않음 (편집 진입 용도)
+    if (editingTextId && tool !== 'text') {
+      const draft = draftsRef.current.get(editingTextId);
+      commitEditText(
+        editingTextId,
+        draft ?? (texts.find(t => t.id === editingTextId)?.text ?? '')
+      );
+    }
+    if (!preserveSelection) {
+      setSelectedStickerId(null);
+      setSelectedTextId(null);
+      setEditingTextId(null);
+    }
+    if (!preserveSlot) setSelectedSlot(null);
     setActiveTool(tool);
-  }, []);
+  }, [editingTextId, texts]);
+
+  // 편집 시작: 현재 텍스트를 draft에 초기화
+  const startEditText = (id) => {
+    // 텍스트 편집 시작: 선택을 보장, 스티커 해제, 탭은 'text'로
+    setSelectedTextId(id);
+    setSelectedStickerId(null);
+    setEditingTextId(id);
+    const cur = texts.find(t => t.id === id)?.text ?? '';
+    draftsRef.current.set(id, cur);    
+    changeTool('text', { preserveSlot: true, preserveSelection: true });
+  };
+
+  const commitEditText = (id, newText) => {
+    setTexts(prev => prev.map(x => x.id === id ? { ...x, text: newText } : x));
+    setEditingTextId(null);
+  };
+
+  const saveAndClearEditing = React.useCallback(() => {
+    if (editingTextId) {
+      // ✅ draftRef에 최신 입력값이 있으면 무조건 그걸로 저장
+      const latestDraft = draftsRef.current.get(editingTextId);
+      const fallback = texts.find(t => t.id === editingTextId)?.text ?? '';
+      const finalText = latestDraft !== undefined ? latestDraft : fallback;
+      commitEditText(editingTextId, finalText);
+    }
+    setSelectedTextId(null);
+    setSelectedStickerId(null);
+    setSelectedSlot(null);
+  }, [editingTextId, texts]); 
+
+  const cancelEditText = () => {
+    // ❌ 사용자가 '취소' 버튼을 직접 누른 경우에만 원래 텍스트로 복원
+    if (editingTextId) {
+      const original = texts.find(t => t.id === editingTextId)?.text ?? '';
+      commitEditText(editingTextId, original);
+    }
+    setEditingTextId(null);
+  };
 
   // 텍스트 선택 패널일 때 높이(스크린샷 느낌) 우선 적용
   const isTextStylePanel = selectedTextId !== null;
   // 현재 탭 기준 오버레이 높이/숨김 Y
-  const overlayHeight = isTextStylePanel ? 140 : getOverlayHeight(activeTool);  
+  const overlayHeight = isTextStylePanel ? 160 : getOverlayHeight(activeTool);
   const hiddenY = overlayHeight + 24;
     
   const hiddenYRef = useRef(hiddenY);
@@ -193,6 +262,7 @@ export default function EditScreen() {
 
   // 프레임 슬롯 탭 → 교체 대상 선택 + 사진 탭 표시
   const onPressFramePhoto = (idx) => {
+    saveAndClearEditing(); // 편집 중이면 저장 후 해제
     setSelectedSlot(idx);
     changeTool('photo', { preserveSlot: true }); 
   };
@@ -227,29 +297,48 @@ export default function EditScreen() {
   function TextStylePanel() {
     if (!selectedText) return null;
 
-    const onPickWeight = (w) => {
-      setTexts(prev => prev.map(x => x.id === selectedText.id ? { ...x, weight: w } : x));
-    };
     const onPickColor = (c) => {
-      setTexts(prev => prev.map(x => x.id === selectedText.id ? { ...x, color: c } : x));
+      setTexts(prev =>
+        prev.map(x =>
+          x.id === selectedText.id ? { ...x, color: c } : x
+        )
+      );
+    };
+
+    const onPickFamily = (family) => {
+      setTexts(prev =>
+        prev.map(x =>
+          x.id === selectedText.id ? { ...x, fontFamily: family } : x
+        )
+      );
     };
 
     return (
       <View style={styles.textPanelWrap}>
-        {/* 폰트(가중치) 영역 */}
-        <View style={styles.textPanelRow}>
+        {/* ✅ 폰트 선택 (이전 '서체') */}
+        <View style={[styles.textPanelRow, { marginBottom: 10 }]}>
           <Text style={styles.panelTitle}>폰트</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fontRow}>
-            {FONT_OPTIONS.map(opt => {
-              const active = selectedText.weight === opt.weight;
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.fontRow}
+          >
+            {FONT_FAMILY_OPTIONS.map(opt => {
+              const active = selectedText.fontFamily === opt.family;
               return (
                 <TouchableOpacity
                   key={opt.key}
-                  onPress={() => onPickWeight(opt.weight)}
+                  onPress={() => onPickFamily(opt.family)}
                   activeOpacity={0.85}
                   style={[styles.fontChip, active && styles.fontChipActive]}
                 >
-                  <Text style={[styles.fontChipLabel, active && styles.fontChipLabelActive, { fontWeight: opt.weight }]}>
+                  <Text
+                    style={[
+                      styles.fontChipLabel,
+                      active && styles.fontChipLabelActive,
+                      { fontFamily: opt.family },
+                    ]}
+                  >
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -258,7 +347,7 @@ export default function EditScreen() {
           </ScrollView>
         </View>
 
-        {/* 색상 영역 */}
+        {/* ✅ 색상 선택 */}
         <View style={[styles.textPanelRow, { marginTop: 8 }]}>
           <Text style={styles.panelTitle}>색상</Text>
           <View style={styles.colorRow}>
@@ -269,12 +358,17 @@ export default function EditScreen() {
                   key={c}
                   onPress={() => onPickColor(c)}
                   activeOpacity={0.8}
-                  style={[styles.swatch, { backgroundColor: c }, active && styles.swatchActive]}
+                  style={[
+                    styles.swatch,
+                    { backgroundColor: c },
+                    active && styles.swatchActive,
+                  ]}
                 />
               );
             })}
-            {/* more 버튼 자리(추후 ColorPicker 연결) */}
-            <View style={styles.moreBox}><Text style={styles.moreText}>more</Text></View>
+            {/* <View style={styles.moreBox}>
+              <Text style={styles.moreText}>more</Text>
+            </View> */}
           </View>
         </View>
       </View>
@@ -386,14 +480,14 @@ export default function EditScreen() {
           ...prev,
           {
             id,
-            text: '텍스트',
+            text: '텍스트 입력',
             x: cx,
             y: cy,
             scale: 1,
             rotation: 0,
             size: baseSize,
             color: '#FFFFFF',
-            weight: '700', // or '400'
+            fontFamily: 'NotoSansKR_Regular', // ✅ 기본 서체            
           },
         ]);
         setSelectedTextId(id);
@@ -427,9 +521,7 @@ export default function EditScreen() {
       <Pressable 
         style={styles.canvasArea} 
         onPress={() => {
-          setSelectedStickerId(null)
-          setSelectedTextId(null);    // ← 텍스트 선택 해제
-          setSelectedSlot(null);        
+          saveAndClearEditing();
         }}
       >    
         {frameSource ? (
@@ -488,6 +580,11 @@ export default function EditScreen() {
               setTexts(prev => prev.filter(x => x.id !== t.id));
               if (selectedTextId === t.id) setSelectedTextId(null);
             }}
+            editing={editingTextId === t.id}
+            onEditStart={() => startEditText(t.id)}
+            onEditSave={(newText) => commitEditText(t.id, newText)}
+            onEditCancel={() => setEditingTextId(null)}
+            onDraftChange={(id, v) => { draftsRef.current.set(id, v); }}                
           />
         ))}        
       </Pressable>
@@ -693,12 +790,28 @@ function StickerItem({ item, selected, onSelect, onUpdate, onDelete }) {
   );
 }
 
-function TextItem({ item, selected, onSelect, onUpdate, onDelete }) {
-  const { id, text, x, y, scale, rotation, size, color = '#FFF', weight = '700' } = item;
+function TextItem({
+  item, selected, onSelect, onUpdate, onDelete,
+  editing, onEditStart, onEditEnd, onEditCancel, onEditSave, onDraftChange
+}) {
+  const { id, text, x, y, scale, rotation, size, color = '#FFF', weight = '700', fontFamily = 'NotoSansKR_Regular' } = item;
+  const [draft, setDraft] = useState(text);
+  useEffect(() => { setDraft(text); }, [text]);
+  // 편집 진입 시 부모 draft도 초기화
+  useEffect(() => {
+    if (editing) {
+      onDraftChange?.(id, text);
+    }
+  }, [editing, id, text, onDraftChange]);  
 
   const pos = useRef(new Animated.ValueXY({ x, y })).current;
   const scl = useRef(new Animated.Value(scale)).current;
   const rot = useRef(new Animated.Value(rotation)).current;
+
+  // 더블탭 감지
+  const lastTapRef = useRef(0);
+  const TAP_SLOP = 4;      // 이동 허용치
+  const DBL_GAP  = 300;    // 더블탭 간격(ms)  
 
   // 부모 state ↔ Animated 값 동기화
   useEffect(() => {
@@ -733,8 +846,8 @@ function TextItem({ item, selected, onSelect, onUpdate, onDelete }) {
   const start = useRef({ x: 0, y: 0 }).current;
   const movePan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
+        onStartShouldSetPanResponder: () => !editing,
+        onPanResponderGrant: () => {
         onSelect?.();
         const curPos = typeof pos.__getValue === 'function' ? pos.__getValue() : { x, y };
         start.x = curPos.x; start.y = curPos.y;
@@ -744,6 +857,18 @@ function TextItem({ item, selected, onSelect, onUpdate, onDelete }) {
       },
       onPanResponderRelease: (_, g) => {
         onUpdate?.({ x: start.x + g.dx, y: start.y + g.dy });
+        const isTap = Math.abs(g.dx) < TAP_SLOP && Math.abs(g.dy) < TAP_SLOP;
+        if (isTap) {
+          const now = Date.now();
+          // 선택된 상태에서 더블탭 → 편집 시작
+          if (selected && now - lastTapRef.current < DBL_GAP) {
+            onEditStart?.();
+          }
+          lastTapRef.current = now;
+          return;
+        }
+        // 드래그로 간주 → 위치 저장
+        onUpdate?.({ x: start.x + g.dx, y: start.y + g.dy });        
       },
     })
   ).current;
@@ -752,7 +877,7 @@ function TextItem({ item, selected, onSelect, onUpdate, onDelete }) {
   const tfStart = useRef({ v0x: 0, v0y: 0, dist0: 1, ang0: 0, scale0: 1, rot0: 0 }).current;
   const transformPan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !editing,
       onPanResponderGrant: () => {
         onSelect?.();
         tfStart.scale0 = typeof scl.__getValue === 'function' ? scl.__getValue() : scale;
@@ -807,28 +932,109 @@ function TextItem({ item, selected, onSelect, onUpdate, onDelete }) {
   };
 
   return (
-    <Animated.View style={[animatedStyle, { width: size, minWidth: 60 }]}>
+    <Animated.View style={[animatedStyle, { minWidth: 60 }]}>
+      {/* 드래그 영역: 본문만 panHandlers 연결 */}
       <View
         {...movePan.panHandlers}
         style={{ paddingHorizontal: 8, paddingVertical: 4, alignItems: 'center', justifyContent: 'center' }}
         collapsable={false}
       >
-        <Text style={{ color, fontSize: 24, fontWeight: weight }} numberOfLines={2} ellipsizeMode="tail">
-          {text}
-        </Text>
-
-        {selected && (
-          <>
-            <View style={styles.stickerOutline} pointerEvents="none" />
-            <TouchableOpacity style={[styles.handle, styles.handleTL]} onPress={onDelete} activeOpacity={0.8}>
-              <Text style={styles.handleText}>×</Text>
-            </TouchableOpacity>
-            <View style={[styles.handle, styles.handleBR]} {...transformPan.panHandlers}>
-              <Text style={styles.handleText}>↔︎</Text>
-            </View>
-          </>
+        {editing ? (
+          <TextInput
+            value={draft}
+            onChangeText={(v) => {
+              setDraft(v);
+              onDraftChange?.(id, v); // 부모 draftRef 최신화
+            }}
+            autoFocus
+            multiline
+            placeholder="텍스트 입력"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            onBlur={() => onEditEnd?.(draft)}
+            onSubmitEditing={() => onEditSave?.(draft)}
+            style={{
+              color,
+              fontSize: 24,
+              fontFamily,
+              fontWeight: fontFamily === 'NotoSansKR_Regular' ? '700' : 'normal',
+              textAlign: 'center',
+              paddingVertical: 4,
+              paddingHorizontal: 6,
+              minWidth: 80,
+            }}
+          />
+        ) : (
+          <Text
+            style={{
+              color,
+              fontSize: 24,
+              fontFamily,
+              fontWeight: fontFamily === 'NotoSansKR_Regular' ? '700' : 'normal',
+            }}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {text}
+          </Text>
         )}
       </View>
+
+      {/* ✅ 선택/편집 오버레이(드래그 영역 밖에 렌더) */}
+      {(selected || editing) && (
+        <>
+          <View style={styles.stickerOutline} pointerEvents="none" />
+
+          {editing ? (
+            <>
+              {/* 취소(좌상단) */}
+              <TouchableOpacity
+                style={[styles.handle, styles.handleTL, styles.actionCancel]}
+                onPress={() => {
+                  setDraft(text);      // 원본으로 되돌림
+                  onEditCancel?.();
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.handleText}>취소</Text>
+              </TouchableOpacity>
+
+              {/* 저장(우상단) */}
+              <TouchableOpacity
+                style={[styles.handle, styles.handleTR, styles.actionSave]}
+                onPress={() => onEditSave?.(draft)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.handleText}>저장</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              {/* 삭제(X) - 좌상단 */}
+              <TouchableOpacity
+                style={[styles.handle, styles.handleTL]}
+                onPress={onDelete}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.handleText}>×</Text>
+              </TouchableOpacity>
+
+              {/* ✅ 수정 - 우상단 */}
+              <TouchableOpacity
+                style={[styles.handle, styles.handleTR, {width: 40}]}
+                onPress={() => onEditStart?.()}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.handleText}>수정</Text>
+              </TouchableOpacity>
+
+              {/* 변형 핸들 - 우하단 */}
+              <View style={[styles.handle, styles.handleBR]} {...transformPan.panHandlers}>
+                <Text style={styles.handleText}>↔︎</Text>
+              </View>
+            </>
+          )}
+        </>
+      )}
     </Animated.View>
   );
 }
@@ -955,10 +1161,10 @@ const styles = StyleSheet.create({
   },  
   stickerOutline: {
     ...StyleSheet.absoluteFillObject,
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: '#FFFFFF',
     borderStyle: 'dashed',
-    borderRadius: 6,
+    // borderRadius: 6,
   },
   handle: {
     position: 'absolute',
@@ -970,6 +1176,8 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+      // paddingHorizontal: 6,
+      // paddingVertical: 2,    
   },
   handleText: {
     color: '#fff',
@@ -980,6 +1188,21 @@ const styles = StyleSheet.create({
   },
   handleTL: { left: -11, top: -11 },      // 좌상단
   handleBR: { right: -11, bottom: -11 },  // ✅ 우하단  
+  handleTR: { right: -11, top: -11 },
+
+  // 편집 전용 버튼 가독성 강화
+  actionSave: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)', // 파랑
+    borderColor: 'rgba(255,255,255,0.9)',
+    width: 40,
+    height:25,
+  },
+  actionCancel: {
+    backgroundColor: 'rgba(108, 108, 108, 1)', // 빨강
+    borderColor: 'rgba(255,255,255,0.9)',
+    width: 40,
+    height:25,    
+  },  
   addTextButton: {
     width: '100%',
     // height: 50,
@@ -1010,7 +1233,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   panelTitle: {
-    color: '#CFCFCF',
+    color: '#FFFFFF',
     fontSize: 12,
     marginBottom: 8,
   },
@@ -1035,7 +1258,6 @@ const styles = StyleSheet.create({
   },
   fontChipLabelActive: {
     color: '#000',
-    fontWeight: '700',
   },
   colorRow: {
     flexDirection: 'row',
@@ -1043,8 +1265,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   swatch: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
@@ -1053,18 +1275,18 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     borderWidth: 2,
   },
-  moreBox: {
-    marginLeft: 4,
-    height: 28,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moreText: {
-    color: '#E5E5E5',
-    fontSize: 12,
-    fontWeight: '600',
-  },  
+  // moreBox: {
+  //   marginLeft: 4,
+  //   height: 28,
+  //   paddingHorizontal: 10,
+  //   borderRadius: 6,
+  //   backgroundColor: 'rgba(255,255,255,0.12)',
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  // },
+  // moreText: {
+  //   color: '#E5E5E5',
+  //   fontSize: 12,
+  //   fontWeight: '600',
+  // },  
 });
