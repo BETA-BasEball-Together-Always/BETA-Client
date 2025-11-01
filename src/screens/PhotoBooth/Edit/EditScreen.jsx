@@ -190,8 +190,8 @@ export default function EditScreen() {
   }, [teamKey, frameKey]);
 
   // 프레임 크기/비율
-  const frameW = width * 0.9;
-  const frameH = height * 0.7;
+  const frameW = width * 1;
+  const frameH = height * 0.8;
   const aspect = frameKey === '1x4' ? 1 / 3 : 2 / 3; // 1x4=1:3, 2x2=2:3
   const frameStyle = frameKey === '1x4'
     ? { height: frameH, aspectRatio: aspect }
@@ -513,7 +513,7 @@ export default function EditScreen() {
       <View style={styles.topBar}>
         <Text style={styles.topTitle}>야구네컷 편집</Text>
         <TouchableOpacity onPress={handleSave} style={styles.saveBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.saveText}>저장</Text>
+          <Text style={styles.saveText}>완료</Text>
         </TouchableOpacity>
       </View>
 
