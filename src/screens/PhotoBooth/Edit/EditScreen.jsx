@@ -28,6 +28,8 @@ import textbubble3 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubb
 import textbubble4 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble4.svg';
 import textbubble5 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble5.svg';
 import textbubble6 from '../../../assets/images/PhotoBooth/Stickers/svg/textbubble6.svg';
+import { useNavigation } from '@react-navigation/native';
+import ViewShot from 'react-native-view-shot';
 
 
 const { width, height } = Dimensions.get('window');
@@ -53,6 +55,8 @@ const FONT_FAMILY_OPTIONS = [
 const TEXT_COLORS = ['#FFFFFF', '#C1C1C1', '#000000', '#E84A5F', '#FFF280', '#9ED4FF', '#C6A3FF', '#FFC8D8'];
 
 export default function EditScreen() {
+  const navigation = useNavigation();
+  const viewShotRef = useRef(null);  
   const insets = useSafeAreaInsets();
   const store = photoBoothStore();
   const { selectedTeam, selectedFrame, capturedPhotos } = store;
@@ -215,9 +219,24 @@ export default function EditScreen() {
     ];
   }, [frameKey]);
 
-  const handleSave = () => {
-    console.log('[EditScreen] save pressed');
-    // 필요시 store 반영: photoBoothStore.getState().setCapturedPhotos(photosLocal);
+  const handleSave = async () => {
+    try {
+      // 편집 중이면 먼저 저장 반영
+      saveAndClearEditing();
+      // 프레임 박스만 캡쳐 (png 권장, 품질 1.0)
+      const uri = await viewShotRef.current?.capture?.({
+        format: 'png',
+        quality: 1.0,
+        result: 'tmpfile', // 임시 파일 (갤러리 저장 아님)
+      });
+      if (!uri) return;
+      // 전역 저장
+      store.setExportedFrameUri(uri);
+      // 공유 화면으로 이동 (필요하면 파라미터도 같이 전달 가능)
+      navigation.navigate('Share'); // 네비게이터의 라우트 이름에 맞춰 수정
+    } catch (e) {
+      console.warn('[EditScreen] viewshot failed:', e);
+    }
   };
 
   // ── 오버레이 애니메이션/드래그 ──
@@ -524,69 +543,78 @@ export default function EditScreen() {
           saveAndClearEditing();
         }}
       >    
-        {frameSource ? (
-          <ImageBackground 
-            source={frameSource} 
-            style={[styles.frameBox, frameStyle]} 
-            resizeMode="contain"
-            onLayout={(e) => {
-              const { x, y, width: w, height: h } = e.nativeEvent.layout;
-              setFrameLayout({ x, y, w, h });
-            }}
-          >
-            {photosLocal.map((uri, i) => (
-              <TouchableOpacity
-                key={i}
-                activeOpacity={0.9}
-                style={[styles.photo, slots[i]]}
-                onPress={() => onPressFramePhoto(i)}
-              >
-                <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                {selectedSlot === i && <View style={styles.selectedOverlay} pointerEvents="none" />}
-              </TouchableOpacity>
-            ))}
+        <ViewShot
+          ref={viewShotRef}
+          style={[styles.frameBox, frameStyle]}
+          options={{ format: 'png', quality: 1 }}
+        >
+          {frameSource ? (
+            <ImageBackground
+              source={frameSource}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
+              onLayout={(e) => {
+                const { x, y, width: w, height: h } = e.nativeEvent.layout;
+                setFrameLayout({ x, y, w, h });
+              }}
+            >
+              {photosLocal.map((uri, i) => (
+                <TouchableOpacity
+                  key={i}
+                  activeOpacity={0.9}
+                  style={[styles.photo, slots[i]]}
+                  onPress={() => onPressFramePhoto(i)}
+                >
+                  <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  {selectedSlot === i && <View style={styles.selectedOverlay} pointerEvents="none" />}
+                </TouchableOpacity>
+              ))}
 
-          </ImageBackground>
-        ) : (
-          <Text style={{ color: '#aaa' }}>프레임 이미지를 찾을 수 없어요</Text>
-        )}
-        {/* 스티커들 */}
-        {stickers.map((st) => (
-          <StickerItem
-            key={st.id}
-            item={st}
-            selected={selectedStickerId === st.id}
-            onSelect={() => selectSticker(st.id)}
-            onUpdate={(patch) => {
-              setStickers((prev) => prev.map(s => s.id === st.id ? { ...s, ...patch } : s));
-            }}
-            onDelete={() => {
-              setStickers((prev) => prev.filter(s => s.id !== st.id));
-              if (selectedStickerId === st.id) setSelectedStickerId(null);
-            }}
-          />
-        ))}    
-        {/* 텍스트들 */}
-        {texts.map(t => (
-          <TextItem
-            key={t.id}
-            item={t}
-            selected={selectedTextId === t.id}
-            onSelect={() => selectText(t.id)}
-            onUpdate={(patch) => {
-              setTexts(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x));
-            }}
-            onDelete={() => {
-              setTexts(prev => prev.filter(x => x.id !== t.id));
-              if (selectedTextId === t.id) setSelectedTextId(null);
-            }}
-            editing={editingTextId === t.id}
-            onEditStart={() => startEditText(t.id)}
-            onEditSave={(newText) => commitEditText(t.id, newText)}
-            onEditCancel={() => setEditingTextId(null)}
-            onDraftChange={(id, v) => { draftsRef.current.set(id, v); }}                
-          />
-        ))}        
+            </ImageBackground>
+          ) : (
+            <View style={{ flex:1, justifyContent: 'center', alignItems: 'center'}}>
+              <Text style={{ color: '#aaa'}}>프레임 이미지를 찾을 수 없어요</Text>
+            </View>
+            
+          )}
+          {/* 스티커들 */}
+          {stickers.map((st) => (
+            <StickerItem
+              key={st.id}
+              item={st}
+              selected={selectedStickerId === st.id}
+              onSelect={() => selectSticker(st.id)}
+              onUpdate={(patch) => {
+                setStickers((prev) => prev.map(s => s.id === st.id ? { ...s, ...patch } : s));
+              }}
+              onDelete={() => {
+                setStickers((prev) => prev.filter(s => s.id !== st.id));
+                if (selectedStickerId === st.id) setSelectedStickerId(null);
+              }}
+            />
+          ))}    
+          {/* 텍스트들 */}
+          {texts.map(t => (
+            <TextItem
+              key={t.id}
+              item={t}
+              selected={selectedTextId === t.id}
+              onSelect={() => selectText(t.id)}
+              onUpdate={(patch) => {
+                setTexts(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x));
+              }}
+              onDelete={() => {
+                setTexts(prev => prev.filter(x => x.id !== t.id));
+                if (selectedTextId === t.id) setSelectedTextId(null);
+              }}
+              editing={editingTextId === t.id}
+              onEditStart={() => startEditText(t.id)}
+              onEditSave={(newText) => commitEditText(t.id, newText)}
+              onEditCancel={() => setEditingTextId(null)}
+              onDraftChange={(id, v) => { draftsRef.current.set(id, v); }}                
+            />
+          ))}        
+        </ViewShot>   
       </Pressable>
 
       {/* 오버레이 (사진/프레임 공용) */}
