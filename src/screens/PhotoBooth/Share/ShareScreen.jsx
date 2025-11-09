@@ -91,19 +91,20 @@ export default function ShareScreen({ navigation }) {
   const onShareSystemSheet = useCallback(async () => {
     try {
       const fileUri = await ensureFileUri();
-      if (!fileUri) return Alert.alert('오류', '공유할 이미지가 없어요.');
+      if (!fileUri) {
+        return Alert.alert('오류', '공유할 이미지가 없어요.');
+      }
 
-      await Share.share({
-        url: fileUri, // iOS: url 지원, Android: message에 파일 경로를 넣는게 더 안정적일 때도 있음
-        message: Platform.select({
-          android: `BETA에서 만든 야구네컷 📸`,
-          ios: 'BETA에서 만든 야구네컷 📸',
-        }),
-        title: 'BETA 공유',
+      // react-native-share로 실제 이미지(png) 공유
+      await RNShare.open({
+        url: fileUri,               // 실제 파일 경로 (file://...)
+        type: 'image/png',          // png 형식
+        title: 'BETA에서 만든 야구네컷 📸',
+        failOnCancel: false,        // 사용자가 취소해도 에러로 간주하지 않음
       });
     } catch (e) {
       console.warn(e);
-      Alert.alert('공유 실패', '공유 중 문제가 발생했어요.');
+      Alert.alert('공유 실패', '이미지 공유 중 문제가 발생했어요.');
     }
   }, [ensureFileUri]);
 
