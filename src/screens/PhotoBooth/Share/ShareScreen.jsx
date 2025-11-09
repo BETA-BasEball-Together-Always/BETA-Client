@@ -9,6 +9,7 @@ import {
   Share,
   Alert,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
@@ -25,7 +26,15 @@ import RNShare from 'react-native-share';
 export default function ShareScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const exportedFrameUri = photoBoothStore((s) => s.exportedFrameUri); // <- 전역 저장된 프레임 이미지
+  const selectedFrameId  = photoBoothStore((s) => s.selectedFrame?.id); // '2x2' | '1x4'  
   const [saving, setSaving] = useState(false);
+
+  // 프레임별 aspect ratio (가로/세로)
+  const aspectRatio = useMemo(() => {
+    if (selectedFrameId === '1x4') return 1 / 3;  // 1:3
+    // 기본/2x2
+    return 2 / 3;                                  // 2:3
+  }, [selectedFrameId]);
 
   // dataURL도 안전하게 처리
   const ensureFileUri = useCallback(async () => {
@@ -87,7 +96,7 @@ export default function ShareScreen({ navigation }) {
       await Share.share({
         url: fileUri, // iOS: url 지원, Android: message에 파일 경로를 넣는게 더 안정적일 때도 있음
         message: Platform.select({
-          android: `BETA에서 만든 야구네컷 📸\n${fileUri}`,
+          android: `BETA에서 만든 야구네컷 📸`,
           ios: 'BETA에서 만든 야구네컷 📸',
         }),
         title: 'BETA 공유',
@@ -145,15 +154,16 @@ export default function ShareScreen({ navigation }) {
   const preview = useMemo(() => {
     if (!exportedFrameUri) return null;
     return (
-      <View style={styles.previewCard}>
+      // <View style={styles.previewCard}>
+      <View style={[styles.previewCard, { height:'100%', aspectRatio }]}>     
         <Image
           source={{ uri: exportedFrameUri }}
           style={styles.previewImage}
-          resizeMode="cover"
+          resizeMode="contain"          
         />
       </View>
     );
-  }, [exportedFrameUri]);
+  }, [exportedFrameUri, previewMaxHeight, aspectRatio]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -166,20 +176,23 @@ export default function ShareScreen({ navigation }) {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* 프레임 미리보기 */}
-      <View style={styles.previewWrap}>
-        {preview || (
-          <View style={[styles.previewCard, styles.previewEmpty]}>
-            <Text style={{ color: '#aaa' }}>미리볼 이미지가 없어요</Text>
+      <View style={styles.previewSection}>
+        {/* 프레임 미리보기 */}
+          <View style={styles.previewWrap}>
+          {preview || (
+            <View style={[styles.previewCard, styles.previewEmpty, { height:'100%', aspectRatio }]}>
+                <Text style={{ color: '#aaa' }}>미리볼 이미지가 없어요</Text>
+              </View>
+            )}
           </View>
-        )}
-      </View>
 
-      {/* 다운로드 버튼 */}
-      <TouchableOpacity onPress={onDownload} style={styles.downloadBtn} disabled={saving}>
-        <DownloadSVG width={18} height={18} />
-        <Text style={styles.downloadText}>{saving ? '저장 중...' : '다운로드'}</Text>
-      </TouchableOpacity>
+          {/* 다운로드 버튼 */}
+          <TouchableOpacity onPress={onDownload} style={styles.downloadBtn} disabled={saving}>
+            <DownloadSVG width={18} height={18} />
+            <Text style={styles.downloadText}>{saving ? '저장 중...' : '다운로드'}</Text>
+          </TouchableOpacity>
+      </View>
+ 
 
       {/* 공유 섹션 */}
       <View style={styles.shareSection}>
@@ -208,14 +221,14 @@ function ShareChip({ label, SvgIcon, onPress }) {
   );
 }
 
-const CARD_WIDTH = 266; // 아이폰 14 Pro 스크린샷 비율 참고
-const CARD_HEIGHT = 400;
+// const CARD_WIDTH = 266; // 아이폰 14 Pro 스크린샷 비율 참고
+// const CARD_HEIGHT = 400;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0E0E0E' },
   header: {
     // height: 48,
-    height: '7%',
+    height: '8%',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -223,13 +236,9 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-
-  previewWrap: { alignItems: 'center', marginTop: 8 },
+  previewSection:{justifyContent:'space-evenly', height: '70%'},
+  previewWrap: { alignItems: 'center', height: '88%'},
   previewCard: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    // height: '80%',
-    // borderRadius: 8,
     overflow: 'hidden',
   },
   previewEmpty: { alignItems: 'center', justifyContent: 'center' },
@@ -237,25 +246,30 @@ const styles = StyleSheet.create({
 
   downloadBtn: {
     alignSelf: 'center',
-    marginTop: 12,
+    // marginTop: 12,
     backgroundColor: '#2A2A2A',
     borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 36,
+    paddingHorizontal: '5%',
+    height: '8%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: '2%',
   },
   downloadText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
   shareSection: {
-    marginTop: 8,
-    paddingTop: 8,
+    // marginTop: 8,
+    // paddingTop: 8,
     paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderColor: '#2A2A2A'
+    borderColor: '#2A2A2A',
+    height: '22%',
+    justifyContent: 'center',
+    gap: '6%',    
+    // borderWidth:1,
+    // borderColor:'white'
   },
-  shareTitle: { color: '#ccc', fontSize: 14, marginBottom: 12, textAlign: 'center' },
+  shareTitle: { color: '#ccc', fontSize: 18, fontWeight:600, textAlign: 'center' },
   shareRow: { flexDirection: 'row', justifyContent: 'center', gap: 5 },
 
   chip: { alignItems: 'center', width: 70 },
