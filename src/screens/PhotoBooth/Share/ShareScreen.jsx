@@ -163,7 +163,7 @@ export default function ShareScreen({ navigation }) {
         />
       </View>
     );
-  }, [exportedFrameUri, previewMaxHeight, aspectRatio]);
+  }, [exportedFrameUri, aspectRatio]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
