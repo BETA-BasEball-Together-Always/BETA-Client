@@ -212,8 +212,8 @@ export default function EditScreen() {
       ];
     }
     return [
-      { top: '4.6%',  left: '5.7%',  width: '42.5%', height: '40.3%' },
-      { top: '4.6%',  right: '5.7%', width: '42.5%', height: '40.3%' },
+      { top: '4.5%',  left: '5.7%',  width: '42.5%', height: '40.3%' },
+      { top: '4.5%',  right: '5.7%', width: '42.5%', height: '40.3%' },
       { bottom: '12.5%', left: '5.7%',  width: '42.5%', height: '40.3%' },
       { bottom: '12.5%', right: '5.7%', width: '42.5%', height: '40.3%' },
     ];
