@@ -7,6 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "src/assets/fonts/*"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,8 +19,10 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "야구네컷 촬영을 위해 카메라 접근이 필요합니다.",
-        "NSPhotoLibraryAddUsageDescription": "편집된 야구네컷을 사진 보관함에 저장합니다."
-      }
+        "NSPhotoLibraryAddUsageDescription": "편집된 야구네컷을 사진 보관함에 저장합니다.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.bmbx08.Beta"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +39,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "react-native-vision-camera"
+      "react-native-vision-camera",
+      "expo-font"
     ],
     "extra": {
       "eas": {
