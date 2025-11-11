@@ -36,7 +36,8 @@
       "package": "com.bmbx08.Beta"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       "react-native-vision-camera",
