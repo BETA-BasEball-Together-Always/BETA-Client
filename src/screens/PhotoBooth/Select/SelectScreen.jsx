@@ -7,22 +7,46 @@ import photoBoothStore from '../../../stores/photoBoothStore';
 import { FRAMES } from '../../../utils/framesMap';
 import { usePrefetchEditFonts } from '../../../hooks/usePrefetchEditFonts';
 
+import KiwoomIcon from '../../../assets/images/PhotoBooth/Icons/Kiwoom.svg';
+import DoosanIcon from '../../../assets/images/PhotoBooth/Icons/Doosan.svg';
+import LotteIcon  from '../../../assets/images/PhotoBooth/Icons/Lotte.svg';
+import SamsungIcon from '../../../assets/images/PhotoBooth/Icons/Samsung.svg';
+import HanhwaIcon  from '../../../assets/images/PhotoBooth/Icons/Hanhwa.svg';
+import KIAIcon     from '../../../assets/images/PhotoBooth/Icons/KIA.svg';
+import LGIcon      from '../../../assets/images/PhotoBooth/Icons/LG.svg';
+import SSGIcon     from '../../../assets/images/PhotoBooth/Icons/SSG.svg';
+import NCIcon      from '../../../assets/images/PhotoBooth/Icons/NC.svg';
+import KTIcon      from '../../../assets/images/PhotoBooth/Icons/KT.svg';
+
 const CARD_BG = '#1A1A1A';
 
 const {width,height} = Dimensions.get('window');
 
 /** 1) 팀 목록에 teamKey 추가(매핑용) */
+// const teams = [
+//   { id: '1', teamKey: 'kiwoom', name: '키움 히어로즈', logo: require('../../../assets/images/PhotoBooth/Icons/Kiwoom.png') },
+//   { id: '2', teamKey: 'doosan', name: '두산 베어스',  logo: require('../../../assets/images/PhotoBooth/Icons/Doosan.png') },
+//   { id: '3', teamKey: 'lotte',  name: '롯데 자이언츠', logo: require('../../../assets/images/PhotoBooth/Icons/Lotte.png') },
+//   { id: '4', teamKey: 'samsung',name: '삼성 라이온즈', logo: require('../../../assets/images/PhotoBooth/Icons/Samsung.png') },
+//   { id: '5', teamKey: 'hanhwa', name: '한화 이글스',  logo: require('../../../assets/images/PhotoBooth/Icons/Hanhwa.png') },
+//   { id: '6', teamKey: 'kia',    name: 'kia 타이거즈', logo: require('../../../assets/images/PhotoBooth/Icons/KIA.png') },
+//   { id: '7', teamKey: 'lg',     name: 'LG 트윈스',    logo: require('../../../assets/images/PhotoBooth/Icons/LG.png') },
+//   { id: '8', teamKey: 'ssg',    name: 'SSG 랜더스',   logo: require('../../../assets/images/PhotoBooth/Icons/SSG.png') },
+//   { id: '9', teamKey: 'nc',     name: 'NC 다이노스',  logo: require('../../../assets/images/PhotoBooth/Icons/NC.png') },
+//   { id: '10',teamKey: 'kt',     name: 'KT 위즈',      logo: require('../../../assets/images/PhotoBooth/Icons/KT.png') },
+// ];
+
 const teams = [
-  { id: '1', teamKey: 'kiwoom', name: '키움 히어로즈', logo: require('../../../assets/images/PhotoBooth/Icons/Kiwoom.png') },
-  { id: '2', teamKey: 'doosan', name: '두산 베어스',  logo: require('../../../assets/images/PhotoBooth/Icons/Doosan.png') },
-  { id: '3', teamKey: 'lotte',  name: '롯데 자이언츠', logo: require('../../../assets/images/PhotoBooth/Icons/Lotte.png') },
-  { id: '4', teamKey: 'samsung',name: '삼성 라이온즈', logo: require('../../../assets/images/PhotoBooth/Icons/Samsung.png') },
-  { id: '5', teamKey: 'hanhwa', name: '한화 이글스',  logo: require('../../../assets/images/PhotoBooth/Icons/Hanhwa.png') },
-  { id: '6', teamKey: 'kia',    name: 'kia 타이거즈', logo: require('../../../assets/images/PhotoBooth/Icons/KIA.png') },
-  { id: '7', teamKey: 'lg',     name: 'LG 트윈스',    logo: require('../../../assets/images/PhotoBooth/Icons/LG.png') },
-  { id: '8', teamKey: 'ssg',    name: 'SSG 랜더스',   logo: require('../../../assets/images/PhotoBooth/Icons/SSG.png') },
-  { id: '9', teamKey: 'nc',     name: 'NC 다이노스',  logo: require('../../../assets/images/PhotoBooth/Icons/NC.png') },
-  { id: '10',teamKey: 'kt',     name: 'KT 위즈',      logo: require('../../../assets/images/PhotoBooth/Icons/KT.png') },
+  { id: '1',  teamKey: 'kiwoom', name: '키움 히어로즈', Icon: KiwoomIcon },
+  { id: '2',  teamKey: 'doosan', name: '두산 베어스',  Icon: DoosanIcon },
+  { id: '3',  teamKey: 'lotte',  name: '롯데 자이언츠', Icon: LotteIcon  },
+  { id: '4',  teamKey: 'samsung',name: '삼성 라이온즈', Icon: SamsungIcon},
+  { id: '5',  teamKey: 'hanhwa', name: '한화 이글스',  Icon: HanhwaIcon },
+  { id: '6',  teamKey: 'kia',    name: 'KIA 타이거즈', Icon: KIAIcon    },
+  { id: '7',  teamKey: 'lg',     name: 'LG 트윈스',    Icon: LGIcon     },
+  { id: '8',  teamKey: 'ssg',    name: 'SSG 랜더스',   Icon: SSGIcon    },
+  { id: '9',  teamKey: 'nc',     name: 'NC 다이노스',  Icon: NCIcon     },
+  { id: '10', teamKey: 'kt',     name: 'KT 위즈',      Icon: KTIcon     },
 ];
 
 /** 2) 프레임 종류 정의(아이디만 사용; 이미지는 아래 FRAMES에서 고름) */

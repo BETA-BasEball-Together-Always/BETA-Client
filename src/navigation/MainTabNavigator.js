@@ -28,7 +28,7 @@ const COLORS = {
 const ICON_SIZE= 32;
 
 // ✅ 실제 라우트명에 맞게 지정
-const HIDDEN_ROUTES = ["CameraScreen", "EditScreen"];
+const HIDDEN_ROUTES = ["Camera", "Edit"];
 
 export default function MainTabNavigator() {
   return (

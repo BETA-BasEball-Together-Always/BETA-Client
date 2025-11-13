@@ -1,9 +1,12 @@
-import React from 'react';
-import { TouchableOpacity, Image, Text, View, StyleSheet } from 'react-native';
+// TeamCard.jsx
+import React, { useEffect } from 'react';
+import { Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 const CARD_BG = '#1A1A1A';
 
 const TeamCard = ({ item, isSelected, onPress }) => {
+  const Logo = item.Icon; // ← SVG 컴포넌트(있을 때)
+
   return (
     <View style={styles.itemWrap}>
       <TouchableOpacity
@@ -11,10 +14,16 @@ const TeamCard = ({ item, isSelected, onPress }) => {
         onPress={() => onPress(item)}
         style={[
           styles.teamCard,
-          isSelected && { backgroundColor: '#fff'},
+          isSelected && { backgroundColor: '#fff' },
         ]}
       >
-        <Image source={item.logo} style={styles.teamLogo} resizeMode="contain" />
+        {Logo ? (
+          // SVG 컴포넌트 렌더
+          <Logo width={100} height={100} />
+        ) : (
+          // PNG fallback
+          <Image source={item.logo} style={styles.teamLogo} resizeMode="contain" />
+        )}
       </TouchableOpacity>
       <Text style={styles.itemLabel} numberOfLines={1}>{item.name}</Text>
     </View>
@@ -45,3 +54,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
