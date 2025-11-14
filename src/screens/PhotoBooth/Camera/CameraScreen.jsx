@@ -237,6 +237,7 @@ export default function CameraScreen({ navigation, route }) {
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* TopBar with SVG */}
+
       
       {/* 기존 <SvgButton>들을 아래처럼 교체 */}
       <View style={styles.topBar}>
@@ -278,14 +279,14 @@ export default function CameraScreen({ navigation, route }) {
           />
         </Animated.View>     
         {/* Flash overlay animation */}
-        <Animated.View
+        {/* <Animated.View
           pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             { backgroundColor: '#fff' },
             flashOverlayStyle,
           ]}
-        />
+        /> */}
         {/* Beauty overlay - 간단한 밝기 효과 (원하면 제거 가능) */}
         {beauty && <View pointerEvents="none" style={styles.beautyOverlay} />}
 
@@ -332,6 +333,17 @@ export default function CameraScreen({ navigation, route }) {
           <SwitchBtnIcon width={52} height={52} />
         </TouchableOpacity>
       </View>
+      
+      {/* ✅ 전체 화면 플래시 오버레이 (화면 전체 덮기) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: '#ffffff65' },
+          styles.flashOverlay,
+          flashOverlayStyle,
+        ]}
+      />
     </View>
   );
 }
