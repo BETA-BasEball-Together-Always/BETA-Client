@@ -1,15 +1,10 @@
-import React, {memo} from "react";
-import {Pressable, View, StyleSheet, Platform} from "react-native";
+import React, { memo } from "react";
+import { Pressable, View, StyleSheet } from "react-native";
 
-const PILL_W = 66;
-const PILL_H = 44;
+const TOUCH_W = 48;
+const TOUCH_H = 48;
 
-const TabBarItem = memo(function TabBarItem({
-  isFocused,
-  onPress,
-  icon,
-  colors,
-}) {
+const TabBarItem = memo(function TabBarItem({ isFocused, onPress, icon }) {
   return (
     <Pressable
       onPress={onPress}
@@ -20,14 +15,7 @@ const TabBarItem = memo(function TabBarItem({
         radius: 28,
       }}
     >
-      {isFocused && (
-        <View
-          style={[
-            styles.pill,
-            {backgroundColor: colors?.pillBg, borderColor: colors?.pillBorder},
-          ]}
-        />
-      )}
+      {/* ✅ 하이라이트 pill/glass 제거 → 아이콘만 */}
       <View style={styles.iconWrap}>{icon}</View>
     </Pressable>
   );
@@ -37,29 +25,10 @@ export default TabBarItem;
 
 const styles = StyleSheet.create({
   item: {
-    width: PILL_W,
-    height: PILL_H,
+    width: TOUCH_W,
+    height: TOUCH_H,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconWrap: {zIndex: 2},
-  pill: {
-    position: "absolute",
-    zIndex: 1,
-    width: PILL_W,
-    height: PILL_H,
-    borderRadius: 16,
-    borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.35,
-        shadowRadius: 9,
-        shadowOffset: {width: 0, height: 6},
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
-  },
+  iconWrap: { zIndex: 1 },
 });

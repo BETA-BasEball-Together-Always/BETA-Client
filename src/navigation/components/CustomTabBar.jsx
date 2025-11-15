@@ -1,22 +1,19 @@
-import React, {memo} from "react";
-import {View, StyleSheet, Platform} from "react-native";
-import {SafeAreaView, useSafeAreaInsets} from "react-native-safe-area-context";
+import React, { memo } from "react";
+import { View, StyleSheet } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import TabBarItem from "./TabBarItem";
 import { getDeepActiveRouteName } from "../../utils/navigationHelper";
-
-const PILL_W = 66;
-const PILL_H = 44;
 
 const CustomTabBar = memo(function CustomTabBar({
   state,
   descriptors,
   navigation,
-  colors,
-  hiddenRoutes,
+  colors,        // { active, inactive }
+  hiddenRoutes,  // ["CameraScreen", "EditScreen"]
 }) {
   const insets = useSafeAreaInsets();
 
-  // 현재 활성 탭의 "최심부 라우트" 이름 확인 (중첩 Stack 대응)  
+  // 중첩 스택까지 고려한 현재 실제 화면 이름
   const activeTabRoute = state.routes[state.index];
   const activeNestedRouteName = getDeepActiveRouteName(activeTabRoute);
 
@@ -26,15 +23,18 @@ const CustomTabBar = memo(function CustomTabBar({
   return (
     <SafeAreaView
       edges={[]}
-      style={[styles.safe, {paddingBottom: Math.max(insets.bottom, 6)}]}
+      style={[styles.safe, { paddingBottom: Math.max(insets.bottom, 6) }]}
     >
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
-          const {options} = descriptors[route.key];
+          const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
+          // ✅ 아이콘 색상만 포커스 상태에 따라 바꿔서 넘김
+          const color = isFocused ? colors?.active : colors?.inactive;
+
           const icon = options.tabBarIcon?.({
-            color: colors?.icon,
+            color,
             size: 24,
             focused: isFocused,
           });
@@ -45,8 +45,9 @@ const CustomTabBar = memo(function CustomTabBar({
               target: route.key,
               canPreventDefault: true,
             });
-            if (!isFocused && !event.defaultPrevented)
+            if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
+            }
           };
 
           return (
@@ -55,7 +56,6 @@ const CustomTabBar = memo(function CustomTabBar({
               isFocused={isFocused}
               onPress={onPress}
               icon={icon}
-              colors={colors}
             />
           );
         })}
@@ -67,12 +67,15 @@ const CustomTabBar = memo(function CustomTabBar({
 export default CustomTabBar;
 
 const styles = StyleSheet.create({
-  safe: {backgroundColor: "black"},
+  // 배경을 투명/다크 중 택1. 여기선 다크.
+  safe: { backgroundColor: "#121212" },
   bar: {
-    height: 60,
-    paddingHorizontal: 24,
     flexDirection: "row",
+    height: 60,
+    paddingHorizontal: '7%',
     justifyContent: "space-between",
     alignItems: "center",
+    // borderWidth:1,
+    // borderColor:'green'
   },
 });
