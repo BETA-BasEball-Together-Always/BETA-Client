@@ -339,7 +339,7 @@ export default function CameraScreen({ navigation, route }) {
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFillObject,
-          { backgroundColor: '#ffffff65' },
+          { backgroundColor: '#ffffffa0' },
           styles.flashOverlay,
           flashOverlayStyle,
         ]}
