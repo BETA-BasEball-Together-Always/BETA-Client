@@ -21,9 +21,46 @@ module.exports = {
         md: 16,
         lg: 24,
       },
-      // 폰트 쓰면 여기에 등록 (예: NotoSansKR)
+      // Noto Sans 폰트 패밀리      
       fontFamily: {
-        sans: ["NotoSansKR", "System"],
+        "noto-regular": ["NotoSans-Regular"],
+        "noto-medium": ["NotoSans-Medium"],
+        "noto-semibold": ["NotoSans-SemiBold"],
+        "noto-light": ["NotoSans-Light"],
+      },
+
+      // Typography 사이즈
+      fontSize: {
+        // Uncategorized
+        heading: 18,
+        "timer-num": 35,
+
+        // Display
+        "display-title": 24,
+        "display-title2": 21,
+        "display-title-light": 22,
+
+        // Body
+        "body-regular": 16,
+        "body-medium": 16,
+
+        // Text
+        caption: 14,
+        spaced: 13,
+        "text-small-regular": 9,
+        middle: 13,
+
+        "text-semi-16": 16,
+        "text-semi-18": 18,
+        "text-semi-14": 14,
+        "text-semi-13": 13,
+
+        // Label
+        "label-small": 12,
+
+        // Number
+        "num-small-regular": 8,
+        "num-medium-regular": 10,
       },
     },
   },
