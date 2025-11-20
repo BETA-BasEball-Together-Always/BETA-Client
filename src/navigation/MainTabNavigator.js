@@ -33,7 +33,7 @@ const HIDDEN_ROUTES = ["Camera", "Edit"];
 export default function MainTabNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="PhotoBooth"
+      initialRouteName="Community"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
