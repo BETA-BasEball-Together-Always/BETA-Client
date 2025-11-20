@@ -1,25 +1,34 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
+import BetaLogo from './assets/BetaLogo.svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SplashScreen = () => {
   return (
-    <View style={{flex:1, backgroundColor:'black', justifyContent:'center', alignItems:'center'}}>
+    <View style={{flex:1, backgroundColor:'black', justifyContent:'center', alignItems:'center'}} >
+        <View style={[styles.backEllipse, {backgroundColor: '#7284DB', left:'-15%', top: '8%', opacity: 0}]}></View>
 
-        <View style={{width: 272, height: 253, flexShrink: 0, borderRadius: 272, backgroundColor: '#443D4D', filter: 'blur(130px)', position:'absolute', right:'-20%', top: '5%'}}></View>
-        <View style={{width: 272, height: 253, flexShrink: 0, borderRadius: 272, backgroundColor: 'rgba(235, 0, 41, 0.44)', filter: 'blur(130px)', position:'absolute', bottom:'20%', left:'-20%'}}></View>
-        <View style={{width: 272, height: 253, flexShrink: 0, borderRadius: 272, backgroundColor: '#943C23', filter: 'blur(130px)', position:'absolute', right: '-20%', bottom:'0%'}}></View>
+        <View style={[styles.backEllipse, {backgroundColor: '#443D4D', right:'-25%', top: '0%', opacity: 100}]}></View>
+        <View style={[styles.backEllipse, {backgroundColor: 'rgba(235, 0, 41, 0.44)', left:'-36%', top: '35%', opacity: 100}]}></View>
+        <View style={[styles.backEllipse, {backgroundColor: '#943C23', right:'-35%', top: '66%', opacity: 100}]}></View>
 
-        {/* <View style={{width: 272, height: 253, flexShrink: 0, borderRadius: 272, backgroundColor: '#7284DB', filter: 'blur(130px)', position:'absolute', left:'-20%', top:'5%'}}></View> */}
-
-        {/* <View style={{width: 272, height: 253, flexShrink: 0, borderRadius: 272, backgroundColor: '#7284DB', filter: 'blur(130px)', position:'absolute', left:'-20%', top:'5%'}}></View> */}
-
-        <Text style={{fontSize: 32, color:'white', fontStyle:'italic'}}>
-          {/* BETA */}
-        </Text>
+        <BetaLogo width='37%'/>
     </View>
   )
 }
 
 export default SplashScreen
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+  backEllipse: {
+    // width: '70%',
+    width: '90%',  
+    aspectRatio: 1,
+    // width: 272,
+    // height: 253,
+    flexShrink: 0, 
+    borderRadius: '70%', 
+    filter: 'blur(100px)', 
+    position:'absolute', 
+  }
+})
