@@ -7,16 +7,16 @@ import photoBoothStore from '../../../stores/photoBoothStore';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay } from 'react-native-reanimated';
 
 // ▼▼▼ SVG 아이콘 임포트 ▼▼▼
-import BackIcon from '../../../assets/images/PhotoBooth/Camera/Icons/BackArrow.svg';
-import FlashOffIcon from '../../../assets/images/PhotoBooth/Camera/Icons/FlashOff.svg';
-import FlashOnIcon  from '../../../assets/images/PhotoBooth/Camera/Icons/FlashOn.svg'; // on/auto 공용
-import TimerManualIcon from '../../../assets/images/PhotoBooth/Camera/Icons/TimerOff.svg';
-import Timer1sIcon from '../../../assets/images/PhotoBooth/Camera/Icons/Timer1s.svg';
-import Timer3sIcon    from '../../../assets/images/PhotoBooth/Camera/Icons/Timer3s.svg';
-import Timer5sIcon    from '../../../assets/images/PhotoBooth/Camera/Icons/Timer5s.svg';
-import BeautyOffIcon  from '../../../assets/images/PhotoBooth/Camera/Icons/BeautyOff.svg';
-import BeautyOnIcon   from '../../../assets/images/PhotoBooth/Camera/Icons/BeautyOn.svg';
-import SwitchBtnIcon from '../../../assets/images/PhotoBooth/Camera/Icons/SwitchBtn.svg';
+import BackIcon from './assets/BackArrow.svg';
+import FlashOffIcon from './assets/FlashOff.svg';
+import FlashOnIcon  from './assets/FlashOn.svg'; // on/auto 공용
+import TimerManualIcon from './assets/TimerOff.svg';
+import Timer1sIcon from './assets/Timer1s.svg';
+import Timer3sIcon    from './assets/Timer3s.svg';
+import Timer5sIcon    from './assets/Timer5s.svg';
+import BeautyOffIcon  from './assets/BeautyOff.svg';
+import BeautyOnIcon   from './assets/BeautyOn.svg';
+import SwitchBtnIcon from './assets/SwitchBtn.svg';
 
 // CameraScreen.jsx 상단 import들 아래 아무 곳에 추가
 function IconWithLabel({ onPress, children, text, color = '#FFF' }) {

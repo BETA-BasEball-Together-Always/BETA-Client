@@ -16,11 +16,11 @@ import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system';
 import photoBoothStore from '../../../stores/photoBoothStore';
 import { Ionicons } from '@expo/vector-icons'; // expo 환경이면 바로 사용 가능
-import DownloadSVG   from '../../../assets/images/Share/download.svg';
-import KakaoSVG      from '../../../assets/images/Share/kakao.svg';
-import InstagramSVG  from '../../../assets/images/Share/instagram.svg';
-import BetaSVG       from '../../../assets/images/Share/beta.svg';
-import ShareOtherSVG from '../../../assets/images/Share/share.svg';
+import DownloadSVG   from './assets/download.svg';
+import KakaoSVG      from './assets/kakao.svg';
+import InstagramSVG  from './assets/instagram.svg';
+import BetaSVG       from './assets/beta.svg';
+import ShareOtherSVG from './assets/share.svg';
 import RNShare from 'react-native-share';
 
 export default function ShareScreen({ navigation }) {

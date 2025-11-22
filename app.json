@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "assetBundlePatterns": [
-      "src/assets/fonts/*"
+      "src/shared/assets/fonts/*"
     ],
     "splash": {
       "image": "./assets/splash-screen.png",

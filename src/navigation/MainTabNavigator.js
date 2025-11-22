@@ -11,10 +11,10 @@ import PhotoBoothStack from "./PhotoBoothStack";
 import CustomTabBar from "./components/CustomTabBar";
 
 // ✅ 로컬 SVG 아이콘 (metro.config.js + react-native-svg-transformer 설정 필요)
-import HomeIcon from "../assets/images/MainTabs/Home.svg";
-import TeamIcon from "../assets/images/MainTabs/Team.svg";
-import PhotoBoothIcon from "../assets/images/MainTabs/PhotoBooth.svg";
-import ProfileIcon from "../assets/images/MainTabs/MyPage.svg";
+import HomeIcon from "./assets/home.svg";
+import TeamIcon from "./assets/team.svg";
+import PhotoBoothIcon from "./assets/photobooth.svg";
+import ProfileIcon from "./assets/mypage.svg";
 
 const Tab = createBottomTabNavigator();
 

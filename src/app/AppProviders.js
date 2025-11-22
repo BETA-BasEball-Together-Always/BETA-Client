@@ -32,10 +32,10 @@ const queryClient = new QueryClient({
 const AppProviders = ({children}) => {
   // 1) 전역 폰트 로드 (NotoSansKR 3종)
   const [fontsLoaded] = useFonts({
-    NotoSansKR_Light:    require('../assets/fonts/NotoSansKR-Light.ttf'),
-    NotoSansKR_Regular: require('../assets/fonts/NotoSansKR-Regular.ttf'),
-    NotoSansKR_Medium:  require('../assets/fonts/NotoSansKR-Medium.ttf'),
-    NotoSansKR_SemiBold:    require('../assets/fonts/NotoSansKR-SemiBold.ttf'),    
+    NotoSansKR_Light:    require('../shared/assets/fonts/NotoSansKR-Light.ttf'),
+    NotoSansKR_Regular: require('../shared/assets/fonts/NotoSansKR-Regular.ttf'),
+    NotoSansKR_Medium:  require('../shared/assets/fonts/NotoSansKR-Medium.ttf'),
+    NotoSansKR_SemiBold:    require('../shared/assets/fonts/NotoSansKR-SemiBold.ttf'),    
   });
 
   // 2) 네트워크 연결 상태를 TanStack Query에 알려줌(동기화용) */

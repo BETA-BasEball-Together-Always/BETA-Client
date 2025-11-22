@@ -7,34 +7,20 @@ import photoBoothStore from '../../../stores/photoBoothStore';
 import { FRAMES } from '../../../utils/framesMap';
 import { usePrefetchEditFonts } from '../../../hooks/usePrefetchEditFonts';
 
-import KiwoomIcon from '../../../assets/images/PhotoBooth/Icons/Kiwoom.svg';
-import DoosanIcon from '../../../assets/images/PhotoBooth/Icons/Doosan.svg';
-import LotteIcon  from '../../../assets/images/PhotoBooth/Icons/Lotte.svg';
-import SamsungIcon from '../../../assets/images/PhotoBooth/Icons/Samsung.svg';
-import HanhwaIcon  from '../../../assets/images/PhotoBooth/Icons/Hanhwa.svg';
-import KIAIcon     from '../../../assets/images/PhotoBooth/Icons/KIA.svg';
-import LGIcon      from '../../../assets/images/PhotoBooth/Icons/LG.svg';
-import SSGIcon     from '../../../assets/images/PhotoBooth/Icons/SSG.svg';
-import NCIcon      from '../../../assets/images/PhotoBooth/Icons/NC.svg';
-import KTIcon      from '../../../assets/images/PhotoBooth/Icons/KT.svg';
+import KiwoomIcon from '../../../shared/assets/svg/teams/Kiwoom.svg';
+import DoosanIcon from '../../../shared/assets/svg/teams/Doosan.svg';
+import LotteIcon  from '../../../shared/assets/svg/teams/Lotte.svg';
+import SamsungIcon from '../../../shared/assets/svg/teams/Samsung.svg';
+import HanhwaIcon  from '../../../shared/assets/svg/teams/Hanhwa.svg';
+import KIAIcon     from '../../../shared/assets/svg/teams/KIA.svg';
+import LGIcon      from '../../../shared/assets/svg/teams/LG.svg';
+import SSGIcon     from '../../../shared/assets/svg/teams/SSG.svg';
+import NCIcon      from '../../../shared/assets/svg/teams/NC.svg';
+import KTIcon      from '../../../shared/assets/svg/teams/KT.svg';
 
 const CARD_BG = '#1A1A1A';
 
 const {width,height} = Dimensions.get('window');
-
-/** 1) 팀 목록에 teamKey 추가(매핑용) */
-// const teams = [
-//   { id: '1', teamKey: 'kiwoom', name: '키움 히어로즈', logo: require('../../../assets/images/PhotoBooth/Icons/Kiwoom.png') },
-//   { id: '2', teamKey: 'doosan', name: '두산 베어스',  logo: require('../../../assets/images/PhotoBooth/Icons/Doosan.png') },
-//   { id: '3', teamKey: 'lotte',  name: '롯데 자이언츠', logo: require('../../../assets/images/PhotoBooth/Icons/Lotte.png') },
-//   { id: '4', teamKey: 'samsung',name: '삼성 라이온즈', logo: require('../../../assets/images/PhotoBooth/Icons/Samsung.png') },
-//   { id: '5', teamKey: 'hanhwa', name: '한화 이글스',  logo: require('../../../assets/images/PhotoBooth/Icons/Hanhwa.png') },
-//   { id: '6', teamKey: 'kia',    name: 'kia 타이거즈', logo: require('../../../assets/images/PhotoBooth/Icons/KIA.png') },
-//   { id: '7', teamKey: 'lg',     name: 'LG 트윈스',    logo: require('../../../assets/images/PhotoBooth/Icons/LG.png') },
-//   { id: '8', teamKey: 'ssg',    name: 'SSG 랜더스',   logo: require('../../../assets/images/PhotoBooth/Icons/SSG.png') },
-//   { id: '9', teamKey: 'nc',     name: 'NC 다이노스',  logo: require('../../../assets/images/PhotoBooth/Icons/NC.png') },
-//   { id: '10',teamKey: 'kt',     name: 'KT 위즈',      logo: require('../../../assets/images/PhotoBooth/Icons/KT.png') },
-// ];
 
 const teams = [
   { id: '1',  teamKey: 'kiwoom', name: '키움 히어로즈', Icon: KiwoomIcon },
@@ -58,48 +44,48 @@ const frames = [
 /** 3) 팀별 프레임 이미지 매핑 (모두 미리 require) */
 // const FRAME_IMAGES = {
 //   base: { // 팀 미선택 시 사용할 기본 프레임
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/base/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/base/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/base/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/base/1x4.png'),
 //   },
 //   kiwoom: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/kiwoom/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/kiwoom/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/kiwoom/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/kiwoom/1x4.png'),
 //   },
 //   doosan: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/doosan/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/doosan/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/doosan/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/doosan/1x4.png'),
 //   },
 //   lotte: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/lotte/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/lotte/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/lotte/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/lotte/1x4.png'),
 //   },
 //   samsung: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/samsung/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/samsung/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/samsung/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/samsung/1x4.png'),
 //   },
 //   hanhwa: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/hanhwa/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/hanhwa/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/hanhwa/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/hanhwa/1x4.png'),
 //   },
 //   kia: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/kia/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/kia/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/kia/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/kia/1x4.png'),
 //   },
 //   lg: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/lg/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/lg/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/lg/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/lg/1x4.png'),
 //   },
 //   ssg: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/ssg/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/ssg/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/ssg/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/ssg/1x4.png'),
 //   },
 //   nc: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/nc/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/nc/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/nc/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/nc/1x4.png'),
 //   },
 //   kt: {
-//     '2x2': require('../../../assets/images/PhotoBooth/Frames/kt/2x2.png'),
-//     '1x4': require('../../../assets/images/PhotoBooth/Frames/kt/1x4.png'),
+//     '2x2': require('../../../shared/assets/images/frames/kt/2x2.png'),
+//     '1x4': require('../../../shared/assets/images/frames/kt/1x4.png'),
 //   },
 // };
 
