@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
   withDelay,
 } from 'react-native-reanimated';
-import BetaLogo from './assets/BetaLogo.svg';
+import BetaLogo from '../shared/assets/svg/logos/BetaLogo.svg';
 
 const SplashScreen = () => {
   /** Shared Values */
