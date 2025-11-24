@@ -1,7 +1,7 @@
 // src/components/common/AppText.js
 import React from "react";
 import { Text } from "react-native";
-import { cn } from "../../../utils/cn";
+import { cn } from "@shared/utils/cn";
 
 // variant → nativewind 클래스 매핑
 const variantClassNameMap = {
