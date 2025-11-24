@@ -42,6 +42,7 @@
   "private": true,
   "devDependencies": {
     "@react-native/metro-babel-transformer": "^0.82.0",
+    "babel-plugin-module-resolver": "^5.0.2",
     "metro-react-native-babel-transformer": "^0.77.0",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "react-native-svg-transformer": "^1.5.1",
