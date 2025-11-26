@@ -24,13 +24,14 @@ import NaverIcon from "./assets/naver.svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { kakaoSignIn } from "./libs/kakaoSignIn";
 
-const LoginScreen = () => {
+const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSocialLoading, setIsSocialLoading] = useState(false);  
 
   const handleLogin = () => {
     console.log("login", { email, password });
+    navigation.navigate("Main")
   };
 
   const handleKakaoLogin = async () => {
@@ -260,6 +261,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     fontSize: 12,
     color: "#E0E0EA",
+    fontFamily: 'NotoSansKR_SemiBold'
   },
   snsButtonsRow: {
     flexDirection: "row",
