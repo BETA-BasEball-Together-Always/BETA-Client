@@ -11,23 +11,51 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
+import {
+  login,
+  getProfile,
+  logout,
+} from "@react-native-seoul/kakao-login";
 
 // 🔽 SVG 아이콘 import (경로는 프로젝트에 맞게 수정)
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "./assets/kakao.svg";
 import NaverIcon from "./assets/naver.svg";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { kakaoSignIn } from "./libs/kakaoSignIn";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSocialLoading, setIsSocialLoading] = useState(false);  
 
   const handleLogin = () => {
     console.log("login", { email, password });
   };
 
-  const handleKakaoLogin = () => {
-    // TODO: 카카오 로그인 연동
+  const handleKakaoLogin = async () => {
+    if (isSocialLoading) return;
+    setIsSocialLoading(true);
+
+    try {
+      const { token, profile, cancelled } = await kakaoSignIn();
+
+      if (cancelled) return;
+
+      // 여기서부터는 너의 앱 로직 👇
+      console.log("카카오 토큰:", token);
+      console.log("카카오 프로필:", profile);
+
+      // 1) 백엔드에 토큰 보내서 우리 앱용 accessToken 발급
+      // const { appToken } = await kakaoSignInAndIssueAppToken();
+      // 2) Zustand / AsyncStorage / MMKV 등에 appToken 저장
+      // 3) 홈 화면으로 이동 (navigation.navigate("Home") 같은 것)
+
+    } catch (error) {
+      Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsSocialLoading(false);
+    }
   };
 
   const handleNaverLogin = () => {

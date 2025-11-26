@@ -41,7 +41,24 @@
     },
     "plugins": [
       "react-native-vision-camera",
-      "expo-font"
+      "expo-font",
+      "expo-build-properties",
+      [
+        "@react-native-seoul/kakao-login",
+        {
+          "kakaoAppKey": "d93bc885f3456f69f29a1a4073778dfb",
+          "overrideKakaoSDKVersion": "2.11.2", 
+          "kotlinVersion": "2.0.0" 
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
