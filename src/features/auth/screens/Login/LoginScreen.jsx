@@ -1,5 +1,5 @@
 // src/features/auth/screens/LoginScreen.jsx
-import React, { useState } from "react";
+import React, {useState} from "react";
 import {
   View,
   Text,
@@ -15,23 +15,24 @@ import {
   login,
   getProfile,
   logout,
+  unlink,
 } from "@react-native-seoul/kakao-login";
 
 // 🔽 SVG 아이콘 import (경로는 프로젝트에 맞게 수정)
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "./assets/kakao.svg";
 import NaverIcon from "./assets/naver.svg";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { kakaoSignIn } from "./libs/kakaoSignIn";
+import {SafeAreaView} from "react-native-safe-area-context";
+import {kakaoSignIn} from "./libs/kakaoSignIn";
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSocialLoading, setIsSocialLoading] = useState(false);  
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
 
   const handleLogin = () => {
-    console.log("login", { email, password });
-    navigation.navigate("Main")
+    console.log("login", {email, password});
+    navigation.navigate("Main");
   };
 
   const handleKakaoLogin = async () => {
@@ -39,7 +40,7 @@ const LoginScreen = ({navigation}) => {
     setIsSocialLoading(true);
 
     try {
-      const { token, profile, cancelled } = await kakaoSignIn();
+      const {token, profile, cancelled} = await kakaoSignIn();
 
       if (cancelled) return;
 
@@ -51,11 +52,24 @@ const LoginScreen = ({navigation}) => {
       // const { appToken } = await kakaoSignInAndIssueAppToken();
       // 2) Zustand / AsyncStorage / MMKV 등에 appToken 저장
       // 3) 홈 화면으로 이동 (navigation.navigate("Home") 같은 것)
-
     } catch (error) {
       Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
     } finally {
       setIsSocialLoading(false);
+    }
+  };
+
+  const hardResetKakao = async () => {
+    try {
+      // 1) 먼저 로그인해서 토큰 확보 (자동 로그인으로 바로 될 수도 있음)
+      const token = await login();
+      console.log("현재 카카오 토큰:", token);
+
+      // 2) 그 토큰을 가진 상태에서 unlink → 카카오 계정 ↔ 앱 연결 끊기
+      await unlink();
+      console.log("카카오 앱 연결 해제 완료 (동의 초기화)");
+    } catch (e) {
+      console.log("hardResetKakao 실패:", e);
     }
   };
 
@@ -71,7 +85,6 @@ const LoginScreen = ({navigation}) => {
           // behavior={Platform.OS === "ios" ? "padding" : undefined}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-
           {/* <View style={[styles.ellipseShape,
             { backgroundColor: '#443D4D', right: '-25%', top: '0%' }]}
           />
@@ -88,25 +101,44 @@ const LoginScreen = ({navigation}) => {
             { backgroundColor: '#943C23', right: '-28%', top: '66%' }]}
           /> */}
 
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#443D4D', right: '-25%', top: '0%' }]}
+          <View
+            style={[
+              styles.ellipseShape,
+              {backgroundColor: "#443D4D", right: "-25%", top: "0%"},
+            ]}
           />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#7284DB', left: '-15%', top: '8%' }]}
+          <View
+            style={[
+              styles.ellipseShape,
+              {backgroundColor: "#7284DB", left: "-15%", top: "8%"},
+            ]}
           />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: 'rgba(235, 0, 41, 0.44)', left: '-36%', top: '35%' }]}
+          <View
+            style={[
+              styles.ellipseShape,
+              {
+                backgroundColor: "rgba(235, 0, 41, 0.44)",
+                left: "-36%",
+                top: "35%",
+              },
+            ]}
           />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#705762ff', left: '-28%', top: '38%' }]}
+          <View
+            style={[
+              styles.ellipseShape,
+              {backgroundColor: "#705762ff", left: "-28%", top: "38%"},
+            ]}
           />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#b74a2cff', right: '-28%', top: '66%' }]}
+          <View
+            style={[
+              styles.ellipseShape,
+              {backgroundColor: "#b74a2cff", right: "-28%", top: "66%"},
+            ]}
           />
 
           {/* BETA 로고 텍스트 */}
           <View style={styles.logoWrapper}>
-            <BetaLogo width={120}/>
+            <BetaLogo width={120} />
             {/* <Text style={styles.logoText}>BETA</Text> */}
           </View>
 
@@ -139,7 +171,7 @@ const LoginScreen = ({navigation}) => {
             <View style={styles.linkRow}>
               <Text style={styles.linkText}>비밀번호 찾기</Text>
 
-              <View style={{ flex: 1 }} />
+              <View style={{flex: 1}} />
               <Text style={styles.linkText}>회원가입</Text>
             </View>
           </View>
@@ -159,7 +191,7 @@ const LoginScreen = ({navigation}) => {
                 onPress={handleKakaoLogin}
                 activeOpacity={0.8}
               >
-                <KakaoIcon width={50} aspectRatio={1}/>
+                <KakaoIcon width={50} aspectRatio={1} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -169,9 +201,12 @@ const LoginScreen = ({navigation}) => {
               >
                 <NaverIcon width={50} aspectRatio={1} />
               </TouchableOpacity>
+
+              <TouchableOpacity onPress={hardResetKakao}>
+                <Text style={{color: "white"}}>카카오 세션 초기화</Text>
+              </TouchableOpacity>
             </View>
           </View>
-
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
@@ -183,26 +218,26 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#000000'
+    backgroundColor: "#000000",
   },
   inner: {
     flex: 1,
-    paddingHorizontal: '4%',
-    paddingTop: '32%',
+    paddingHorizontal: "4%",
+    paddingTop: "32%",
     paddingBottom: 40,
-    paddingBottom: '32%',
+    paddingBottom: "32%",
     justifyContent: "space-between",
   },
-  ellipseShape:{
-    width: '70%',
+  ellipseShape: {
+    width: "70%",
     aspectRatio: 1,
-    borderRadius: '70%',
-    position: 'absolute',
-    filter: 'blur(140px)'
+    borderRadius: "70%",
+    position: "absolute",
+    filter: "blur(140px)",
   },
   logoWrapper: {
     marginTop: 40,
-    alignItems:'center',
+    alignItems: "center",
   },
   form: {
     marginTop: 40,
@@ -261,12 +296,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     fontSize: 12,
     color: "#E0E0EA",
-    fontFamily: 'NotoSansKR_SemiBold'
+    fontFamily: "NotoSansKR_SemiBold",
   },
   snsButtonsRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: '7%',
+    gap: "7%",
   },
   snsButton: {
     // width: 56,
