@@ -24,6 +24,7 @@ import KakaoIcon from "./assets/kakao.svg";
 import NaverIcon from "./assets/naver.svg";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {kakaoSignIn} from "./libs/kakaoSignIn";
+import {naverSignIn} from "./libs/naverSignIn";
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
@@ -73,8 +74,31 @@ const LoginScreen = ({navigation}) => {
     }
   };
 
-  const handleNaverLogin = () => {
-    // TODO: 네이버 로그인 연동
+  const handleNaverLogin = async () => {
+    if (isSocialLoading) return;
+    setIsSocialLoading(true);
+
+    try {
+      const {token, profile, cancelled} = await naverSignIn();
+
+      if (cancelled) return;
+
+      console.log("네이버 토큰:", token); // accessToken, refreshToken, 만료시간 등
+      console.log("네이버 프로필:", profile); // email, name, nickname, gender, age 등
+
+      // 1) 백엔드에 네이버 토큰 보내서 우리 앱용 accessToken 발급
+      // const { appToken } = await naverSignInAndIssueAppToken(token);
+
+      // 2) MMKV / AsyncStorage / Zustand 등에 appToken 저장
+
+      // 3) 메인 화면 이동
+      // navigation.replace("Main");
+    } catch (error) {
+      console.log(error);
+      Alert.alert("네이버 로그인 실패", "잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsSocialLoading(false);
+    }
   };
 
   return (
@@ -83,7 +107,6 @@ const LoginScreen = ({navigation}) => {
         <KeyboardAvoidingView
           style={styles.inner}
           // behavior={Platform.OS === "ios" ? "padding" : undefined}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           {/* <View style={[styles.ellipseShape,
             { backgroundColor: '#443D4D', right: '-25%', top: '0%' }]}
