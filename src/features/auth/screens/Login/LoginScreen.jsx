@@ -25,11 +25,14 @@ import NaverIcon from "./assets/naver.svg";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {kakaoSignIn} from "./libs/kakaoSignIn";
 import {naverSignIn} from "./libs/naverSignIn";
+import {useSocialLoginMutation} from "../../services/socialLoginMutation";
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSocialLoading, setIsSocialLoading] = useState(false);
+
+  const socialLoginMutation = useSocialLoginMutation();
 
   const handleLogin = () => {
     console.log("login", {email, password});
@@ -51,6 +54,20 @@ const LoginScreen = ({navigation}) => {
 
       // 1) 백엔드에 토큰 보내서 우리 앱용 accessToken 발급
       // const { appToken } = await kakaoSignInAndIssueAppToken();
+      socialLoginMutation.mutate(
+        {provider: "KAKAO", token: token.accessToken},
+        {
+          onSuccess: (response) => {
+            console.log("소셜 로그인 성공! newUser?:", response.data.newUser);
+          },
+        },
+
+        {
+          onError: (error) => {
+            console.log("소셜 로그인 실패:", error);
+          },
+        }
+      );
       // 2) Zustand / AsyncStorage / MMKV 등에 appToken 저장
       // 3) 홈 화면으로 이동 (navigation.navigate("Home") 같은 것)
     } catch (error) {
