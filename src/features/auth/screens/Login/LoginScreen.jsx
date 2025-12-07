@@ -26,6 +26,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import {kakaoSignIn} from "./libs/kakaoSignIn";
 import {naverSignIn} from "./libs/naverSignIn";
 import {useSocialLoginMutation} from "../../services/socialLoginMutation";
+import AuthBackground from "../../components/AuthBackground";
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
@@ -125,56 +126,7 @@ const LoginScreen = ({navigation}) => {
           style={styles.inner}
           // behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {/* <View style={[styles.ellipseShape,
-            { backgroundColor: '#443D4D', right: '-25%', top: '0%' }]}
-          />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#7284DB', left: '-15%', top: '8%' }]}
-          />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: 'rgba(235, 0, 41, 0.44)', left: '-36%', top: '35%' }]}
-          />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#534048', left: '-28%', top: '38%' }]}
-          />
-          <View style={[styles.ellipseShape,
-            { backgroundColor: '#943C23', right: '-28%', top: '66%' }]}
-          /> */}
-
-          <View
-            style={[
-              styles.ellipseShape,
-              {backgroundColor: "#443D4D", right: "-25%", top: "0%"},
-            ]}
-          />
-          <View
-            style={[
-              styles.ellipseShape,
-              {backgroundColor: "#7284DB", left: "-15%", top: "8%"},
-            ]}
-          />
-          <View
-            style={[
-              styles.ellipseShape,
-              {
-                backgroundColor: "rgba(235, 0, 41, 0.44)",
-                left: "-36%",
-                top: "35%",
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.ellipseShape,
-              {backgroundColor: "#705762ff", left: "-28%", top: "38%"},
-            ]}
-          />
-          <View
-            style={[
-              styles.ellipseShape,
-              {backgroundColor: "#b74a2cff", right: "-28%", top: "66%"},
-            ]}
-          />
+          <AuthBackground />
 
           {/* BETA 로고 텍스트 */}
           <View style={styles.logoWrapper}>
@@ -267,13 +219,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     paddingBottom: "32%",
     justifyContent: "space-between",
-  },
-  ellipseShape: {
-    width: "70%",
-    aspectRatio: 1,
-    borderRadius: "70%",
-    position: "absolute",
-    filter: "blur(140px)",
   },
   logoWrapper: {
     marginTop: 40,
