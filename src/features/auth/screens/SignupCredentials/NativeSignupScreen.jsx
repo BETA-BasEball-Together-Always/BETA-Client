@@ -18,6 +18,11 @@ import AuthBackground from "../../components/AuthBackground";
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import EmailCheckSuccessIcon from "../../assets/common/svg/CheckSuccessIcon.svg";
 import EmailCheckFailIcon from "../../assets/common/svg/CheckFailIcon.svg";
+import TermsAllOffIcon from "../../assets/NativeSignup/svg/TermsAllOff.svg"; // 전체 동의 기본 아이콘
+import TermsItemOffIcon from "../../assets/NativeSignup/svg/TermsItemOff.svg"; // 개별 항목 기본 아이콘
+import TermsCheckedIcon from "../../assets/NativeSignup/svg/TermsChecked.svg"; // 체크됐을 때 공통 아이콘
+import PasswordHiddenIcon from "../../assets/NativeSignup/svg/PasswordHidden.svg"; // 눈 감김 아이콘
+import PasswordVisibleIcon from "../../assets/NativeSignup/svg/PasswordVisible.svg"; // 눈 뜸 아이콘
 
 const {height} = Dimensions.get("window");
 
@@ -25,6 +30,9 @@ const NativeSignupScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isPasswordConfirmVisible, setIsPasswordConfirmVisible] =
+    useState(false);
 
   // 👇 이메일 검증 관련 state 추가
   const [emailError, setEmailError] = useState("");
@@ -361,15 +369,32 @@ const NativeSignupScreen = ({navigation}) => {
                   {/* 비밀번호 */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.label}>비밀번호</Text>
-                    <TextInput
-                      style={styles.passwordInput}
-                      placeholder="비밀번호를 입력하세요."
-                      placeholderTextColor="#B8B8C4"
-                      secureTextEntry
-                      value={password}
-                      onChangeText={handleChangePassword}
-                      onBlur={handleBlurPassword}
-                    />
+
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        placeholder="비밀번호를 입력하세요."
+                        placeholderTextColor="#B8B8C4"
+                        secureTextEntry={!isPasswordVisible}
+                        value={password}
+                        onChangeText={handleChangePassword}
+                        onBlur={handleBlurPassword}
+                      />
+                      <TouchableOpacity
+                        style={styles.passwordIconWrapper}
+                        onPress={() =>
+                          setIsPasswordVisible((prevVisible) => !prevVisible)
+                        }
+                        activeOpacity={0.8}
+                      >
+                        {isPasswordVisible ? (
+                          <PasswordVisibleIcon width={20} height={20} />
+                        ) : (
+                          <PasswordHiddenIcon width={20} height={20} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
                     {passwordTouched && !!passwordError && (
                       <Text style={styles.errorText}>{passwordError}</Text>
                     )}
@@ -378,15 +403,34 @@ const NativeSignupScreen = ({navigation}) => {
                   {/* 비밀번호 확인 */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.label}>비밀번호 확인</Text>
-                    <TextInput
-                      style={styles.passwordInput}
-                      placeholder="비밀번호를 다시 입력하세요."
-                      placeholderTextColor="#B8B8C4"
-                      secureTextEntry
-                      value={passwordConfirm}
-                      onChangeText={handleChangePasswordConfirm}
-                      onBlur={handleBlurPasswordConfirm}
-                    />
+
+                    <View style={styles.passwordInputContainer}>
+                      <TextInput
+                        style={styles.passwordInput}
+                        placeholder="비밀번호를 다시 입력하세요."
+                        placeholderTextColor="#B8B8C4"
+                        secureTextEntry={!isPasswordConfirmVisible}
+                        value={passwordConfirm}
+                        onChangeText={handleChangePasswordConfirm}
+                        onBlur={handleBlurPasswordConfirm}
+                      />
+                      <TouchableOpacity
+                        style={styles.passwordIconWrapper}
+                        onPress={() =>
+                          setIsPasswordConfirmVisible(
+                            (prevVisible) => !prevVisible
+                          )
+                        }
+                        activeOpacity={0.8}
+                      >
+                        {isPasswordConfirmVisible ? (
+                          <PasswordVisibleIcon width={20} height={20} />
+                        ) : (
+                          <PasswordHiddenIcon width={20} height={20} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
                     {passwordConfirmTouched && !!passwordConfirmError && (
                       <Text style={styles.errorText}>
                         {passwordConfirmError}
@@ -403,7 +447,8 @@ const NativeSignupScreen = ({navigation}) => {
                       activeOpacity={0.8}
                     >
                       <View style={styles.termLeft}>
-                        <Checkbox checked={terms.all} />
+                        {/* 🔽 variant="all" 추가 */}
+                        <Checkbox checked={terms.all} variant="all" />
                         <Text style={[styles.termText, styles.termAllText]}>
                           이용약관 전체 동의
                         </Text>
@@ -465,11 +510,27 @@ const NativeSignupScreen = ({navigation}) => {
   );
 };
 
-const Checkbox = ({checked}) => (
-  <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-    {checked && <View style={styles.checkboxInner} />}
-  </View>
-);
+const Checkbox = ({checked, variant}) => {
+  // checked === true면 공통 체크 아이콘
+  if (checked) {
+    return (
+      <View style={styles.termIconWrapper}>
+        <TermsCheckedIcon width={20} height={20} />
+      </View>
+    );
+  }
+
+  // 체크 안 된 상태: 전체 동의 / 개별 항목에 따라 아이콘 분기
+  return (
+    <View style={styles.termIconWrapper}>
+      {variant === "all" ? (
+        <TermsAllOffIcon width={20} height={20} />
+      ) : (
+        <TermsItemOffIcon width={20} height={20} />
+      )}
+    </View>
+  );
+};
 
 const TermItem = ({checked, onPress, label}) => (
   <TouchableOpacity
@@ -478,10 +539,10 @@ const TermItem = ({checked, onPress, label}) => (
     activeOpacity={0.8}
   >
     <View style={styles.termLeft}>
-      <Checkbox checked={checked} />
+      {/* 🔽 여기 */}
+      <Checkbox checked={checked} variant="item" />
       <Text style={styles.termText}>{label}</Text>
     </View>
-    {/* 오른쪽 꺽쇠 아이콘 대신 텍스트로 대체 (아이콘 파일 있으면 교체) */}
     <Text style={styles.chevron}>{">"}</Text>
   </TouchableOpacity>
 );
@@ -606,20 +667,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#7BE495",
   },
-  passwordInput: {
-    // flex: 1,
-    // height: 48,
-    // paddingVertical: 20,
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 10,
-    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
     backgroundColor: "rgba(0,0,0,0.25)",
+    height: 48,
+    overflow: "hidden",
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 14,
     color: "#FFFFFF",
     fontSize: 14,
   },
+  passwordIconWrapper: {
+    height: "100%",
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   termsCard: {
-    // marginTop: 28,
+    marginTop: 10,
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
@@ -635,6 +707,13 @@ const styles = StyleSheet.create({
   },
   termRowHeader: {
     paddingBottom: 10,
+  },
+  termIconWrapper: {
+    width: 18,
+    height: 18,
+    marginRight: 8,
+    justifyContent: "center",
+    alignItems: "center",
   },
   termLeft: {
     flexDirection: "row",
