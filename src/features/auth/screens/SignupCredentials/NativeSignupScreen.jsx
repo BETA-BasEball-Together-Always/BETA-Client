@@ -13,10 +13,11 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-
-import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
-import AuthBackground from "../../components/AuthBackground";
 import {SafeAreaView} from "react-native-safe-area-context";
+import AuthBackground from "../../components/AuthBackground";
+import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
+import EmailCheckSuccessIcon from "../../assets/common/svg/CheckSuccessIcon.svg";
+import EmailCheckFailIcon from "../../assets/common/svg/CheckFailIcon.svg";
 
 const {height} = Dimensions.get("window");
 
@@ -121,6 +122,22 @@ const NativeSignupScreen = ({navigation}) => {
       setIsCheckingEmail(false);
     }
   };
+
+  const emailStatus = useMemo(() => {
+    if (isCheckingEmail) return "checking";
+
+    // 중복확인 성공
+    if (emailTouched && !emailError && isEmailAvailable) {
+      return "success";
+    }
+
+    // 형식 오류 or 중복 실패 등 에러가 있는 상태
+    if (emailTouched && !!emailError) {
+      return "error";
+    }
+
+    return "idle";
+  }, [isCheckingEmail, emailTouched, emailError, isEmailAvailable]);
 
   const getEmailLocalPart = (value) => {
     if (!value) return "";
@@ -290,31 +307,46 @@ const NativeSignupScreen = ({navigation}) => {
                         onBlur={handleBlurEmail}
                       />
 
-                      <TouchableOpacity
-                        style={[
-                          styles.emailCheckButton,
-                          // 비활성화 스타일 추가
-                          (!email || !!emailError || isCheckingEmail) &&
-                            styles.emailCheckButtonDisabled,
-                        ]}
-                        activeOpacity={
-                          !email || !!emailError || isCheckingEmail ? 1 : 0.8
-                        }
-                        disabled={!email || !!emailError || isCheckingEmail}
-                        onPress={handleCheckEmail}
-                      >
-                        <Text
+                      {/* 👉 오른쪽 영역: 상태에 따라 버튼 또는 아이콘 */}
+                      {emailStatus === "success" && (
+                        <View style={styles.emailStatusIconWrapper}>
+                          <EmailCheckSuccessIcon width={20} height={20} />
+                        </View>
+                      )}
+
+                      {emailStatus === "error" && (
+                        <View style={styles.emailStatusIconWrapper}>
+                          <EmailCheckFailIcon width={20} height={20} />
+                        </View>
+                      )}
+
+                      {(emailStatus === "idle" ||
+                        emailStatus === "checking") && (
+                        <TouchableOpacity
                           style={[
-                            styles.emailCheckButtonText,
-                            // 비활성화 스타일 추가
+                            styles.emailCheckButton,
                             (!email || !!emailError || isCheckingEmail) &&
-                              styles.emailCheckButtonTextDisabled,
+                              styles.emailCheckButtonDisabled,
                           ]}
+                          activeOpacity={
+                            !email || !!emailError || isCheckingEmail ? 1 : 0.8
+                          }
+                          disabled={!email || !!emailError || isCheckingEmail}
+                          onPress={handleCheckEmail}
                         >
-                          {isCheckingEmail ? "확인중..." : "중복확인"}
-                        </Text>
-                      </TouchableOpacity>
+                          <Text
+                            style={[
+                              styles.emailCheckButtonText,
+                              (!email || !!emailError || isCheckingEmail) &&
+                                styles.emailCheckButtonTextDisabled,
+                            ]}
+                          >
+                            {isCheckingEmail ? "확인중..." : "중복확인"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
+
                     {/* 이메일 에러/성공 메시지 */}
                     {emailTouched && !!emailError && (
                       <Text style={styles.errorText}>{emailError}</Text>
@@ -557,6 +589,12 @@ const styles = StyleSheet.create({
   },
   emailCheckButtonTextDisabled: {
     color: "#3E3E3E",
+  },
+  emailStatusIconWrapper: {
+    height: "100%",
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorText: {
     marginTop: 4,
