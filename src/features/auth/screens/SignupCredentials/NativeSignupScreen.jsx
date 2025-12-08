@@ -10,16 +10,45 @@ import {
   Keyboard,
   Platform,
   StyleSheet,
+  ScrollView,
+  Dimensions,
 } from "react-native";
 
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import AuthBackground from "../../components/AuthBackground";
 import {SafeAreaView} from "react-native-safe-area-context";
 
+const {height} = Dimensions.get("window");
+
 const NativeSignupScreen = ({navigation}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+
+  // 👇 이메일 검증 관련 state 추가
+  const [emailError, setEmailError] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [isEmailAvailable, setIsEmailAvailable] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // 🔐 비밀번호 검증 state
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [passwordConfirmError, setPasswordConfirmError] = useState("");
+  const [passwordConfirmTouched, setPasswordConfirmTouched] = useState(false);
+
+  // 비밀번호 규칙:
+  // - 8~20자
+  // - 영문 / 숫자 / 특수문자 중 2가지 이상
+  // - 이메일 아이디(골뱅이 앞부분)와 동일하지 않게
+  const passwordRegexes = {
+    lower: /[a-z]/,
+    upper: /[A-Z]/,
+    digit: /[0-9]/,
+    special: /[!@#$%^&*()\-_=+\[\]{};:'",.<>/?`~]/,
+  };
 
   const [terms, setTerms] = useState({
     all: false,
@@ -28,6 +57,148 @@ const NativeSignupScreen = ({navigation}) => {
     privacyRequired: false,
     privacyMarketing: false,
   });
+
+  const validateEmail = (value) => {
+    if (!value) return "이메일을 입력해 주세요.";
+    if (!emailRegex.test(value)) return "올바른 이메일 형식을 입력해 주세요.";
+    return "";
+  };
+
+  const handleChangeEmail = (text) => {
+    const value = text.trimStart();
+    setEmail(value);
+    setIsEmailAvailable(false);
+
+    // 👉 인풋을 한 번이라도 빠져나간 이후에만 실시간 에러 업데이트
+    if (emailTouched) {
+      setEmailError(validateEmail(value));
+    } else {
+      // 아직 터치 전이면 에러 문구 안 보여줌
+      setEmailError("");
+    }
+  };
+
+  const handleBlurEmail = () => {
+    setEmailTouched(true);
+    const value = email.trim();
+    setEmail(value); // 뒤 공백 정리
+    setEmailError(validateEmail(value));
+  };
+
+  // 중복 확인 버튼
+  const handleCheckEmail = async () => {
+    const trimmed = email.trim();
+    const error = validateEmail(trimmed);
+
+    if (error) {
+      setEmailTouched(true);
+      setEmailError(error);
+      return;
+    }
+
+    try {
+      setIsCheckingEmail(true);
+      setEmailError("");
+
+      // TODO: 여기서 실제 API 호출
+      // const { data } = await api.post("/auth/email/check", { email: trimmed });
+      // const available = data.available;
+
+      const available = true; // 임시(mock)
+
+      if (available) {
+        setIsEmailAvailable(true);
+      } else {
+        setIsEmailAvailable(false);
+        setEmailError("이미 가입된 이메일이에요.");
+      }
+    } catch (e) {
+      setIsEmailAvailable(false);
+      setEmailError(
+        "이메일 중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요."
+      );
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  const getEmailLocalPart = (value) => {
+    if (!value) return "";
+    return value.split("@")[0] || "";
+  };
+
+  const validatePassword = (value, emailValue) => {
+    if (!value) return "비밀번호를 입력해주세요.";
+
+    if (value.length < 8 || value.length > 20) {
+      return "8~20자 사이로 입력해주세요.";
+    }
+
+    let typeCount = 0;
+    if (
+      passwordRegexes.lower.test(value) ||
+      passwordRegexes.upper.test(value)
+    ) {
+      typeCount += 1;
+    }
+    if (passwordRegexes.digit.test(value)) {
+      typeCount += 1;
+    }
+    if (passwordRegexes.special.test(value)) {
+      typeCount += 1;
+    }
+    if (typeCount < 2) {
+      return "영문, 숫자, 특수문자 중 2가지 이상을 포함해주세요.";
+    }
+
+    const emailLocal = getEmailLocalPart(emailValue).toLowerCase();
+    if (emailLocal && value.toLowerCase().includes(emailLocal)) {
+      return "이메일과 유사한 비밀번호는 사용할 수 없어요.";
+    }
+
+    return "";
+  };
+
+  // 비밀번호 입력/블러 핸들러
+  const handleChangePassword = (text) => {
+    const value = text;
+    setPassword(value);
+
+    if (passwordTouched) {
+      setPasswordError(validatePassword(value, email));
+    }
+
+    // 비밀번호가 바뀌면, 확인란과도 다시 비교
+    if (passwordConfirmTouched) {
+      setPasswordConfirmError(
+        value === passwordConfirm ? "" : "비밀번호와 일치하지 않아요."
+      );
+    }
+  };
+
+  const handleBlurPassword = () => {
+    setPasswordTouched(true);
+    setPasswordError(validatePassword(password, email));
+  };
+
+  // 비밀번호 확인 입력/블러 핸들러
+  const handleChangePasswordConfirm = (text) => {
+    const value = text;
+    setPasswordConfirm(value);
+
+    if (passwordConfirmTouched) {
+      setPasswordConfirmError(
+        value === password ? "" : "비밀번호와 일치하지 않아요."
+      );
+    }
+  };
+
+  const handleBlurPasswordConfirm = () => {
+    setPasswordConfirmTouched(true);
+    setPasswordConfirmError(
+      passwordConfirm === password ? "" : "비밀번호와 일치하지 않아요."
+    );
+  };
 
   const toggleAll = () => {
     const nextValue = !terms.all;
@@ -48,12 +219,27 @@ const NativeSignupScreen = ({navigation}) => {
   };
 
   const isFormValid = useMemo(() => {
-    const requiredChecked = terms.over14 && terms.tos && terms.privacyRequired; // (선택) 마케팅 동의는 제외
-    const hasEmail = email.trim().length > 0;
-    const hasPw = password.length > 0 && password === passwordConfirm;
+    const requiredChecked = terms.over14 && terms.tos && terms.privacyRequired;
+    const emailValid =
+      email.trim().length > 0 && !emailError && isEmailAvailable;
 
-    return requiredChecked && hasEmail && hasPw;
-  }, [email, password, passwordConfirm, terms]);
+    const pwError = validatePassword(password, email);
+    const isPasswordValid = !pwError;
+
+    const isPasswordConfirmValid =
+      !!passwordConfirm && passwordConfirm === password;
+
+    console.log("isFormValid:", {
+      requiredChecked,
+      emailValid,
+      isPasswordValid,
+      isPasswordConfirmValid,
+    });
+
+    return (
+      requiredChecked && emailValid && isPasswordValid && isPasswordConfirmValid
+    );
+  }, [email, emailError, isEmailAvailable, password, passwordConfirm, terms]);
 
   const handleNext = () => {
     if (!isFormValid) return;
@@ -73,104 +259,156 @@ const NativeSignupScreen = ({navigation}) => {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <AuthBackground />
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.inner}>
+              {/* 위쪽(로고 + 폼) */}
+              <View>
+                {/* 로고 */}
+                <View style={styles.logoWrapper}>
+                  <BetaLogo width={120} />
+                </View>
 
-          {/* 로고 */}
-          <View style={styles.logoWrapper}>
-            <BetaLogo width={120} />
-          </View>
+                {/* 폼 영역 */}
+                <View style={styles.formWrapper}>
+                  {/* 이메일 */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.label}>이메일</Text>
 
-          {/* 폼 영역 */}
-          <View style={styles.formWrapper}>
-            {/* 이메일 */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>이메일</Text>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.inputWithButton]}
-                  placeholder="이메일을 입력해주세요."
-                  placeholderTextColor="#B8B8C4"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={email}
-                  onChangeText={setEmail}
-                />
-                <TouchableOpacity style={styles.dupButton}>
-                  <Text style={styles.dupButtonText}>중복확인</Text>
-                </TouchableOpacity>
+                    {/* input 처럼 보이는 컨테이너 */}
+                    <View style={styles.emailInputContainer}>
+                      <TextInput
+                        style={styles.emailInput}
+                        placeholder="이메일을 입력해주세요."
+                        placeholderTextColor="#B8B8C4"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={email}
+                        onChangeText={handleChangeEmail}
+                        onBlur={handleBlurEmail}
+                      />
+
+                      <TouchableOpacity
+                        style={[
+                          styles.emailCheckButton,
+                          // 비활성화 스타일 추가
+                          (!email || !!emailError || isCheckingEmail) &&
+                            styles.emailCheckButtonDisabled,
+                        ]}
+                        activeOpacity={
+                          !email || !!emailError || isCheckingEmail ? 1 : 0.8
+                        }
+                        disabled={!email || !!emailError || isCheckingEmail}
+                        onPress={handleCheckEmail}
+                      >
+                        <Text
+                          style={[
+                            styles.emailCheckButtonText,
+                            // 비활성화 스타일 추가
+                            (!email || !!emailError || isCheckingEmail) &&
+                              styles.emailCheckButtonTextDisabled,
+                          ]}
+                        >
+                          {isCheckingEmail ? "확인중..." : "중복확인"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    {/* 이메일 에러/성공 메시지 */}
+                    {emailTouched && !!emailError && (
+                      <Text style={styles.errorText}>{emailError}</Text>
+                    )}
+                    {emailTouched && !emailError && isEmailAvailable && (
+                      <Text style={styles.emailSuccessText}>
+                        사용 가능한 이메일이에요.
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* 비밀번호 */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.label}>비밀번호</Text>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="비밀번호를 입력하세요."
+                      placeholderTextColor="#B8B8C4"
+                      secureTextEntry
+                      value={password}
+                      onChangeText={handleChangePassword}
+                      onBlur={handleBlurPassword}
+                    />
+                    {passwordTouched && !!passwordError && (
+                      <Text style={styles.errorText}>{passwordError}</Text>
+                    )}
+                  </View>
+
+                  {/* 비밀번호 확인 */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.label}>비밀번호 확인</Text>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="비밀번호를 다시 입력하세요."
+                      placeholderTextColor="#B8B8C4"
+                      secureTextEntry
+                      value={passwordConfirm}
+                      onChangeText={handleChangePasswordConfirm}
+                      onBlur={handleBlurPasswordConfirm}
+                    />
+                    {passwordConfirmTouched && !!passwordConfirmError && (
+                      <Text style={styles.errorText}>
+                        {passwordConfirmError}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* 이용약관 */}
+                  <View style={styles.termsCard}>
+                    {/* 전체 동의 */}
+                    <TouchableOpacity
+                      style={[styles.termRow, styles.termRowHeader]}
+                      onPress={toggleAll}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.termLeft}>
+                        <Checkbox checked={terms.all} />
+                        <Text style={[styles.termText, styles.termAllText]}>
+                          이용약관 전체 동의
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* 구분선 */}
+                    <View style={styles.termDivider} />
+
+                    {/* 개별 항목 */}
+                    <TermItem
+                      checked={terms.over14}
+                      onPress={() => toggleOne("over14")}
+                      label="(필수) 만 14세 이상 확인"
+                    />
+                    <TermItem
+                      checked={terms.tos}
+                      onPress={() => toggleOne("tos")}
+                      label="(필수) 이용약관 동의"
+                    />
+                    <TermItem
+                      checked={terms.privacyRequired}
+                      onPress={() => toggleOne("privacyRequired")}
+                      label="(필수) 개인정보 수집 및 이용 동의"
+                    />
+                    <TermItem
+                      checked={terms.privacyMarketing}
+                      onPress={() => toggleOne("privacyMarketing")}
+                      label="(선택) 개인정보 마케팅 활용 동의"
+                    />
+                  </View>
+                </View>
               </View>
             </View>
-
-            {/* 비밀번호 */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>비밀번호</Text>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="비밀번호를 입력하세요."
-                placeholderTextColor="#B8B8C4"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-            </View>
-
-            {/* 비밀번호 확인 */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>비밀번호 확인</Text>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="비밀번호를 다시 입력하세요."
-                placeholderTextColor="#B8B8C4"
-                secureTextEntry
-                value={passwordConfirm}
-                onChangeText={setPasswordConfirm}
-              />
-            </View>
-
-            {/* 이용약관 */}
-            <View style={styles.termsCard}>
-              {/* 전체 동의 */}
-              <TouchableOpacity
-                style={[styles.termRow, styles.termRowHeader]}
-                onPress={toggleAll}
-                activeOpacity={0.8}
-              >
-                <View style={styles.termLeft}>
-                  <Checkbox checked={terms.all} />
-                  <Text style={[styles.termText, styles.termAllText]}>
-                    이용약관 전체 동의
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* 구분선 */}
-              <View style={styles.termDivider} />
-
-              {/* 개별 항목 */}
-              <TermItem
-                checked={terms.over14}
-                onPress={() => toggleOne("over14")}
-                label="(필수) 만 14세 이상 확인"
-              />
-              <TermItem
-                checked={terms.tos}
-                onPress={() => toggleOne("tos")}
-                label="(필수) 이용약관 동의"
-              />
-              <TermItem
-                checked={terms.privacyRequired}
-                onPress={() => toggleOne("privacyRequired")}
-                label="(필수) 개인정보 수집 및 이용 동의"
-              />
-              <TermItem
-                checked={terms.privacyMarketing}
-                onPress={() => toggleOne("privacyMarketing")}
-                label="(선택) 개인정보 마케팅 활용 동의"
-              />
-            </View>
-          </View>
-
-          {/* 다음 버튼 */}
-          <View style={styles.bottomArea}>
+          </ScrollView>
+          {/* 🔥 float 하단 버튼 - ScrollView 밖으로 따로 배치 */}
+          <View style={styles.floatingBottomArea}>
             <TouchableOpacity
               style={[
                 styles.nextButton,
@@ -223,12 +461,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
+  // container: {
+  //   flex: 1,
+  //   paddingHorizontal: "6%",
+  //   paddingTop: "20%",
+  //   paddingBottom: "8%",
+  //   justifyContent: "space-between",
+  // },
   container: {
     flex: 1,
-    paddingHorizontal: "6%",
-    paddingTop: "20%",
-    paddingBottom: "8%",
-    justifyContent: "space-between",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingTop: height * 0.13, // 화면 높이의 12% 정도 위 여백
+    paddingBottom: height * 0.2, // 아래 여백
+    paddingHorizontal: 20, // 양 옆 여백 (고정 px)
+  },
+  inner: {
+    flexGrow: 1,
+    width: "100%",
+    maxWidth: 390, // 큰 폰에서 너무 넓어지지 않게
+    alignSelf: "center",
+    justifyContent: "space-between", // 위쪽(로고+폼)과 아래 버튼 사이에 공간 분배
   },
   logoWrapper: {
     alignItems: "center",
@@ -262,6 +516,58 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
   },
+  // 바깥 테두리(전체 input처럼 보이는 박스)
+  emailInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(0,0,0,0.25)",
+    overflow: "hidden", // 버튼 모서리도 둥글게
+    height: 48,
+  },
+  emailInput: {
+    flex: 1,
+    paddingHorizontal: 14,
+    color: "#FFFFFF",
+    fontSize: 14,
+  },
+  inputWithButton: {
+    marginRight: 8,
+  },
+  // 우측 중복확인 버튼
+  emailCheckButton: {
+    height: "100%",
+    paddingHorizontal: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    // backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "#EFEFEF",
+  },
+  emailCheckButtonDisabled: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "#3E3E3E",
+  },
+  emailCheckButtonText: {
+    fontSize: 12,
+    // color: "#FFFFFF",
+    color: "#3E3E3E",
+    fontWeight: "500",
+  },
+  emailCheckButtonTextDisabled: {
+    color: "#3E3E3E",
+  },
+  errorText: {
+    marginTop: 4,
+    fontSize: 11,
+    color: "#FF6B6B",
+  },
+  emailSuccessText: {
+    marginTop: 4,
+    fontSize: 11,
+    color: "#7BE495",
+  },
   passwordInput: {
     // flex: 1,
     // height: 48,
@@ -274,24 +580,8 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
   },
-  inputWithButton: {
-    marginRight: 8,
-  },
-  dupButton: {
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dupButtonText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontWeight: "500",
-  },
   termsCard: {
-    marginTop: 28,
+    // marginTop: 28,
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
@@ -353,7 +643,17 @@ const styles = StyleSheet.create({
   bottomArea: {
     marginTop: 24,
   },
+  floatingBottomArea: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 20, // iOS 홈 인디케이터 고려
+    backgroundColor: "transparent",
+  },
   nextButton: {
+    width: "100%",
     height: 52,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
