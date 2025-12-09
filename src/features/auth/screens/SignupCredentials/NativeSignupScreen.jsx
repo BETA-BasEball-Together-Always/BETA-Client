@@ -23,6 +23,9 @@ import TermsItemOffIcon from "../../assets/NativeSignup/svg/TermsItemOff.svg"; /
 import TermsCheckedIcon from "../../assets/NativeSignup/svg/TermsChecked.svg"; // 체크됐을 때 공통 아이콘
 import PasswordHiddenIcon from "../../assets/NativeSignup/svg/PasswordHidden.svg"; // 눈 감김 아이콘
 import PasswordVisibleIcon from "../../assets/NativeSignup/svg/PasswordVisible.svg"; // 눈 뜸 아이콘
+import {useCheckedField} from "../../hooks/useCheckedField";
+import SignupCheckedInput from "../../components/SignupCheckedInput";
+import {useEmailCheckMutation} from "../../services/emailCheckMutation";
 
 const {height} = Dimensions.get("window");
 
@@ -35,10 +38,10 @@ const NativeSignupScreen = ({navigation}) => {
     useState(false);
 
   // 👇 이메일 검증 관련 state 추가
-  const [emailError, setEmailError] = useState("");
-  const [emailTouched, setEmailTouched] = useState(false);
-  const [isEmailAvailable, setIsEmailAvailable] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  // const [emailError, setEmailError] = useState("");
+  // const [emailTouched, setEmailTouched] = useState(false);
+  // const [isEmailAvailable, setIsEmailAvailable] = useState(false);
+  // const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -67,85 +70,100 @@ const NativeSignupScreen = ({navigation}) => {
     privacyMarketing: false,
   });
 
+  const emailCheckMutation = useEmailCheckMutation();
+
   const validateEmail = (value) => {
     if (!value) return "이메일을 입력해 주세요.";
     if (!emailRegex.test(value)) return "올바른 이메일 형식을 입력해 주세요.";
     return "";
   };
 
-  const handleChangeEmail = (text) => {
-    const value = text.trimStart();
-    setEmail(value);
-    setIsEmailAvailable(false);
+  const emailField = useCheckedField({
+    validate: validateEmail,
+    checkAvailability: async (trimmedEmail) => {
+      // React Query mutation을 단순 async 함수처럼 사용
+      // 👉 react-query mutation 사용
+      console.log("before api call");
+      const isDuplicate = await emailCheckMutation.mutateAsync(trimmedEmail);
+      const available = !isDuplicate;
+      return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
+      // return true; // 임시(mock)
+    },
+  });
 
-    // 👉 인풋을 한 번이라도 빠져나간 이후에만 실시간 에러 업데이트
-    if (emailTouched) {
-      setEmailError(validateEmail(value));
-    } else {
-      // 아직 터치 전이면 에러 문구 안 보여줌
-      setEmailError("");
-    }
-  };
+  // const handleChangeEmail = (text) => {
+  //   const value = text.trimStart();
+  //   setEmail(value);
+  //   setIsEmailAvailable(false);
 
-  const handleBlurEmail = () => {
-    setEmailTouched(true);
-    const value = email.trim();
-    setEmail(value); // 뒤 공백 정리
-    setEmailError(validateEmail(value));
-  };
+  //   // 👉 인풋을 한 번이라도 빠져나간 이후에만 실시간 에러 업데이트
+  //   if (emailTouched) {
+  //     setEmailError(validateEmail(value));
+  //   } else {
+  //     // 아직 터치 전이면 에러 문구 안 보여줌
+  //     setEmailError("");
+  //   }
+  // };
+
+  // const handleBlurEmail = () => {
+  //   setEmailTouched(true);
+  //   const value = email.trim();
+  //   setEmail(value); // 뒤 공백 정리
+  //   setEmailError(validateEmail(value));
+  // };
 
   // 중복 확인 버튼
-  const handleCheckEmail = async () => {
-    const trimmed = email.trim();
-    const error = validateEmail(trimmed);
+  // const handleCheckEmail = async () => {
+  //   const trimmed = email.trim();
+  //   const error = validateEmail(trimmed);
 
-    if (error) {
-      setEmailTouched(true);
-      setEmailError(error);
-      return;
-    }
+  //   if (error) {
+  //     setEmailTouched(true);
+  //     setEmailError(error);
+  //     return;
+  //   }
 
-    try {
-      setIsCheckingEmail(true);
-      setEmailError("");
+  //   try {
+  //     setIsCheckingEmail(true);
+  //     setEmailError("");
 
-      // TODO: 여기서 실제 API 호출
-      // const { data } = await api.post("/auth/email/check", { email: trimmed });
-      // const available = data.available;
+  //     // TODO: 여기서 실제 API 호출
+  //     // const { data } = await api.post("/auth/email/check", { email: trimmed });
+  //     // const available = data.available;
 
-      const available = true; // 임시(mock)
+  //     const available = true; // 임시(mock)
 
-      if (available) {
-        setIsEmailAvailable(true);
-      } else {
-        setIsEmailAvailable(false);
-        setEmailError("이미 가입된 이메일이에요.");
-      }
-    } catch (e) {
-      setIsEmailAvailable(false);
-      setEmailError(
-        "이메일 중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요."
-      );
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  };
+  //     if (available) {
+  //       setIsEmailAvailable(true);
+  //     } else {
+  //       setIsEmailAvailable(false);
+  //       setEmailError("이미 가입된 이메일이에요.");
+  //     }
+  //   } catch (e) {
+  //     setIsEmailAvailable(false);
+  //     setEmailError(
+  //       "이메일 중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요."
+  //     );
+  //   } finally {
+  //     setIsCheckingEmail(false);
+  //   }
+  // };
 
-  const emailStatus = useMemo(() => {
-    if (isCheckingEmail) return "checking";
+  // const emailStatus = useMemo(() => {
+  //   if (isCheckingEmail) return "checking";
 
-    // 중복확인 성공
-    if (emailTouched && !emailError && isEmailAvailable) {
-      return "success";
-    }
+  //   // 중복확인 성공
+  //   if (emailTouched && !emailError && isEmailAvailable) {
+  //     return "success";
+  //   }
 
-    // 형식 오류 or 중복 실패 등 에러가 있는 상태
-    if (emailTouched && !!emailError) {
-      return "error";
-    }
+  //   // 형식 오류 or 중복 실패 등 에러가 있는 상태
+  //   if (emailTouched && !!emailError) {
+  //     return "error";
+  //   }
 
-    return "idle";
-  }, [isCheckingEmail, emailTouched, emailError, isEmailAvailable]);
+  //   return "idle";
+  // }, [isCheckingEmail, emailTouched, emailError, isEmailAvailable]);
 
   const getEmailLocalPart = (value) => {
     if (!value) return "";
@@ -245,8 +263,7 @@ const NativeSignupScreen = ({navigation}) => {
 
   const isFormValid = useMemo(() => {
     const requiredChecked = terms.over14 && terms.tos && terms.privacyRequired;
-    const emailValid =
-      email.trim().length > 0 && !emailError && isEmailAvailable;
+    const emailValid = !emailField.error && emailField.isAvailable;
 
     const pwError = validatePassword(password, email);
     const isPasswordValid = !pwError;
@@ -264,7 +281,13 @@ const NativeSignupScreen = ({navigation}) => {
     return (
       requiredChecked && emailValid && isPasswordValid && isPasswordConfirmValid
     );
-  }, [email, emailError, isEmailAvailable, password, passwordConfirm, terms]);
+  }, [
+    terms,
+    emailField.error,
+    emailField.isAvailable,
+    password,
+    passwordConfirm,
+  ]);
 
   const handleNext = () => {
     if (!isFormValid) return;
@@ -299,72 +322,12 @@ const NativeSignupScreen = ({navigation}) => {
                 {/* 폼 영역 */}
                 <View style={styles.formWrapper}>
                   {/* 이메일 */}
-                  <View style={styles.fieldGroup}>
-                    <Text style={styles.label}>이메일</Text>
-
-                    {/* input 처럼 보이는 컨테이너 */}
-                    <View style={styles.emailInputContainer}>
-                      <TextInput
-                        style={styles.emailInput}
-                        placeholder="이메일을 입력해주세요."
-                        placeholderTextColor="#B8B8C4"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={handleChangeEmail}
-                        onBlur={handleBlurEmail}
-                      />
-
-                      {/* 👉 오른쪽 영역: 상태에 따라 버튼 또는 아이콘 */}
-                      {emailStatus === "success" && (
-                        <View style={styles.emailStatusIconWrapper}>
-                          <EmailCheckSuccessIcon width={20} height={20} />
-                        </View>
-                      )}
-
-                      {emailStatus === "error" && (
-                        <View style={styles.emailStatusIconWrapper}>
-                          <EmailCheckFailIcon width={20} height={20} />
-                        </View>
-                      )}
-
-                      {(emailStatus === "idle" ||
-                        emailStatus === "checking") && (
-                        <TouchableOpacity
-                          style={[
-                            styles.emailCheckButton,
-                            (!email || !!emailError || isCheckingEmail) &&
-                              styles.emailCheckButtonDisabled,
-                          ]}
-                          activeOpacity={
-                            !email || !!emailError || isCheckingEmail ? 1 : 0.8
-                          }
-                          disabled={!email || !!emailError || isCheckingEmail}
-                          onPress={handleCheckEmail}
-                        >
-                          <Text
-                            style={[
-                              styles.emailCheckButtonText,
-                              (!email || !!emailError || isCheckingEmail) &&
-                                styles.emailCheckButtonTextDisabled,
-                            ]}
-                          >
-                            {isCheckingEmail ? "확인중..." : "중복확인"}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {/* 이메일 에러/성공 메시지 */}
-                    {emailTouched && !!emailError && (
-                      <Text style={styles.errorText}>{emailError}</Text>
-                    )}
-                    {emailTouched && !emailError && isEmailAvailable && (
-                      <Text style={styles.emailSuccessText}>
-                        사용 가능한 이메일이에요.
-                      </Text>
-                    )}
-                  </View>
+                  <SignupCheckedInput
+                    label="이메일"
+                    placeholder="이메일을 입력해주세요."
+                    keyboardType="email-address"
+                    field={emailField}
+                  />
 
                   {/* 비밀번호 */}
                   <View style={styles.fieldGroup}>
