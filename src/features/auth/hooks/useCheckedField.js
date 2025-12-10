@@ -33,10 +33,10 @@ export const useCheckedField = ({
 
   const handleCheck = async () => {
     const trimmed = value.trim();
+    setTouched(true);
     const validationError = validate(trimmed);
 
     if (validationError) {
-      setTouched(true);
       setError(validationError);
       return;
     }

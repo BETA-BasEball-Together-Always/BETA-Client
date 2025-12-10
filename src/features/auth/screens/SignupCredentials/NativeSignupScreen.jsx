@@ -292,7 +292,7 @@ const NativeSignupScreen = ({navigation}) => {
   const handleNext = () => {
     if (!isFormValid) return;
 
-    navigation.navigate("SignupFavoriteTeam", {
+    navigation.navigate("SignupNickname", {
       signupType: "NATIVE",
       email,
       password,

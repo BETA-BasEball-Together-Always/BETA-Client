@@ -18,12 +18,12 @@ const AuthStack = () => {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="NativeSignup" component={NativeSignupScreen} />
       <Stack.Screen name="SocialSignup" component={SocialSignupScreen} />
+      <Stack.Screen name="SignupNickname" component={SignupNicknameScreen} />
       <Stack.Screen
         name="SignupFavoriteTeam"
         component={SignupFavoriteTeamScreen}
       />
       <Stack.Screen name="SignupGenderAge" component={SignupGenderAgeScreen} />
-      <Stack.Screen name="SignupNickname" component={SignupNicknameScreen} />
     </Stack.Navigator>
   );
 };
