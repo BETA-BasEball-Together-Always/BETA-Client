@@ -17,16 +17,16 @@ import AuthBackground from "../../components/AuthBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
 
 // 🔽 팀 로고 SVG (경로는 프로젝트에 맞게 조정)
-import LG from "../../assets/teams/lg.svg";
-import Hanwha from "../../assets/teams/hanwha.svg";
-import SSG from "../../assets/teams/ssg.svg";
-import Samsung from "../../assets/teams/samsung.svg";
-import NC from "../../assets/teams/nc.svg";
-import KT from "../../assets/teams/kt.svg";
-import Lotte from "../../assets/teams/lotte.svg";
-import Kiwoom from "../../assets/teams/kiwoom.svg";
-import Doosan from "../../assets/teams/doosan.svg";
-import Kia from "../../assets/teams/kia.svg";
+import LG from "../../../../shared/assets/svg/teams/LG.svg";
+import Hanwha from "../../../../shared/assets/svg/teams/Hanhwa.svg";
+import SSG from "../../../../shared/assets/svg/teams/SSG.svg";
+import Samsung from "../../../../shared/assets/svg/teams/Samsung.svg";
+import NC from "../../../../shared/assets/svg/teams/NC.svg";
+import KT from "../../../../shared/assets/svg/teams/KT.svg";
+import Lotte from "../../../../shared/assets/svg/teams/Lotte.svg";
+import Kiwoom from "../../../../shared/assets/svg/teams/Kiwoom.svg";
+import Doosan from "../../../../shared/assets/svg/teams/Doosan.svg";
+import Kia from "../../../../shared/assets/svg/teams/KIA.svg";
 
 const {height} = Dimensions.get("window");
 
@@ -43,7 +43,7 @@ const TEAMS = [
   {key: "KIA", label: "기아 타이거즈", Icon: Kia},
 ];
 
-const SignupFavoriteTeam = ({navigation, route}) => {
+const SignupFavoriteTeamScreen = ({navigation, route}) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
 
   const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
@@ -79,15 +79,16 @@ const SignupFavoriteTeam = ({navigation, route}) => {
                 >
                   <Text style={styles.backButtonText}>{"<"}</Text>
                 </TouchableOpacity>
-
-                <SignupStepIndicator currentStep={2} />
+                <View style={styles.stepWrapper}>
+                  <SignupStepIndicator currentStep={2} />
+                </View>
 
                 <View style={styles.rightPlaceholder} />
               </View>
 
               {/* 타이틀 */}
               <Text style={styles.title}>
-                회원님의 팬심을 보여줄{"\n"}구단을 선택해주세요!
+                회원님의 팬심을 보여줄 구단을 선택해주세요!
               </Text>
 
               {/* 팀 선택 */}
@@ -98,12 +99,27 @@ const SignupFavoriteTeam = ({navigation, route}) => {
                   return (
                     <TouchableOpacity
                       key={key}
-                      style={[styles.card, selected && styles.cardSelected]}
+                      style={styles.item}
                       activeOpacity={0.85}
                       onPress={() => setSelectedTeam(key)}
                     >
-                      <Icon width={56} height={56} />
-                      <Text style={styles.teamLabel}>{label}</Text>
+                      <View
+                        style={[
+                          styles.iconBox,
+                          selected && styles.iconBoxSelected,
+                        ]}
+                      >
+                        <Icon width={100} height={100} />
+                      </View>
+
+                      <Text
+                        style={[
+                          styles.teamLabel,
+                          selected && styles.teamLabelSelected,
+                        ]}
+                      >
+                        {label}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -115,20 +131,20 @@ const SignupFavoriteTeam = ({navigation, route}) => {
           <View style={styles.floatingBottomArea}>
             <TouchableOpacity
               style={[
-                styles.nextButton,
-                !isNextEnabled && styles.nextButtonDisabled,
+                styles.completeButton,
+                !selectedTeam && styles.completeButtonDisabled,
               ]}
-              activeOpacity={isNextEnabled ? 0.8 : 1}
-              disabled={!isNextEnabled}
+              disabled={!selectedTeam}
+              activeOpacity={selectedTeam ? 0.85 : 1}
               onPress={handleNext}
             >
               <Text
                 style={[
-                  styles.nextButtonText,
-                  !isNextEnabled && styles.nextButtonTextDisabled,
+                  styles.completeButtonText,
+                  !selectedTeam && styles.completeButtonTextDisabled,
                 ]}
               >
-                다음
+                선택완료
               </Text>
             </TouchableOpacity>
           </View>
@@ -138,7 +154,7 @@ const SignupFavoriteTeam = ({navigation, route}) => {
   );
 };
 
-export default SignupFavoriteTeam;
+export default SignupFavoriteTeamScreen;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -169,11 +185,20 @@ const styles = StyleSheet.create({
   },
   backButton: {
     width: 32,
+    display: "flex",
     alignItems: "center",
+    justifyContent: "center",
+    // borderWidth: 1,
   },
   backButtonText: {
     fontSize: 30,
+    // borderWidth: 1,
+    lineHeight: 15,
     color: "#FFFFFF",
+  },
+  stepWrapper: {
+    alignItems: "center",
+    width: 150,
   },
   rightPlaceholder: {
     width: 32,
@@ -193,25 +218,54 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  card: {
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 22, // 세로 간격
+  },
+
+  item: {
     width: "48%",
-    aspectRatio: 1,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+  },
+
+  iconBox: {
+    width: 128,
+    height: 128,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
   },
-  cardSelected: {
+
+  // ✅ 선택된 카드 (LG 트윈스처럼)
+  iconBoxSelected: {
+    backgroundColor: "#FFFFFF",
     borderColor: "#FFFFFF",
-    backgroundColor: "rgba(255,255,255,0.18)",
+
+    // iOS 그림자
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: {width: 0, height: 6},
+
+    // Android 그림자
+    elevation: 8,
   },
+
   teamLabel: {
     marginTop: 10,
-    fontSize: 13,
-    color: "#FFFFFF",
-    fontWeight: "500",
+    fontSize: 14,
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  teamLabelSelected: {
+    color: "#FFFFFF", // 선택된 팀 이름 더 선명하게
   },
 
   floatingBottomArea: {
@@ -222,22 +276,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  nextButton: {
-    height: 52,
+
+  completeButton: {
+    paddingVertical: 12,
+    // height: 52,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
-  nextButtonDisabled: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+
+  completeButtonDisabled: {
+    backgroundColor: "#232323",
   },
-  nextButtonText: {
+
+  completeButtonText: {
     fontSize: 16,
     fontWeight: "700",
     color: "#111111",
   },
-  nextButtonTextDisabled: {
-    color: "rgba(255,255,255,0.45)",
+
+  completeButtonTextDisabled: {
+    color: "#3E3E3E",
   },
 });
