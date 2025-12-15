@@ -187,20 +187,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     height: height * 0.1,
-    marginBottom: 16,
+    marginBottom: 20,
     // borderWidth: 1,
   },
   backButton: {
     width: 32,
     // height: 32,
-    display: "flex",
-    justifyContent: "center",
     alignItems: "center",
     // borderWidth: 1,
   },
   backButtonText: {
     color: "#FFFFFF",
     fontSize: 30,
+    lineHeight: 15,
     // borderWidth: 1,
   },
   stepWrapper: {
