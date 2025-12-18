@@ -426,6 +426,7 @@ const NativeSignupScreen = ({navigation}) => {
                       checked={terms.over14}
                       onPress={() => toggleOne("over14")}
                       label="(필수) 만 14세 이상 확인"
+                      showChevron={false}
                     />
                     <TermItem
                       checked={terms.tos}
@@ -495,18 +496,18 @@ const Checkbox = ({checked, variant}) => {
   );
 };
 
-const TermItem = ({checked, onPress, label}) => (
+const TermItem = ({checked, onPress, label, showChevron = true}) => (
   <TouchableOpacity
     style={styles.termRow}
     onPress={onPress}
     activeOpacity={0.8}
   >
     <View style={styles.termLeft}>
-      {/* 🔽 여기 */}
       <Checkbox checked={checked} variant="item" />
       <Text style={styles.termText}>{label}</Text>
     </View>
-    <Text style={styles.chevron}>{">"}</Text>
+
+    {showChevron && <Text style={styles.chevron}>{">"}</Text>}
   </TouchableOpacity>
 );
 
