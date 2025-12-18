@@ -424,24 +424,40 @@ const NativeSignupScreen = ({navigation}) => {
                     {/* 개별 항목 */}
                     <TermItem
                       checked={terms.over14}
-                      onPress={() => toggleOne("over14")}
+                      onToggle={() => toggleOne("over14")}
                       label="(필수) 만 14세 이상 확인"
                       showChevron={false}
                     />
+
                     <TermItem
                       checked={terms.tos}
-                      onPress={() => toggleOne("tos")}
+                      onToggle={() => toggleOne("tos")}
                       label="(필수) 이용약관 동의"
+                      onPressChevron={() =>
+                        navigation.navigate("TermsDetail", {type: "TOS"})
+                      }
                     />
+
                     <TermItem
                       checked={terms.privacyRequired}
-                      onPress={() => toggleOne("privacyRequired")}
+                      onToggle={() => toggleOne("privacyRequired")}
                       label="(필수) 개인정보 수집 및 이용 동의"
+                      onPressChevron={() =>
+                        navigation.navigate("TermsDetail", {
+                          type: "PRIVACY_REQUIRED",
+                        })
+                      }
                     />
+
                     <TermItem
                       checked={terms.privacyMarketing}
-                      onPress={() => toggleOne("privacyMarketing")}
+                      onToggle={() => toggleOne("privacyMarketing")}
                       label="(선택) 개인정보 마케팅 활용 동의"
+                      onPressChevron={() =>
+                        navigation.navigate("TermsDetail", {
+                          type: "PRIVACY_MARKETING",
+                        })
+                      }
                     />
                   </View>
                 </View>
@@ -496,19 +512,35 @@ const Checkbox = ({checked, variant}) => {
   );
 };
 
-const TermItem = ({checked, onPress, label, showChevron = true}) => (
-  <TouchableOpacity
-    style={styles.termRow}
-    onPress={onPress}
-    activeOpacity={0.8}
-  >
-    <View style={styles.termLeft}>
+const TermItem = ({
+  checked,
+  onToggle,
+  label,
+  showChevron = true,
+  onPressChevron,
+}) => (
+  <View style={styles.termRow}>
+    {/* ✅ 왼쪽(체크+라벨)만 눌러도 토글 */}
+    <TouchableOpacity
+      style={styles.termLeft}
+      onPress={onToggle}
+      activeOpacity={0.8}
+    >
       <Checkbox checked={checked} variant="item" />
       <Text style={styles.termText}>{label}</Text>
-    </View>
+    </TouchableOpacity>
 
-    {showChevron && <Text style={styles.chevron}>{">"}</Text>}
-  </TouchableOpacity>
+    {/* ✅ chevron은 별도 버튼: 상세 화면 이동 */}
+    {showChevron && (
+      <TouchableOpacity
+        onPress={onPressChevron}
+        activeOpacity={0.8}
+        hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
+      >
+        <Text style={styles.chevron}>{">"}</Text>
+      </TouchableOpacity>
+    )}
+  </View>
 );
 
 export default NativeSignupScreen;
