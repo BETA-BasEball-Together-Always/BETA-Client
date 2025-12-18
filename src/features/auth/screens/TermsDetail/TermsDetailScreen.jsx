@@ -14,17 +14,17 @@ const TermsDetailScreen = ({navigation, route}) => {
 
   const {title, body} = useMemo(() => {
     switch (type) {
-      case "TOS":
+      case "tos":
         return {
           title: "이용약관",
           body: "여기에 이용약관 내용을 넣어주세요.\n\n- 서비스 목적\n- 회원 의무\n- 금지 행위\n- 책임 제한\n- 분쟁 해결\n\n(백엔드/노션/웹뷰 등으로 연결 예정이면 이 부분을 교체)",
         };
-      case "PRIVACY_REQUIRED":
+      case "privacyRequired":
         return {
           title: "개인정보 수집 및 이용 동의",
           body: "여기에 개인정보 수집/이용 동의 내용을 넣어주세요.\n\n- 수집 항목\n- 이용 목적\n- 보유 기간\n- 동의 거부 권리 및 불이익",
         };
-      case "PRIVACY_MARKETING":
+      case "privacyMarketing":
         return {
           title: "개인정보 마케팅 활용 동의",
           body: "여기에 마케팅 활용 동의 내용을 넣어주세요.\n\n- 활용 항목\n- 활용 목적\n- 보유 기간\n- 수신 동의/철회 방법",

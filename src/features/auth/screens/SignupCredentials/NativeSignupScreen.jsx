@@ -26,6 +26,7 @@ import PasswordVisibleIcon from "../../assets/NativeSignup/svg/PasswordVisible.s
 import {useCheckedField} from "../../hooks/useCheckedField";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
 import {useEmailCheckMutation} from "../../services/emailCheckMutation";
+import TermsAgreementCard from "../../components/TermsAgreementCard";
 
 const {height} = Dimensions.get("window");
 
@@ -402,64 +403,13 @@ const NativeSignupScreen = ({navigation}) => {
                   </View>
 
                   {/* 이용약관 */}
-                  <View style={styles.termsCard}>
-                    {/* 전체 동의 */}
-                    <TouchableOpacity
-                      style={[styles.termRow, styles.termRowHeader]}
-                      onPress={toggleAll}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.termLeft}>
-                        {/* 🔽 variant="all" 추가 */}
-                        <Checkbox checked={terms.all} variant="all" />
-                        <Text style={[styles.termText, styles.termAllText]}>
-                          이용약관 전체 동의
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* 구분선 */}
-                    <View style={styles.termDivider} />
-
-                    {/* 개별 항목 */}
-                    <TermItem
-                      checked={terms.over14}
-                      onToggle={() => toggleOne("over14")}
-                      label="(필수) 만 14세 이상 확인"
-                      showChevron={false}
-                    />
-
-                    <TermItem
-                      checked={terms.tos}
-                      onToggle={() => toggleOne("tos")}
-                      label="(필수) 이용약관 동의"
-                      onPressChevron={() =>
-                        navigation.navigate("TermsDetail", {type: "TOS"})
-                      }
-                    />
-
-                    <TermItem
-                      checked={terms.privacyRequired}
-                      onToggle={() => toggleOne("privacyRequired")}
-                      label="(필수) 개인정보 수집 및 이용 동의"
-                      onPressChevron={() =>
-                        navigation.navigate("TermsDetail", {
-                          type: "PRIVACY_REQUIRED",
-                        })
-                      }
-                    />
-
-                    <TermItem
-                      checked={terms.privacyMarketing}
-                      onToggle={() => toggleOne("privacyMarketing")}
-                      label="(선택) 개인정보 마케팅 활용 동의"
-                      onPressChevron={() =>
-                        navigation.navigate("TermsDetail", {
-                          type: "PRIVACY_MARKETING",
-                        })
-                      }
-                    />
-                  </View>
+                  <TermsAgreementCard
+                    value={terms}
+                    onChange={setTerms}
+                    onPressDetail={(type) => {
+                      navigation.navigate("TermsDetail", {type});
+                    }}
+                  />
                 </View>
               </View>
             </View>
