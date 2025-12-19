@@ -1,4 +1,4 @@
-// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
+﻿// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
 import React, {useMemo} from "react";
 import {
   View,
@@ -19,13 +19,12 @@ import SignupStepIndicator from "../../components/SignupStepIndicator";
 import {useCheckedField} from "../../hooks/useCheckedField";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {useNicknameCheckMutation} from "../../services/nicknameCheckMutation";
-// TODO: 닉네임 중복 확인 API 연결 시 사용
 
 const {height} = Dimensions.get("window");
 
 const SignupNicknameScreen = ({navigation, route}) => {
-  // TODO: 닉네임 중복 확인 mutation 연결
-  const nicknameCheckMutation = useNicknameCheckMutation();
+  const signup = route?.params?.signup ?? {}; // ? { signupType, email, terms ... }
+  const {mutateAsync: checkNicknameDuplicate} = useNicknameCheckMutation();
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -50,15 +49,10 @@ const SignupNicknameScreen = ({navigation, route}) => {
   const nicknameField = useCheckedField({
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
-      // TODO: 실제 API 연결
-      // const available = await nicknameCheckMutation.mutateAsync(trimmedNickname);
-      // return available;
-
-      console.log("before api call");
-      const isDuplicate =
-        await nicknameCheckMutation.mutateAsync(trimmedNickname);
-      const available = !isDuplicate;
-      return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
+      // const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
+      // const available = !isDuplicate;
+      // return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
+      return true;
     },
   });
 
@@ -75,8 +69,10 @@ const SignupNicknameScreen = ({navigation, route}) => {
 
     // 다음 단계로 이동 (즐겨찾는 팀 화면으로 이동 예시)
     navigation.navigate("SignupFavoriteTeam", {
-      ...route?.params,
-      nickname,
+      signup: {
+        ...signup,
+        nickname,
+      },
     });
   };
 

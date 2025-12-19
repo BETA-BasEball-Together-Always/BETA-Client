@@ -46,14 +46,19 @@ const TEAMS = [
 const SignupFavoriteTeamScreen = ({navigation, route}) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
 
+  // ✅ signup 객체로만 누적 전달
+  const signup = route?.params?.signup ?? {};
+
   const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
 
   const handleNext = () => {
     if (!isNextEnabled) return;
 
     navigation.navigate("SignupGenderAge", {
-      ...route?.params,
-      favoriteTeam: selectedTeam,
+      signup: {
+        ...signup,
+        favoriteTeam: selectedTeam,
+      },
     });
   };
 

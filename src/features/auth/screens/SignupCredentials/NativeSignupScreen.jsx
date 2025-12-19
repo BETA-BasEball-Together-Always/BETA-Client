@@ -27,10 +27,13 @@ import {useCheckedField} from "../../hooks/useCheckedField";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
 import {useEmailCheckMutation} from "../../services/emailCheckMutation";
 import TermsAgreementCard from "../../components/TermsAgreementCard";
+import {useSignupSecretStore} from "../../stores/useSignupSecretStore";
 
 const {height} = Dimensions.get("window");
 
 const NativeSignupScreen = ({navigation}) => {
+  const {setPassword: setSignupPassword} = useSignupSecretStore();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -85,86 +88,12 @@ const NativeSignupScreen = ({navigation}) => {
       // React Query mutation을 단순 async 함수처럼 사용
       // 👉 react-query mutation 사용
       console.log("before api call");
-      const isDuplicate = await emailCheckMutation.mutateAsync(trimmedEmail);
-      const available = !isDuplicate;
-      return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
-      // return true; // 임시(mock)
+      // const isDuplicate = await emailCheckMutation.mutateAsync(trimmedEmail);
+      // const available = !isDuplicate;
+      // return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
+      return true; // 임시(mock)
     },
   });
-
-  // const handleChangeEmail = (text) => {
-  //   const value = text.trimStart();
-  //   setEmail(value);
-  //   setIsEmailAvailable(false);
-
-  //   // 👉 인풋을 한 번이라도 빠져나간 이후에만 실시간 에러 업데이트
-  //   if (emailTouched) {
-  //     setEmailError(validateEmail(value));
-  //   } else {
-  //     // 아직 터치 전이면 에러 문구 안 보여줌
-  //     setEmailError("");
-  //   }
-  // };
-
-  // const handleBlurEmail = () => {
-  //   setEmailTouched(true);
-  //   const value = email.trim();
-  //   setEmail(value); // 뒤 공백 정리
-  //   setEmailError(validateEmail(value));
-  // };
-
-  // 중복 확인 버튼
-  // const handleCheckEmail = async () => {
-  //   const trimmed = email.trim();
-  //   const error = validateEmail(trimmed);
-
-  //   if (error) {
-  //     setEmailTouched(true);
-  //     setEmailError(error);
-  //     return;
-  //   }
-
-  //   try {
-  //     setIsCheckingEmail(true);
-  //     setEmailError("");
-
-  //     // TODO: 여기서 실제 API 호출
-  //     // const { data } = await api.post("/auth/email/check", { email: trimmed });
-  //     // const available = data.available;
-
-  //     const available = true; // 임시(mock)
-
-  //     if (available) {
-  //       setIsEmailAvailable(true);
-  //     } else {
-  //       setIsEmailAvailable(false);
-  //       setEmailError("이미 가입된 이메일이에요.");
-  //     }
-  //   } catch (e) {
-  //     setIsEmailAvailable(false);
-  //     setEmailError(
-  //       "이메일 중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요."
-  //     );
-  //   } finally {
-  //     setIsCheckingEmail(false);
-  //   }
-  // };
-
-  // const emailStatus = useMemo(() => {
-  //   if (isCheckingEmail) return "checking";
-
-  //   // 중복확인 성공
-  //   if (emailTouched && !emailError && isEmailAvailable) {
-  //     return "success";
-  //   }
-
-  //   // 형식 오류 or 중복 실패 등 에러가 있는 상태
-  //   if (emailTouched && !!emailError) {
-  //     return "error";
-  //   }
-
-  //   return "idle";
-  // }, [isCheckingEmail, emailTouched, emailError, isEmailAvailable]);
 
   const getEmailLocalPart = (value) => {
     if (!value) return "";
@@ -209,7 +138,7 @@ const NativeSignupScreen = ({navigation}) => {
     setPassword(value);
 
     if (passwordTouched) {
-      setPasswordError(validatePassword(value, email));
+      setPasswordError(validatePassword(value, emailField.value));
     }
 
     // 비밀번호가 바뀌면, 확인란과도 다시 비교
@@ -222,7 +151,7 @@ const NativeSignupScreen = ({navigation}) => {
 
   const handleBlurPassword = () => {
     setPasswordTouched(true);
-    setPasswordError(validatePassword(password, email));
+    setPasswordError(validatePassword(password, emailField.value));
   };
 
   // 비밀번호 확인 입력/블러 핸들러
@@ -266,7 +195,7 @@ const NativeSignupScreen = ({navigation}) => {
     const requiredChecked = terms.over14 && terms.tos && terms.privacyRequired;
     const emailValid = !emailField.error && emailField.isAvailable;
 
-    const pwError = validatePassword(password, email);
+    const pwError = validatePassword(password, emailField.value);
     const isPasswordValid = !pwError;
 
     const isPasswordConfirmValid =
@@ -293,10 +222,17 @@ const NativeSignupScreen = ({navigation}) => {
   const handleNext = () => {
     if (!isFormValid) return;
 
+    // ✅ password는 params로 넘기지 않고, 메모리에만 보관
+    setSignupPassword(password);
+
+    // ✅ params는 signup 객체로 “하나만” 누적 전달
     navigation.navigate("SignupNickname", {
-      signupType: "NATIVE",
-      email,
-      password,
+      signup: {
+        signupType: "NATIVE",
+        email: emailField.value,
+        personalInfoRequired: terms.privacyRequired,
+        agreeMarketing: terms.privacyMarketing,
+      },
     });
   };
 

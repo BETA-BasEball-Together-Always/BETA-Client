@@ -27,8 +27,11 @@ import {kakaoSignIn} from "./libs/kakaoSignIn";
 import {naverSignIn} from "./libs/naverSignIn";
 import {useSocialLoginMutation} from "../../services/socialLoginMutation";
 import AuthBackground from "../../components/AuthBackground";
+import {useSignupSecretStore} from "../../stores/useSignupSecretStore";
 
 const LoginScreen = ({navigation}) => {
+  const {setSocialAuth, clearSecrets} = useSignupSecretStore();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSocialLoading, setIsSocialLoading] = useState(false);
@@ -70,6 +73,8 @@ const LoginScreen = ({navigation}) => {
         }
       );
       // 2) Zustand / AsyncStorage / MMKV 등에 appToken 저장
+      // clearSecrets(); // 혹시 이전 가입 시도 흔적 제거
+      // setSocialAuth({provider: "KAKAO", token: token.accessToken});
       // 3) 홈 화면으로 이동 (navigation.navigate("Home") 같은 것)
     } catch (error) {
       Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
@@ -104,12 +109,28 @@ const LoginScreen = ({navigation}) => {
       console.log("네이버 토큰:", token); // accessToken, refreshToken, 만료시간 등
       console.log("네이버 프로필:", profile); // email, name, nickname, gender, age 등
 
+      // 3) 홈 화면으로 이동 (navigation.navigate("Home") 같은 것)
+
       // 1) 백엔드에 네이버 토큰 보내서 우리 앱용 accessToken 발급
-      // const { appToken } = await naverSignInAndIssueAppToken(token);
+      socialLoginMutation.mutate(
+        {provider: "KAKAO", token: token.accessToken},
+        {
+          onSuccess: (response) => {
+            console.log("소셜 로그인 성공! newUser?:", response.data.newUser);
+          },
+        },
 
+        {
+          onError: (error) => {
+            console.log("소셜 로그인 실패:", error);
+          },
+        }
+      );
+      // clearSecrets(); // 혹시 이전 가입 시도 흔적 제거
+      // setSocialAuth({provider: "NAVER", token: token.accessToken});
       // 2) MMKV / AsyncStorage / Zustand 등에 appToken 저장
-
       // 3) 메인 화면 이동
+
       // navigation.replace("Main");
     } catch (error) {
       console.log(error);
@@ -164,7 +185,12 @@ const LoginScreen = ({navigation}) => {
               <Text style={styles.linkText}>비밀번호 찾기</Text>
 
               <View style={{flex: 1}} />
-              <Text style={styles.linkText}>회원가입</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("NativeSignup")}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.linkText}>회원가입</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -259,7 +285,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   linkText: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#E0E0EA",
   },
   dividerDot: {

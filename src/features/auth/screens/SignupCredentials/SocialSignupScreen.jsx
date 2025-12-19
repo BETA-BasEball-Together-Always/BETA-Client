@@ -59,12 +59,12 @@ const SocialSignupScreen = ({navigation, route}) => {
   const handleNext = () => {
     if (!isFormValid) return;
 
-    // route.params에 provider, socialToken 등 소셜 로그인에서 받은 값이 있다면 그대로 넘기기
-    navigation.navigate("SignupFavoriteTeam", {
-      ...route?.params,
-      signupType: "SOCIAL",
-      email: emailField.value.trim(),
-      terms,
+    navigation.navigate("SignupNickname", {
+      signup: {
+        email: emailField.value,
+        personalInfoRequired: terms.privacyRequired,
+        agreeMarketing: terms.privacyMarketing,
+      },
     });
   };
 

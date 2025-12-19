@@ -1,5 +1,5 @@
 // src/features/auth/screens/SignupGenderAge/SignupGenderAgeScreen.jsx
-import React, {useState, useMemo} from "react";
+import React, {useState, useMemo, useEffect} from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {SafeAreaView} from "react-native-safe-area-context";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
+import {useSignupSecretStore} from "../../stores/useSignupSecretStore";
 
 const {height} = Dimensions.get("window");
 
@@ -24,15 +25,66 @@ const SignupGenderAgeScreen = ({navigation, route}) => {
   const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
   const [age, setAge] = useState("");
 
+  // ✅ 누적된 회원가입 정보
+  const signup = route?.params?.signup ?? {};
+
+  // ✅ password는 params가 아니라 zustand 메모리에서
+  const {password, clearSecrets} = useSignupSecretStore();
+
   const isNextEnabled = useMemo(() => {
     return !!age && Number(age) > 0;
   }, [age]);
 
-  const handleNext = () => {
-    navigation.navigate("SignupNickname", {
-      ...route?.params,
-      gender,
-      age: age ? Number(age) : null,
+  useEffect(() => {
+    console.log("gender", gender);
+  }, [gender]);
+
+  // ✅ 마지막 제출 로직
+  const submitSignup = async ({genderValue, ageValue}) => {
+    // password가 없으면(새로고침/앱종료 등) 안전하게 되돌리기
+    if (signup.signupType === "NATIVE" && !password) {
+      // UX는 프로젝트 스타일에 맞게 토스트/알럿 처리 추천
+      navigation.replace("Login");
+      return;
+    }
+
+    // ✅ 최종 payload 조립 (필요 필드만 백엔드 명세대로 맞춰)
+    const payload = {
+      social: signup.signupType ?? null,
+      email: signup.email,
+      password, // ✅ 여기서만 사용
+      agreeMarketing: signup.agreeMarketing,
+      personalInfoRequired: signup.personalInfoRequired,
+      nickName: signup.nickname,
+      favoriteTeam: signup.favoriteTeam,
+      gender: genderValue ?? null, // 선택사항
+      age: ageValue ?? null, // 선택사항
+    };
+    console.log("최종 회원가입 payload:", payload);
+
+    // ✅ API 호출 (엔드포인트는 너희 명세로 수정)
+    // await api.post("/api/auth/signup", payload);
+
+    // ✅ 성공 시 비밀번호 즉시 제거
+    // clearSecrets();
+
+    // ✅ 완료 후 이동 (완료 화면/로그인/메인 등 너희 플로우로)
+    // navigation.replace("Login"); // 예시
+  };
+
+  const handleNext = async () => {
+    // 다음 버튼(나이 입력 완료) 눌렀을 때
+    await submitSignup({
+      genderValue: gender, // 선택
+      ageValue: age ? Number(age) : null, // 선택
+    });
+  };
+
+  const handleSkip = async () => {
+    // 건너뛰기 눌렀을 때 (성별/나이 둘 다 null로 처리)
+    await submitSignup({
+      genderValue: null,
+      ageValue: null,
     });
   };
 
@@ -77,15 +129,15 @@ const SignupGenderAgeScreen = ({navigation, route}) => {
                 <TouchableOpacity
                   style={[
                     styles.genderButton,
-                    gender === "FEMALE" && styles.genderFemaleSelected,
+                    gender === "F" && styles.genderFemaleSelected,
                   ]}
-                  onPress={() => setGender("FEMALE")}
+                  onPress={() => setGender("F")}
                   activeOpacity={0.85}
                 >
                   <Text
                     style={[
                       styles.genderText,
-                      gender === "FEMALE" && styles.genderFemaleTextSelected,
+                      gender === "F" && styles.genderFemaleTextSelected,
                     ]}
                   >
                     여성
@@ -95,15 +147,15 @@ const SignupGenderAgeScreen = ({navigation, route}) => {
                 <TouchableOpacity
                   style={[
                     styles.genderButton,
-                    gender === "MALE" && styles.genderMaleSelected,
+                    gender === "M" && styles.genderMaleSelected,
                   ]}
-                  onPress={() => setGender("MALE")}
+                  onPress={() => setGender("M")}
                   activeOpacity={0.85}
                 >
                   <Text
                     style={[
                       styles.genderText,
-                      gender === "MALE" && styles.genderMaleTextSelected,
+                      gender === "M" && styles.genderMaleTextSelected,
                     ]}
                   >
                     남성
@@ -146,7 +198,7 @@ const SignupGenderAgeScreen = ({navigation, route}) => {
             <TouchableOpacity
               style={styles.skipButton}
               activeOpacity={0.8}
-              onPress={handleNext}
+              onPress={handleSkip}
             >
               <Text style={styles.skipButtonText}>건너뛰기</Text>
             </TouchableOpacity>
