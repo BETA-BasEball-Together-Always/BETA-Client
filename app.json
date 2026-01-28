@@ -7,9 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "assetBundlePatterns": [
-      "src/shared/assets/fonts/*"
-    ],
+    "assetBundlePatterns": ["src/shared/assets/fonts/*"],
     "splash": {
       "image": "./assets/splash-screen.png",
       "resizeMode": "cover",
@@ -30,9 +28,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.CAMERA"
-      ],
+      "permissions": ["android.permission.CAMERA"],
       "package": "com.bmbx08.Beta"
     },
     "web": {
@@ -47,15 +43,17 @@
         "@react-native-seoul/kakao-login",
         {
           "kakaoAppKey": "d93bc885f3456f69f29a1a4073778dfb",
-          "overrideKakaoSDKVersion": "2.11.2", 
-          "kotlinVersion": "2.0.0" 
+          "overrideKakaoSDKVersion": "2.11.2",
+          "kotlinVersion": "2.0.0"
         }
       ],
       [
         "expo-build-properties",
         {
           "android": {
-            "extraMavenRepos": ["https://devrepo.kakao.com/nexus/content/groups/public/"]
+            "extraMavenRepos": [
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ]
           }
         }
       ]
@@ -65,6 +63,6 @@
         "projectId": "cb0869cf-b218-49c9-a57c-e29944ee41fb"
       }
     },
-    "owner": "bmbx08"
+    "owner": "beta_app"
   }
 }
