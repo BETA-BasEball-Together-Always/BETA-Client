@@ -12,7 +12,7 @@ import {
 } from "@tanstack/react-query";
 import {useFonts} from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import {initializeNaver} from "../features/auth/screens/Login/libs/naverInit";
+import {initializeNaver} from "../features/auth/libs/Login/naverInit";
 
 const queryClient = new QueryClient({
   defaultOptions: {
