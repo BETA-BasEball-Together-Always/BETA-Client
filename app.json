@@ -9,8 +9,8 @@
     "newArchEnabled": true,
     "assetBundlePatterns": ["src/shared/assets/fonts/*"],
     "splash": {
-      "image": "./assets/splash-screen.png",
-      "resizeMode": "cover",
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
