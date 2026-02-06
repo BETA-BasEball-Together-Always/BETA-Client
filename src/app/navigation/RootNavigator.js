@@ -13,7 +13,7 @@ const RootNavigator = () => {
   return (
     <Stack.Navigator
       screenOptions={{headerShown: false}}
-      initialRouteName="Main"
+      initialRouteName="Auth"
     >
       {/* <Stack.Screen name="Splash" component={SplashScreen} /> */}
       {/* {accessToken ? ( */}
