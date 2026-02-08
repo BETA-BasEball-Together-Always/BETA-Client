@@ -3,6 +3,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 export const appleSignIn = async () => {
   try {
     const credential = await AppleAuthentication.signInAsync({
+      //이름 및 이메일 요청 (가능하다면 성별 및 나이대 요청도 고려할 것)
       requestedScopes: [
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
         AppleAuthentication.AppleAuthenticationScope.EMAIL,

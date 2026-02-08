@@ -10,14 +10,12 @@ import { naverSignIn } from "../../libs/Login/naverSignIn";
 import { appleSignIn } from "../../libs/Login/appleSignIn";
 import { useSocialLoginMutation } from "../../services/socialLoginMutation";
 
-//deviceId 가져오기 (apple 로그인에서 요구)
-import Constants from "expo-constants";
-
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "../../assets/Login/kakao.svg";
 import NaverIcon from "../../assets/Login/naver.svg";
 import AppleIcon from "../../assets/Login/apple.svg";
+import { useSignupSecretStore } from "../../stores/useSignupSecretStore";
 
 const LoginScreen = ({ navigation }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
@@ -31,7 +29,8 @@ const LoginScreen = ({ navigation }) => {
       const { token, profile, cancelled } = await appleSignIn();
       if (cancelled) return;
 
-      const deviceId = Constants.installationId || "UNKNOWN_DEVICE";
+      // 서버 호출 전 deviceId, fullName, email 등 추가 정보 처리!!
+      const deviceId = token?.user || "APPLE_UNKNOWN_DEVICE";
 
       console.log("애플 토큰:", token);
       console.log("애플 프로필:", profile);
@@ -42,6 +41,15 @@ const LoginScreen = ({ navigation }) => {
         {
           onSuccess: (response) => {
             console.log("소셜 로그인 성공! newUser?:", response?.data?.newUser);
+
+            //todo: auth 완성 후 response.data에서 accessToken, refreshToken 받아서 저장 처리
+            //accessToken authStore에 저장할 것!
+            //refreshToken secureStore에 저장할 것
+            //api 인터셉터 활성화 시 authorization 헤더 자동 세팅...
+            useSignupSecretStore.getState().setSocialAuth({
+              provider: "APPLE",
+              token: token.identityToken,
+            });
           },
           onError: (error) => {
             console.log("소셜 로그인 실패:", error);
