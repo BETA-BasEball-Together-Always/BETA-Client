@@ -25,7 +25,52 @@ const LoginScreen = ({ navigation }) => {
   const socialLoginMutation = useSocialLoginMutation();
 
   const handleAppleLogin = async () => {
-    // 코드 다시 짜기
+    if (isSocialLoading) return;
+    setIsSocialLoading(true);
+
+    try {
+      const { token, cancelled } = await appleSignIn();
+      if (cancelled) return;
+
+      console.log("애플 토큰:", token);
+
+      const deviceId = await getDeviceId();
+
+      socialLoginMutation.mutate(
+        { provider: "APPLE", token: token.identityToken, deviceId },
+        {
+          onSuccess: async (response) => {
+            console.log("소셜 로그인 성공! newUser?:", response?.data?.newUser);
+
+            const { isNewUser, userResponse } = response.data;
+
+            // 로그인 이후 자동 로그인 위해 필요함!!
+            // todo: expo-secure-store 설치할 것 (재빌드 x)
+            await SecureStore.setItemAsync(
+              "accessToken",
+              userResponse.accessToken,
+            );
+            await SecureStore.setItemAsync(
+              "refreshToken",
+              userResponse.refreshToken,
+            );
+          },
+          onError: (error) => {
+            console.log("애플 로그인 실패:", error?.response?.data);
+
+            Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
+          },
+        },
+      );
+    } catch (error) {
+      console.log("애플 로그인 오류:", error);
+      console.log("애플 로그인 오류 데이터:", error?.response?.data);
+      console.log("애플 로그인 오류 메시지:", error?.message);
+      console.log("애플 로그인 오류 코드:", error?.code);
+      Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
+    } finally {
+      setIsSocialLoading(false);
+    }
   };
 
   const handleKakaoLogin = async () => {

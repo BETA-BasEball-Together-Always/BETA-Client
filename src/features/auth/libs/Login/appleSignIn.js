@@ -9,19 +9,24 @@ export const appleSignIn = async () => {
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
       ],
     });
+
+    if (!credential.identityToken) {
+      throw new Error("애플 identityToken이 없습니다.");
+    }
+
     return {
       // 애플 로그인: 사용자 정보를 처음 로그인할 때만 전달하고 이후로는 null값만 나옴!!
       // identityToken만으로도 인증하도록 요청할 것!!
       cancelled: false,
       token: {
         identityToken: credential.identityToken,
-        authorizationCode: credential.authorizationCode,
-        user: credential.user,
-        realUserStatus: credential.realUserStatus,
+        // authorizationCode: credential.authorizationCode,
+        // user: credential.user,
+        // realUserStatus: credential.realUserStatus,
       },
       profile: {
-        fullName: credential.fullName || null,
-        email: credential.email || null,
+        fullName: credential.fullName ?? null,
+        email: credential.email ?? null,
       },
     };
   } catch (error) {

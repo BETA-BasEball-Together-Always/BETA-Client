@@ -1,6 +1,6 @@
 // src/features/auth/services/socialLoginMutation.js
-import {useMutation} from "@tanstack/react-query";
-import {authKeys} from "./authKeys";
+import { useMutation } from "@tanstack/react-query";
+import { authKeys } from "./authKeys";
 // TODO: 프로젝트에 맞게 axiosInstance 경로 수정
 import api from "../../../shared/libs/api";
 
@@ -27,7 +27,8 @@ const socialLoginApi = (provider, body) => {
 export const useSocialLoginMutation = () => {
   return useMutation({
     mutationKey: authKeys.socialLogin("GLOBAL"), // Devtools에서 묶어보는용, 실사용은 변수로 구분
-    mutationFn: ({provider, token}) => socialLoginApi(provider, {token}),
+    mutationFn: ({ provider, token, deviceId }) =>
+      socialLoginApi(provider, { token, deviceId }),
     // 👇 성공 시 여기서 response 사용 가능
   });
 };
