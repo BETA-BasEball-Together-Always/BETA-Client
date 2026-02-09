@@ -37,14 +37,16 @@ const variantClassNameMap = {
   numMediumRegular: "font-noto-regular text-num-medium-regular",
 };
 
-export function AppText({ variant = "bodyRegular", className, children, ...rest }) {
+export function AppText({
+  variant = "bodyRegular",
+  className,
+  children,
+  ...rest
+}) {
   const baseClass = variantClassNameMap[variant] || "";
 
   return (
-    <Text
-      {...rest}
-      className={cn(baseClass, className)}
-    >
+    <Text {...rest} className={cn(baseClass, className)}>
       {children}
     </Text>
   );

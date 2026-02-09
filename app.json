@@ -56,7 +56,8 @@
             ]
           }
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
