@@ -11,10 +11,10 @@ const mockUser = {
   teamLogo: require("../../assets/png/ProfileLG.png"),
 };
 
-const ProfileScreen = () => {
-  // const handlePressSetting = () => {
-  //   navigation.navigate("ProfileSetting"); //나중에 연결
-  // };
+const ProfileScreen = ({ navigation }) => {
+  const handlePressSetting = () => {
+    navigation.navigate("ProfileSetting");
+  };
   const [activeTab, setActiveTab] = useState("feed");
 
   return (
@@ -23,10 +23,7 @@ const ProfileScreen = () => {
         <AppText variant="displayTitle2" className="text-white">
           마이스타디움
         </AppText>
-        <TouchableOpacity
-          // onPress={handlePressSetting}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={handlePressSetting} activeOpacity={0.7}>
           <SettingsIcon
             width={24}
             height={24}

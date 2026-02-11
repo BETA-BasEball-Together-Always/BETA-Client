@@ -1,0 +1,16 @@
+import React from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import ProfileScreen from "../../features/profile/screens/Profile/ProfileScreen";
+import ProfileSettingScreen from "../../features/profile/screens/Profile/ProfileSettingScreen";
+
+const Stack = createNativeStackNavigator();
+
+export default function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="ProfileSetting" component={ProfileSettingScreen} />
+    </Stack.Navigator>
+  );
+}

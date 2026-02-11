@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 // 각 화면
 import HomeScreen from "@features/home/screens/Home/HomeScreen";
 import CommunityScreen from "@features/community/screens/CommunityScreen";
-import ProfileScreen from "@features/profile/screens/Profile/ProfileScreen";
+import ProfileStack from "./ProfileStack";
 import PhotoBoothStack from "./PhotoBoothStack";
 
 // 커스텀 탭바
@@ -87,7 +87,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{
           tabBarIcon: ({ color = COLORS.inactive }) => (
             <ProfileIcon
