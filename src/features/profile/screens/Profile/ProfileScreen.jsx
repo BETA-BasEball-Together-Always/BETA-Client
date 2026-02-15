@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import SettingsIcon from "../../assets/svg/Settings.svg";
+import FeedTabContent from "./components/FeedTabContent";
 
 const mockUser = {
   nickname: "김야구",
@@ -84,13 +85,8 @@ const ProfileScreen = ({ navigation }) => {
         })}
       </View>
       <View style={styles.contentContainer}>
-        {/* 컴포넌트 추가할 것 */}
-        {/* {activeTab === "feed" && <FeedComponent />}
-        {activeTab === "like" && <LikeComponent />}
-        {activeTab === "comment" && <CommentComponent />} */}
-        {activeTab === "feed" && (
-          <AppText className="text-white">내 피드 목록</AppText>
-        )}
+        {/* 나중에 실제 컴포넌트들로 교체하기 */}
+        {activeTab === "feed" && <FeedTabContent />}
         {activeTab === "like" && (
           <AppText className="text-white">내 좋아요 목록</AppText>
         )}
@@ -120,7 +116,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 35,
-    marginTop: 12,
+    height: 89,
   },
   teamImage: {
     width: 70,
@@ -147,11 +143,13 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: "row",
-    justifyContent: "flex-start",
+    // justifyContent: "flex-start",
     gap: 45,
     alignItems: "center",
     marginVertical: 13,
     marginHorizontal: 45,
+    width: 398,
+    height: 41,
   },
   tabItem: {
     alignItems: "center",
@@ -166,10 +164,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 1,
     alignSelf: "center",
+    zIndex: 10,
   },
   contentContainer: {
     flex: 1,
     backgroundColor: "#1E1E1E",
-    // marginTop: -15,
+    marginTop: -16,
+    zIndex: -1,
   },
 });
