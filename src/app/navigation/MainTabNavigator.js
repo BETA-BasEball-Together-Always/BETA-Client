@@ -1,9 +1,9 @@
 import React from "react";
-import {createBottomTabNavigator} from "@react-navigation/bottom-tabs";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 // 각 화면
 import HomeScreen from "@features/home/screens/Home/HomeScreen";
-import CommunityScreen from "@features/community/screens/CommunityScreen";
+import CommunityStack from "./CommunityStack";
 import ProfileScreen from "@features/profile/screens/Profile/ProfileScreen";
 import PhotoBoothStack from "./PhotoBoothStack";
 
@@ -37,7 +37,7 @@ export default function MainTabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: {display: "none"}, // 기본 탭바 숨기고 커스텀 탭바 사용
+        tabBarStyle: { display: "none" }, // 기본 탭바 숨기고 커스텀 탭바 사용
       }}
       tabBar={(props) => (
         <CustomTabBar {...props} colors={COLORS} hiddenRoutes={HIDDEN_ROUTES} />
@@ -47,7 +47,7 @@ export default function MainTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({color = COLORS.inactive}) => (
+          tabBarIcon: ({ color = COLORS.inactive }) => (
             <HomeIcon
               width={ICON_SIZE}
               height={ICON_SIZE}
@@ -59,9 +59,9 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Community"
-        component={CommunityScreen}
+        component={CommunityStack}
         options={{
-          tabBarIcon: ({color = COLORS.inactive}) => (
+          tabBarIcon: ({ color = COLORS.inactive }) => (
             <TeamIcon
               width={ICON_SIZE}
               height={ICON_SIZE}
@@ -75,7 +75,7 @@ export default function MainTabNavigator() {
         name="PhotoBooth"
         component={PhotoBoothStack}
         options={{
-          tabBarIcon: ({color = COLORS.inactive}) => (
+          tabBarIcon: ({ color = COLORS.inactive }) => (
             <PhotoBoothIcon
               width={ICON_SIZE}
               height={ICON_SIZE}
@@ -89,7 +89,7 @@ export default function MainTabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({color = COLORS.inactive}) => (
+          tabBarIcon: ({ color = COLORS.inactive }) => (
             <ProfileIcon
               width={ICON_SIZE}
               height={ICON_SIZE}
