@@ -2,13 +2,13 @@
 module.exports = {
   content: [
     "./App.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}",   // BETA가 src 구조라면
+    "./src/**/*.{js,jsx,ts,tsx}", // BETA가 src 구조라면
   ],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
-        primary: "#1E90FF",  // BETA 메인 컬러
+        primary: "#1E90FF", // BETA 메인 컬러
         secondary: "#FFD700",
       },
       borderRadius: {
@@ -21,7 +21,7 @@ module.exports = {
         md: 16,
         lg: 24,
       },
-      // Noto Sans 폰트 패밀리      
+      // Noto Sans 폰트 패밀리
       fontFamily: {
         "noto-regular": ["NotoSans-Regular"],
         "noto-medium": ["NotoSans-Medium"],
@@ -60,7 +60,7 @@ module.exports = {
 
         // Number
         "num-small-regular": 8,
-        "num-medium-regular": 10,
+        "num-medium-regular": 11,
       },
     },
   },

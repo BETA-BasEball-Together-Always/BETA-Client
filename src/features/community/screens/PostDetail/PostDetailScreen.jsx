@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Image, Dimensions, TouchableOpacity, Modal } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Dimensions,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+} from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -9,8 +18,8 @@ import AppHeader from "../../../../shared/component/AppHeader";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import MenuIcon from "../../assets/svg/TopBar/menuIcon.svg";
 
-import HeartIcon from "../../assets/svg/CommunityPost/heartIcon.svg"
-import HeartFilledIcon from "../../assets/svg/CommunityPost/heartFilledIcon.svg"
+import HeartIcon from "../../assets/svg/CommunityPost/heartIcon.svg";
+import HeartFilledIcon from "../../assets/svg/CommunityPost/heartFilledIcon.svg";
 import CommentIcon from "../../assets/svg/CommunityPost/commentIcon.svg";
 import CommentOnPressIcon from "../../assets/svg/CommunityPost/commentOnPressIcon.svg";
 import LinkIcon from "../../assets/svg/CommunityPost/linkIcon.svg";
@@ -20,7 +29,10 @@ const { width } = Dimensions.get("window");
 
 const PostDetailScreen = ({ route, navigation }) => {
   const { post, onSelectReaction } = route.params; // PostDetailScreen으로 navigation할 때 post 데이터를 전달받는다고 가정
-  console.log("PostDetailScreen에서 받은 post 데이터:", post);
+
+  useEffect(() => {
+    console.log("처음 진입 시 post:", post);
+  }, []);
 
   const imageList = post.images ?? (post.image ? [post.image] : []);
   const reactions = [
@@ -29,23 +41,25 @@ const PostDetailScreen = ({ route, navigation }) => {
     { id: "EMO_FUN", emoji: "🤣", bgColor: "#FFFABF" },
     { id: "EMO_HYPE", emoji: "🔥", bgColor: "#FF9F76" },
   ];
-
+  const [actionY, setActionY] = useState(0);
+  const REACTION_HEIGHT = 25; // 바 실제 높이
 
   // 각 아이콘 버튼들 상태!!
   const [selectedReaction, setSelectedReaction] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
+
   const [reactionCounts, setReactionCounts] = useState(
     post.reactionCounts || {
       EMO_JOY: 0,
       EMO_SAD: 0,
       EMO_FUN: 0,
       EMO_HYPE: 0,
-    }
+    },
   );
 
   const totalReactions = Object.values(reactionCounts).reduce(
     (sum, val) => sum + val,
-    0
+    0,
   );
 
   const [commentMode, setCommentMode] = useState(false);
@@ -66,29 +80,31 @@ const PostDetailScreen = ({ route, navigation }) => {
   };
 
   const handleReactionSelect = (reaction) => {
-      const prevReaction = selectedReaction;
+    console.log("👉 클릭한 reaction id:", reaction.id);
+    console.log("👉 이전 선택 reaction:", selectedReaction);
+    const prevReaction = selectedReaction;
 
     if (prevReaction?.id === reaction.id) {
-    setReactionCounts((prevCounts) => ({
-      ...prevCounts,
-      [reaction.id]: Math.max(prevCounts[reaction.id] - 1, 0),
-    }));
+      setReactionCounts((prevCounts) => ({
+        ...prevCounts,
+        [reaction.id]: Math.max(prevCounts[reaction.id] - 1, 0),
+      }));
 
-    setSelectedReaction(null);
-    setShowReactionPicker(false);
+      setSelectedReaction(null);
+      setShowReactionPicker(false);
 
-    if (onSelectReaction) {
-      onSelectReaction(post.id, null);
+      if (onSelectReaction) {
+        onSelectReaction(post.id, null);
+      }
+
+      return;
     }
-
-    return;
-  }
     if (prevReaction) {
-    setReactionCounts((prevCounts) => ({
-      ...prevCounts,
-      [prevReaction.id]: Math.max(prevCounts[prevReaction.id] - 1, 0),
-    }));
-  }
+      setReactionCounts((prevCounts) => ({
+        ...prevCounts,
+        [prevReaction.id]: Math.max(prevCounts[prevReaction.id] - 1, 0),
+      }));
+    }
 
     setReactionCounts((prevCounts) => ({
       ...prevCounts,
@@ -105,7 +121,7 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const handleCommentPress = () => {
     setCommentMode(!commentMode);
-  }
+  };
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(post.uri ?? "https://example.com");
@@ -115,24 +131,28 @@ const PostDetailScreen = ({ route, navigation }) => {
     setTimeout(() => {
       setLinkPressed(false);
       setCopyModalVisible(false);
-    }, 1500)
-  }
+    }, 1500);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <AppHeader
-      left = {
-        <TouchableOpacity style={styles.backButton}
-        onPress={() => navigation.goBack()}>
-          <BackIcon width={12} height={18.5} />
-          <AppText variant="bodyRegular" style={styles.backLabel}>뒤로가기</AppText>
-        </TouchableOpacity>
-      }
-      right = {
-        <TouchableOpacity onPress={handleMorePress}>
-          <MenuIcon width={20} height={20} />
-        </TouchableOpacity>
-      }
+        left={
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <BackIcon width={12} height={18.5} />
+            <AppText variant="bodyRegular" style={styles.backLabel}>
+              뒤로가기
+            </AppText>
+          </TouchableOpacity>
+        }
+        right={
+          <TouchableOpacity onPress={handleMorePress}>
+            <MenuIcon width={20} height={20} />
+          </TouchableOpacity>
+        }
       />
 
       <ScrollView contentContainerStyle={styles.container}>
@@ -180,105 +200,150 @@ const PostDetailScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {!showReactionPicker && (
+        <View style={styles.reactionWrapper}>
+          {/* 공감 리스트 */}
           <View style={styles.reactionSummary}>
             <View style={styles.reactionIconRow}>
-              {reactions.map((reaction) => {
-                if (reactionCounts[reaction.id] > 0) {
-                  return (
-                    <View key={reaction.id}
+              {reactions.map((reaction) =>
+                reactionCounts[reaction.id] > 0 ? (
+                  <View
+                    key={reaction.id}
                     style={[
                       styles.summaryCircle,
-                      {backgroundColor: reaction.bgColor},
+                      { backgroundColor: reaction.bgColor },
                     ]}
-                    >
-                      <AppText style={styles.summaryEmoji}>
-                        {reaction.emoji}
-                      </AppText>
-                    </View>
-                  );
-                }
-                return null;
-              })}
-
-              <AppText style={styles.summaryCount}>
+                  >
+                    <AppText variant="semi13">{reaction.emoji}</AppText>
+                  </View>
+                ) : null,
+              )}
+              <AppText variant="numMediumRegular" className="text-gray-400">
                 {totalReactions}
               </AppText>
             </View>
+
             <AppText variant="numMediumRegular" className="text-gray-400">
               댓글 {post.comments ?? 0}
             </AppText>
           </View>
-        )}
 
-        <View style={styles.actionContainer}>
+          {/* 🔥 리액션 바 오버레이 */}
           {showReactionPicker && (
-          <View style={styles.reactionBar}>
-            {reactions.map((reaction) => {
-              const isSelected = 
-                selectedReaction?.id === reaction.id;
+            <>
+              {/* 바깥 터치 시 닫기 */}
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={() => setShowReactionPicker(false)}
+              />
 
-              return (
-                <TouchableOpacity
-                  key={reaction.id}
-                  onPress={() => handleReactionSelect(reaction)}
-                >
-                  <View style={[
-                    styles.reactionCircle,
-                    {backgroundColor: reaction.bgColor},
-                    selectedReaction && !isSelected && styles.dimmed,
-                  ]}>
-                    <AppText style={styles.reactionEmoji}>
-                      {reaction.emoji}
-                    </AppText>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-        
-        <View style={styles.actionRow}>
-          
-          <View style={styles.leftActions}>
-            {/* 좋아요 */}
-            <TouchableOpacity onPress={handleLikePress}
-            onLongPress={() => setShowReactionPicker(true)}
-            activeOpacity={0.7}>
-              {selectedReaction ? (
-                <HeartFilledIcon width={31.3} height={27} />
-              ) : (
-                <HeartIcon width={31.3} height={27} />
-              )}
-            </TouchableOpacity>
-
-            {/* 댓글 */}
-            <TouchableOpacity onPress={() => setCommentMode(!commentMode)}>
-              {commentMode ? (
-                <CommentOnPressIcon width={25} height={25} />
-              ) : (
-                <CommentIcon width={25} height={25} />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* URL 복사 */}
-          <TouchableOpacity onPress={handleCopyLink}>
-            {linkPressed ? (
-              <LinkOnPressIcon width={22} height={22} />
-            ) : (
-              <LinkIcon width={22} height={22} />
-            )}
-          </TouchableOpacity>
+              <View
+                style={[
+                  styles.reactionOverlay,
+                  { top: actionY - REACTION_HEIGHT },
+                ]}
+              >
+                <View style={styles.reactionBar}>
+                  {reactions.map((reaction) => {
+                    const isSelected = selectedReaction?.id === reaction.id;
+                    return (
+                      <TouchableOpacity
+                        key={reaction.id}
+                        onPress={() => handleReactionSelect(reaction)}
+                      >
+                        <View
+                          style={[
+                            styles.reactionCircle,
+                            { backgroundColor: reaction.bgColor },
+                            selectedReaction && !isSelected && styles.dimmed,
+                          ]}
+                        >
+                          <AppText style={styles.reactionEmoji}>
+                            {reaction.emoji}
+                          </AppText>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
+        <View style={styles.actionContainer}>
+          {/* {showReactionPicker && (
+            <View style={styles.reactionBar}>
+              {reactions.map((reaction) => {
+                const isSelected = selectedReaction?.id === reaction.id;
+
+                return (
+                  <TouchableOpacity
+                    key={reaction.id}
+                    onPress={() => handleReactionSelect(reaction)}
+                  >
+                    <View
+                      style={[
+                        styles.reactionCircle,
+                        { backgroundColor: reaction.bgColor },
+                        selectedReaction && !isSelected && styles.dimmed,
+                      ]}
+                    >
+                      <AppText style={styles.reactionEmoji}>
+                        {reaction.emoji}
+                      </AppText>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )} */}
+
+          <View
+            style={styles.actionRow}
+            onLayout={(e) => {
+              setActionY(e.nativeEvent.layout.y);
+            }}
+          >
+            <View style={styles.leftActions}>
+              {/* 좋아요 */}
+              <TouchableOpacity
+                onPress={handleLikePress}
+                onLongPress={() => setShowReactionPicker(true)}
+                activeOpacity={0.7}
+              >
+                {selectedReaction ? (
+                  <HeartFilledIcon width={31.3} height={27} />
+                ) : (
+                  <HeartIcon width={31.3} height={27} />
+                )}
+              </TouchableOpacity>
+
+              {/* 댓글 */}
+              <TouchableOpacity onPress={() => setCommentMode(!commentMode)}>
+                {commentMode ? (
+                  <CommentOnPressIcon width={25} height={25} />
+                ) : (
+                  <CommentIcon width={25} height={25} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* URL 복사 */}
+            <TouchableOpacity onPress={handleCopyLink}>
+              {linkPressed ? (
+                <LinkOnPressIcon width={22} height={22} />
+              ) : (
+                <LinkIcon width={22} height={22} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
       <Modal transparent visible={copyModalVisible} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalBox}>
-            <AppText variant="middle">URL이 클립</AppText>
+            <AppText variant="middle">URL이 클립보드에 복사되었습니다</AppText>
           </View>
         </View>
       </Modal>
@@ -296,14 +361,14 @@ const styles = StyleSheet.create({
 
   backButton: {
     flexDirection: "row",
-    alignItems: "center"
+    alignItems: "center",
   },
   backLabel: {
     color: "#F9F9F9",
     marginLeft: 15,
   },
 
-   container: {
+  container: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 40,
@@ -359,6 +424,7 @@ const styles = StyleSheet.create({
   /* 텍스트 */
   textWrapper: {
     marginTop: 4,
+    marginBottom: 16,
   },
   content: {
     color: "#F9F9F9",
@@ -388,39 +454,45 @@ const styles = StyleSheet.create({
   //   borderRadius: 10,
   // }
   actionContainer: {
-    marginTop: 20,
+    // marginTop: 20,
   },
   reactionBar: {
     flexDirection: "row",
     backgroundColor: "#D9D9D9",
     borderRadius: 30,
-    paddingVertical: 7,
+    paddingVertical: 5.5,
     alignSelf: "flex-start",
   },
   reactionCircle: {
     width: 50,
     height: 48,
     borderRadius: 30,
-    justifyContent: 'center',
+    justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 6,
+    marginHorizontal: 4,
   },
-  reactionEmoji: {
-    fontSize: 18,
-  },
+
   dimmed: {
-    opacity: 0.3
+    opacity: 0.3,
+  },
+  reactionOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: "flex-start",
   },
 
   reactionSummary: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 14,
+    marginTop: 27,
   },
   reactionIconRow: {
     flexDirection: "row",
-    alignItems: "center"
+    alignItems: "center",
+    marginHorizontal: 5,
   },
   summaryCircle: {
     width: 26,
@@ -428,17 +500,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 4,
+    marginRight: 9,
   },
-
-  summaryEmoji: {
-    fontSize: 14,
+  reactionEmoji: {
+    fontSize: 18,
   },
-
-  summaryCount: {
-    color: "#F9F9F9",
-    marginLeft: 6,
-    fontSize: 14,
-  },
-  
 });
