@@ -6,14 +6,13 @@ import {
   Pressable,
   Modal,
 } from "react-native";
-import { AppText } from "../../../../../shared/theme/components/AppText";
-
-import HeartIcon from "../../../assets/svg/CommunityPost/heartIcon.svg";
-import HeartFilledIcon from "../../../assets/svg/CommunityPost/heartFilledIcon.svg";
-import CommentIcon from "../../../assets/svg/CommunityPost/commentIcon.svg";
-import CommentOnPressIcon from "../../../assets/svg/CommunityPost/commentOnPressIcon.svg";
-import LinkIcon from "../../../assets/svg/CommunityPost/linkIcon.svg";
-import LinkOnPressIcon from "../../../assets/svg/CommunityPost/linkOnPressIcon.svg";
+import { AppText } from "../../../shared/theme/components/AppText";
+import HeartIcon from "../assets/svg/CommunityPost/heartIcon.svg";
+import HeartFilledIcon from "../assets/svg/CommunityPost/heartFilledIcon.svg";
+import CommentIcon from "../assets/svg/CommunityPost/commentIcon.svg";
+import CommentOnPressIcon from "../assets/svg/CommunityPost/commentOnPressIcon.svg";
+import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
+import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
 
 // import * as Clipboard from "expo-clipboard";
 
@@ -239,7 +238,9 @@ const PostReactions = ({ post, onSelectReaction }) => {
       <Modal transparent visible={copyModalVisible} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalBox}>
-            <AppText variant="middle">URL이 클립보드에 복사되었습니다</AppText>
+            <AppText variant="middle" className="text-white">
+              URL이 클립보드에 복사되었습니다
+            </AppText>
           </View>
         </View>
       </Modal>
@@ -324,11 +325,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(18,18,18,0.4)",
   },
   modalBox: {
-    backgroundColor: "#FFFFFF",
-    padding: 20,
+    backgroundColor: "#232323",
+    paddingVertical: 14,
+    paddingHorizontal: 21,
     borderRadius: 10,
   },
 });
