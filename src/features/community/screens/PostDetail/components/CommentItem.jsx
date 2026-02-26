@@ -69,7 +69,7 @@ export default function CommentItem({ comment, onReplyPress, setCommentData }) {
                 ) : (
                   <HeartIcon width={HEART_SIZE} height={HEART_SIZE} />
                 )}
-                <AppText variant="numMediumRegular" style={styles.likeCount}>
+                <AppText variant="numSmallRegular" style={styles.likeCount}>
                   {comment.likeCount}
                 </AppText>
               </View>
@@ -86,16 +86,18 @@ export default function CommentItem({ comment, onReplyPress, setCommentData }) {
               <View style={styles.replyIconWrap}>
                 <ReplyIcon width={18} height={18} />
               </View>
-              <AppText style={styles.replyText}>답글 달기</AppText>
+              <AppText variant="spaced" style={styles.replyText}>
+                답글 달기
+              </AppText>
             </TouchableOpacity>
           </View>
           {/* 답글 더보기 */}
           {comment.replies.length > 0 && !showReplies && (
             <TouchableOpacity
               onPress={() => setShowReplies(true)}
-              style={styles.moreReplyButton}
+              style={styles.replyMoreButton}
             >
-              <AppText variant="numMediumRegular" style={styles.moreReplyText}>
+              <AppText variant="spaced" style={styles.replyText}>
                 ─ {comment.replies.length}개 답글 더보기
               </AppText>
             </TouchableOpacity>
@@ -104,16 +106,20 @@ export default function CommentItem({ comment, onReplyPress, setCommentData }) {
           {/* 답글 리스트 */}
           {showReplies &&
             comment.replies.map((reply) => (
-              <ReplyItem key={reply.commentId} reply={reply} />
+              <ReplyItem
+                key={reply.commentId}
+                reply={reply}
+                setCommentData={setCommentData}
+              />
             ))}
 
           {/* 답글 숨기기 */}
           {showReplies && (
             <TouchableOpacity
               onPress={() => setShowReplies(false)}
-              style={styles.hideReplyButton}
+              style={styles.replyHiddenButton}
             >
-              <AppText variant="numMediumRegular" style={styles.moreReplyText}>
+              <AppText variant="spaced" style={styles.replyText}>
                 ─ 답글 숨기기
               </AppText>
             </TouchableOpacity>
@@ -158,15 +164,15 @@ const styles = StyleSheet.create({
   },
   contentRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     marginTop: 6,
   },
   bottomRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    // justifyContent: "space-between",
     alignItems: "center",
-    // marginTop: 6,
-    marginLeft: 10,
+    paddingLeft: 15,
+    marginTop: 8,
   },
   content: {
     flex: 1,
@@ -176,35 +182,35 @@ const styles = StyleSheet.create({
   },
   likeButton: {
     alignItems: "center",
+    paddingLeft: 5,
   },
   likeIconWrap: {
     alignItems: "center",
   },
   likeCount: {
-    marginTop: 4,
+    marginTop: 2,
     color: "#666",
     fontWeight: 600,
   },
   replyButton: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop: -13,
   },
   replyIconWrap: {
     marginRight: 6,
   },
   replyText: {
     color: "rgba(228, 228, 228, 0.50)",
-    fontSize: 13,
   },
-  moreReplyButton: {
-    marginTop: 10,
+  replyMoreButton: {
     marginHorizontal: 10,
+    paddingLeft: 8,
+    marginTop: 7,
   },
-  hideReplyButton: {
-    marginTop: 10,
+  replyHiddenButton: {
     marginHorizontal: 10,
-  },
-  moreReplyText: {
-    color: "rgba(228, 228, 228, 0.50)",
+    paddingLeft: 8,
+    marginTop: 11,
   },
 });

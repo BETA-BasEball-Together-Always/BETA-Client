@@ -59,8 +59,8 @@ module.exports = {
         "label-small": 12,
 
         // Number
-        "num-small-regular": 8,
-        "num-medium-regular": 11,
+        "num-small-regular": 10,
+        "num-medium-regular": 12,
       },
     },
   },
