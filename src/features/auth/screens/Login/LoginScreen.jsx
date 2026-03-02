@@ -11,7 +11,7 @@ import { appleSignIn } from "../../libs/Login/appleSignIn";
 import { useSocialLoginMutation } from "../../services/socialLoginMutation";
 
 import * as SecureStore from "expo-secure-store";
-import { getDeviceId } from "../../libs/deviceUtils";
+import { getDeviceId } from "../../libs/Login/deviceUtils";
 
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
@@ -30,22 +30,36 @@ const LoginScreen = ({ navigation }) => {
 
     try {
       const { token, cancelled } = await appleSignIn();
-      if (cancelled) return;
+      if (cancelled) {
+        console.log("Apple 로그인 취소됨");
+        return;
+      }
 
-      console.log("애플 토큰:", token);
+      console.log("애플 identityToken:", token?.identityToken);
+
+      if (!token?.identityToken) {
+        console.log("identityToken 없음");
+        return;
+      }
 
       const deviceId = await getDeviceId();
+      console.log("deviceID: ", deviceId);
 
       socialLoginMutation.mutate(
         { provider: "APPLE", token: token.identityToken, deviceId },
         {
           onSuccess: async (response) => {
-            console.log("소셜 로그인 성공! newUser?:", response?.data?.newUser);
+            console.log("Apple 로그인 서버 응답 성공!");
+            console.log("전체 응답: ", response?.data);
 
             const { isNewUser, userResponse } = response.data;
 
+            console.log("isNewUser: ", isNewUser);
+            console.log("accessToken: ", userResponse?.accessToken);
+            console.log("refreshToken: ", userResponse?.refreshToken);
+            console.log("서버 device id: ", userResponse?.deviceId);
+
             // 로그인 이후 자동 로그인 위해 필요함!!
-            // todo: expo-secure-store 설치할 것 (재빌드 x)
             await SecureStore.setItemAsync(
               "accessToken",
               userResponse.accessToken,
@@ -54,17 +68,23 @@ const LoginScreen = ({ navigation }) => {
               "refreshToken",
               userResponse.refreshToken,
             );
+
+            console.log("토큰 SecureStore 저장 완료!");
           },
           onError: (error) => {
-            console.log("애플 로그인 실패:", error?.response?.data);
+            console.log("Apple 서버 로그인 실패");
+            console.log("상태 코드: ", error?.response.status);
+            console.log("에러 데이터: ", error?.response?.data);
+            console.log("에러 메시지: ", error?.message);
+            console.log("요청 URL:", error.config?.baseURL + error.config?.url);
 
             Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
           },
         },
       );
     } catch (error) {
+      console.log("애플 로그인 js 단계 오류");
       console.log("애플 로그인 오류:", error);
-      console.log("애플 로그인 오류 데이터:", error?.response?.data);
       console.log("애플 로그인 오류 메시지:", error?.message);
       console.log("애플 로그인 오류 코드:", error?.code);
       Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");

@@ -16,7 +16,7 @@ const socialLoginApi = (provider, body) => {
   //     `${api.defaults.baseURL}${`/api/auth/login/${provider}`}`
   //   );
   //   console.log("socialLoginApi called with:", provider, body);
-  return api.post(`/api/auth/login/${provider}`, body);
+  return api.post(`/api/v1/auth/login/${provider}`, body);
 };
 
 /**
@@ -27,8 +27,10 @@ const socialLoginApi = (provider, body) => {
 export const useSocialLoginMutation = () => {
   return useMutation({
     mutationKey: authKeys.socialLogin("GLOBAL"), // Devtools에서 묶어보는용, 실사용은 변수로 구분
-    mutationFn: ({ provider, token, deviceId }) =>
-      socialLoginApi(provider, { token, deviceId }),
-    // 👇 성공 시 여기서 response 사용 가능
+    mutationFn: ({ provider, token, deviceId }) => {
+      console.log("provider:", provider);
+      return socialLoginApi(provider, { token, deviceId });
+      // 👇 성공 시 여기서 response 사용 가능
+    },
   });
 };
