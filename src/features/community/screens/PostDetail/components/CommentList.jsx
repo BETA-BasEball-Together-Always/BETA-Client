@@ -6,6 +6,10 @@ export default function CommentList({
   comments,
   onReplyPress,
   setCommentData,
+  postAuthorNickname,
+  onLongPressThread,
+  currentUserId,
+  pressedThread,
 }) {
   return (
     <View style={styles.container}>
@@ -15,6 +19,10 @@ export default function CommentList({
           comment={comment}
           onReplyPress={onReplyPress}
           setCommentData={setCommentData}
+          onLongPressThread={onLongPressThread}
+          postAuthorNickname={postAuthorNickname}
+          currentUserId={currentUserId}
+          pressedThread={pressedThread}
         />
       ))}
     </View>

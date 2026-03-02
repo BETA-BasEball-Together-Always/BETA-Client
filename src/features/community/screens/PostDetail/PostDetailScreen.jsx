@@ -69,17 +69,80 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const [commentData, setCommentData] = useState(initialComments);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [postMoreVisible, setPostMoreVisible] = useState(false);
+  const [threadActionModal, setThreadActionModal] = useState({
+    visible: false,
+    isMine: false,
+    targetType: null,
+    targetId: null,
+  });
+
+  const [pressedThread, setPressedThread] = useState({
+    targetType: null,
+    targetId: null,
+  });
 
   useEffect(() => {
     console.log("처음 진입 시 post:", post);
   }, []);
 
   const handleMorePress = () => {
-    if (post.isMine) {
-      console.log("수정/삭제 모달");
-    } else {
-      console.log("신고 모달");
-    }
+    setPostMoreVisible(true);
+  };
+
+  const closePostMore = () => {
+    setPostMoreVisible(false);
+  };
+
+  const openThreadActionModal = ({ isMine, targetType, targetId }) => {
+    setPressedThread({ targetType, targetId });
+
+    setThreadActionModal({
+      visible: true,
+      isMine,
+      targetType,
+      targetId,
+    });
+  };
+
+  const closeThreadActionModal = () => {
+    setThreadActionModal((prev) => ({ ...prev, visible: false }));
+    setPressedThread({ targetType: null, targetId: null });
+  };
+
+  // TODO: 실제 네비게이션/삭제 로직 연결 예정
+  const handleEditPost = () => {
+    console.log("edit post");
+    closePostMore();
+  };
+
+  const handleDeletePost = () => {
+    console.log("delete post");
+    closePostMore();
+  };
+
+  const handleReportPost = () => {
+    console.log("report post");
+    closePostMore();
+  };
+
+  const handleEditThread = () => {
+    console.log("edit thread", threadActionModal);
+    closeThreadActionModal();
+  };
+
+  const handleDeleteThread = () => {
+    console.log("delete thread", threadActionModal);
+    closeThreadActionModal();
+  };
+
+  const handleReportThread = () => {
+    console.log("report thread", threadActionModal);
+    closeThreadActionModal();
+  };
+
+  const handleCancelReportThread = () => {
+    closeThreadActionModal();
   };
 
   const handleCreateComment = (content) => {
@@ -206,6 +269,9 @@ const PostDetailScreen = ({ route, navigation }) => {
               comments={commentData.comments}
               onReplyPress={(commentId) => setReplyTarget(commentId)}
               setCommentData={setCommentData}
+              postAuthorNickname={post.nickname}
+              onLongPressThread={openThreadActionModal}
+              currentUserId={currentUser.userId}
             />
           </View>
         </ScrollView>
@@ -214,6 +280,110 @@ const PostDetailScreen = ({ route, navigation }) => {
           replyTarget={replyTarget}
           cancelReply={() => setReplyTarget(null)}
         />
+
+        {postMoreVisible && (
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={closePostMore}
+            />
+            <View style={styles.postMoreMenu}>
+              {post.isMine ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.postMoreButton}
+                    onPress={handleEditPost}
+                  >
+                    <AppText variant="bodyMedium" style={styles.postMoreText}>
+                      수정하기
+                    </AppText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.postMoreButton}
+                    onPress={handleDeletePost}
+                  >
+                    <AppText variant="bodyMedium" style={styles.postMoreText}>
+                      삭제하기
+                    </AppText>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.postMoreButton}
+                  onPress={handleReportPost}
+                >
+                  <AppText variant="bodyMedium" style={styles.postMoreText}>
+                    신고하기
+                  </AppText>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {threadActionModal.visible && (
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={closeThreadActionModal}
+            />
+            <View style={styles.bottomSheet}>
+              {threadActionModal.isMine ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.bottomSheetButton}
+                    onPress={handleEditThread}
+                  >
+                    <AppText
+                      variant="bodyMedium"
+                      style={styles.bottomSheetText}
+                    >
+                      수정하기
+                    </AppText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.bottomSheetButton}
+                    onPress={handleDeleteThread}
+                  >
+                    <AppText
+                      variant="bodyMedium"
+                      style={styles.bottomSheetText}
+                    >
+                      삭제하기
+                    </AppText>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.bottomSheetButton}
+                    onPress={handleReportThread}
+                  >
+                    <AppText
+                      variant="bodyMedium"
+                      style={styles.bottomSheetText}
+                    >
+                      신고하기
+                    </AppText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.bottomSheetButton}
+                    onPress={handleCancelReportThread}
+                  >
+                    <AppText
+                      variant="bodyMedium"
+                      style={styles.bottomSheetText}
+                    >
+                      취소
+                    </AppText>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -313,5 +483,53 @@ const styles = StyleSheet.create({
   commentTitle: {
     color: "rgba(228, 228, 228, 0.5)",
     marginBottom: 13,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  modalBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  bottomSheet: {
+    width: "100%",
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+  },
+  bottomSheetButton: {
+    backgroundColor: "#1F1F1F",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  bottomSheetText: {
+    color: "#F9F9F9",
+  },
+  postMoreMenu: {
+    position: "absolute",
+    top: 56,
+    right: 16,
+    backgroundColor: "#27272A",
+    borderRadius: 8,
+    paddingVertical: 4,
+    minWidth: 120,
+  },
+  postMoreButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  postMoreText: {
+    color: "#F9F9F9",
   },
 });

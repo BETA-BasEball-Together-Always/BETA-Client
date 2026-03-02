@@ -1,18 +1,21 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
-import { AppText } from "../../../../../shared/theme/components/AppText";
-import HeartIcon from "../../../assets/svg/CommunityPost/heartIcon.svg";
-import HeartFilledIcon from "../../../assets/svg/CommunityPost/heartFilledIcon.svg";
-import HeartOnPressIcon from "../../../assets/svg/CommunityPost/heartOnPressIcon.svg";
-import ReplyIcon from "../../../assets/svg/CommunityPost/replyIcon.svg";
+
 import ReplyItem from "./ReplyItem";
-import { getRelativeTime } from "../utils/relativeTime";
+import ThreadItem from "./ThreadItem";
 
-const HEART_SIZE = 20;
-
-export default function CommentItem({ comment, onReplyPress, setCommentData }) {
+export default function CommentItem({
+  comment,
+  onReplyPress,
+  setCommentData,
+  postAuthorNickname,
+  onLongPressThread,
+  currentUserId,
+  pressedThread,
+}) {
   const [showReplies, setShowReplies] = useState(false);
-  const [heartPressed, setHeartPressed] = useState(false);
+
+  const isAuthor = comment.author?.nickName === postAuthorNickname;
+  const isMine = comment.author?.userId === currentUserId;
 
   const toggleLike = () => {
     setCommentData((prev) => ({
@@ -30,187 +33,45 @@ export default function CommentItem({ comment, onReplyPress, setCommentData }) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* 상단 (프로필 이미지 / 닉네임 | 경과 시간 맨 우측) */}
-      <View style={styles.row}>
-        <View style={styles.avatarCircle}>
-          <AppText variant="middle" className="text-white">
-            {comment.author.nickName?.[0] ?? "유"}
-          </AppText>
-        </View>
-
-        <View style={styles.rightSection}>
-          <View style={styles.topRow}>
-            <AppText variant="bodyMedium" style={styles.nickname}>
-              {comment.author.nickName}
-            </AppText>
-            <AppText variant="numMediumRegular" style={styles.timeText}>
-              {getRelativeTime(comment.createdAt)}
-            </AppText>
-          </View>
-
-          <View style={styles.contentRow}>
-            <AppText variant="caption" style={styles.content}>
-              {comment.content}
-            </AppText>
-
-            <TouchableOpacity
-              onPress={toggleLike}
-              onPressIn={() => setHeartPressed(true)}
-              onPressOut={() => setHeartPressed(false)}
-              style={styles.likeButton}
-              activeOpacity={0.7}
-            >
-              <View style={styles.likeIconWrap}>
-                {heartPressed ? (
-                  <HeartOnPressIcon width={HEART_SIZE} height={HEART_SIZE} />
-                ) : comment.isLiked ? (
-                  <HeartFilledIcon width={HEART_SIZE} height={HEART_SIZE} />
-                ) : (
-                  <HeartIcon width={HEART_SIZE} height={HEART_SIZE} />
-                )}
-                <AppText variant="numSmallRegular" style={styles.likeCount}>
-                  {comment.likeCount}
-                </AppText>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.bottomRow}>
-            {/* 답글 달기 */}
-            <TouchableOpacity
-              onPress={() => onReplyPress(comment.commentId)}
-              style={styles.replyButton}
-              activeOpacity={0.7}
-            >
-              <View style={styles.replyIconWrap}>
-                <ReplyIcon width={18} height={18} />
-              </View>
-              <AppText variant="spaced" style={styles.replyText}>
-                답글 달기
-              </AppText>
-            </TouchableOpacity>
-          </View>
-          {/* 답글 더보기 */}
-          {comment.replies.length > 0 && !showReplies && (
-            <TouchableOpacity
-              onPress={() => setShowReplies(true)}
-              style={styles.replyMoreButton}
-            >
-              <AppText variant="spaced" style={styles.replyText}>
-                ─ {comment.replies.length}개 답글 더보기
-              </AppText>
-            </TouchableOpacity>
-          )}
-
-          {/* 답글 리스트 */}
-          {showReplies &&
-            comment.replies.map((reply) => (
+    <ThreadItem
+      item={comment}
+      variant="comment"
+      isAuthor={isAuthor}
+      isPressed={
+        pressedThread?.targetType === "comment" &&
+        pressedThread?.targetId === comment.commentId
+      }
+      onLongPress={
+        onLongPressThread
+          ? () =>
+              onLongPressThread({
+                isMine,
+                targetType: "comment",
+                targetId: comment.commentId,
+              })
+          : undefined
+      }
+      onToggleLike={toggleLike}
+      showReplyActions
+      onReplyPress={() => onReplyPress(comment.commentId)}
+      replyCount={comment.replies.length}
+      showReplies={showReplies}
+      onShowReplies={setShowReplies}
+      repliesContent={
+        showReplies
+          ? comment.replies.map((reply) => (
               <ReplyItem
                 key={reply.commentId}
                 reply={reply}
                 setCommentData={setCommentData}
+                postAuthorNickname={postAuthorNickname}
+                currentUserId={currentUserId}
+                onLongPressThread={onLongPressThread}
+                pressedThread={pressedThread}
               />
-            ))}
-
-          {/* 답글 숨기기 */}
-          {showReplies && (
-            <TouchableOpacity
-              onPress={() => setShowReplies(false)}
-              style={styles.replyHiddenButton}
-            >
-              <AppText variant="spaced" style={styles.replyText}>
-                ─ 답글 숨기기
-              </AppText>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    </View>
+            ))
+          : null
+      }
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 38,
-    backgroundColor: "#27272A",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  rightSection: {
-    flex: 1,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  nickname: {
-    color: "#D4D4D4",
-    marginLeft: 10,
-  },
-  timeText: {
-    color: "rgba(228, 228, 228, 0.50)",
-    marginLeft: 8,
-  },
-  contentRow: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    marginTop: 6,
-  },
-  bottomRow: {
-    flexDirection: "row",
-    // justifyContent: "space-between",
-    alignItems: "center",
-    paddingLeft: 15,
-    marginTop: 8,
-  },
-  content: {
-    flex: 1,
-    color: "#F9F9F9",
-    marginRight: 12,
-    marginLeft: 10,
-  },
-  likeButton: {
-    alignItems: "center",
-    paddingLeft: 5,
-  },
-  likeIconWrap: {
-    alignItems: "center",
-  },
-  likeCount: {
-    marginTop: 2,
-    color: "#666",
-    fontWeight: 600,
-  },
-  replyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: -13,
-  },
-  replyIconWrap: {
-    marginRight: 6,
-  },
-  replyText: {
-    color: "rgba(228, 228, 228, 0.50)",
-  },
-  replyMoreButton: {
-    marginHorizontal: 10,
-    paddingLeft: 8,
-    marginTop: 7,
-  },
-  replyHiddenButton: {
-    marginHorizontal: 10,
-    paddingLeft: 8,
-    marginTop: 11,
-  },
-});
