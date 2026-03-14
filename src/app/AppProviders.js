@@ -1,7 +1,7 @@
-import React, {useEffect} from "react";
-import {AppState} from "react-native";
-import {SafeAreaProvider} from "react-native-safe-area-context";
-import {NavigationContainer} from "@react-navigation/native";
+import React, { useEffect } from "react";
+import { AppState } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NavigationContainer } from "@react-navigation/native";
 
 import NetInfo from "@react-native-community/netinfo";
 import {
@@ -10,9 +10,9 @@ import {
   onlineManager,
   focusManager,
 } from "@tanstack/react-query";
-import {useFonts} from "expo-font";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import {initializeNaver} from "../features/auth/libs/Login/naverInit";
+import { initializeNaver } from "../features/auth/libs/Login/naverInit";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,7 +27,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const AppProviders = ({children}) => {
+const AppProviders = ({ children }) => {
   // 1) 전역 폰트 로드 (NotoSansKR 3종)
   const [fontsLoaded] = useFonts({
     NotoSansKR_Light: require("@shared/assets/fonts/NotoSansKR-Light.ttf"),

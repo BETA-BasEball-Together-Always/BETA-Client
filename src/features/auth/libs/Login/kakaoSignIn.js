@@ -1,5 +1,5 @@
 // src/features/auth/libs/kakaoAuth.js
-import {login, getProfile, logout} from "@react-native-seoul/kakao-login";
+import { login, getProfile, logout } from "@react-native-seoul/kakao-login";
 
 export const kakaoSignIn = async () => {
   try {
@@ -19,12 +19,12 @@ export const kakaoSignIn = async () => {
     const profile = await getProfile();
     // console.log("Kakao profile:", profile);
 
-    return {token, profile};
+    return { token, profile };
   } catch (error) {
     // 사용자가 취소한 경우
     if (error.code === "E_CANCELLED_OPERATION") {
       console.log("Kakao login cancelled");
-      return {cancelled: true};
+      return { cancelled: true };
     }
 
     console.log("Kakao login error:", error);

@@ -1,6 +1,6 @@
 import React from "react";
 import LoginScreen from "@features/auth/screens/Login/LoginScreen";
-import {createNativeStackNavigator} from "@react-navigation/native-stack";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SignupFavoriteTeamScreen from "../../features/auth/screens/SignupFavoriteTeam/SignupFavoriteTeamScreen";
 import SignupGenderAgeScreen from "../../features/auth/screens/SignupGenderAge/SignupGenderAgeScreen";
 import SignupNicknameScreen from "../../features/auth/screens/SignupNickname/SignupNicknameScreen";
@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator();
 const AuthStack = () => {
   return (
     <Stack.Navigator
-      screenOptions={{headerShown: false}}
+      screenOptions={{ headerShown: false }}
       initialRouteName="Login"
     >
       <Stack.Screen name="Login" component={LoginScreen} />

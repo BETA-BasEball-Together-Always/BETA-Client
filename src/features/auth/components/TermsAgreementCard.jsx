@@ -1,12 +1,12 @@
 // src/features/auth/components/TermsAgreementCard.jsx
-import React, {useCallback} from "react";
-import {View, Text, TouchableOpacity, StyleSheet} from "react-native";
+import React, { useCallback } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
 import TermsAllOffIcon from "../assets/NativeSignup/svg/TermsAllOff.svg";
 import TermsItemOffIcon from "../assets/NativeSignup/svg/TermsItemOff.svg";
 import TermsCheckedIcon from "../assets/NativeSignup/svg/TermsChecked.svg";
 
-const Checkbox = ({checked, variant}) => {
+const Checkbox = ({ checked, variant }) => {
   if (checked) {
     return (
       <View style={styles.termIconWrapper}>
@@ -26,7 +26,13 @@ const Checkbox = ({checked, variant}) => {
   );
 };
 
-const TermItem = ({checked, label, onToggle, onPressChevron, showChevron}) => (
+const TermItem = ({
+  checked,
+  label,
+  onToggle,
+  onPressChevron,
+  showChevron,
+}) => (
   <View style={styles.termRow}>
     {/* ✅ 왼쪽(체크+라벨) = 토글 */}
     <TouchableOpacity
@@ -43,7 +49,7 @@ const TermItem = ({checked, label, onToggle, onPressChevron, showChevron}) => (
       <TouchableOpacity
         onPress={onPressChevron}
         activeOpacity={0.8}
-        hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Text style={styles.chevron}>{">"}</Text>
       </TouchableOpacity>
@@ -51,7 +57,7 @@ const TermItem = ({checked, label, onToggle, onPressChevron, showChevron}) => (
   </View>
 );
 
-const TermsAgreementCard = ({value, onChange, onPressDetail}) => {
+const TermsAgreementCard = ({ value, onChange, onPressDetail }) => {
   const toggleAll = useCallback(() => {
     const nextValue = !value.all;
     onChange({
@@ -65,12 +71,12 @@ const TermsAgreementCard = ({value, onChange, onPressDetail}) => {
 
   const toggleOne = useCallback(
     (key) => {
-      const next = {...value, [key]: !value[key]};
-      const {over14, tos, privacyRequired, privacyMarketing} = next;
+      const next = { ...value, [key]: !value[key] };
+      const { over14, tos, privacyRequired, privacyMarketing } = next;
       next.all = over14 && tos && privacyRequired && privacyMarketing;
       onChange(next);
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   const canShowDetail = !!onPressDetail;
@@ -145,7 +151,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 6,
   },
-  termRowHeader: {paddingBottom: 10},
+  termRowHeader: { paddingBottom: 10 },
   termIconWrapper: {
     width: 18,
     height: 18,
@@ -153,13 +159,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  termLeft: {flexDirection: "row", alignItems: "center"},
-  termText: {color: "#FFFFFF", fontSize: 12},
-  termAllText: {fontSize: 13, fontWeight: "600"},
+  termLeft: { flexDirection: "row", alignItems: "center" },
+  termText: { color: "#FFFFFF", fontSize: 12 },
+  termAllText: { fontSize: 13, fontWeight: "600" },
   termDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(255,255,255,0.25)",
     marginVertical: 6,
   },
-  chevron: {color: "#FFFFFF", fontSize: 14, opacity: 0.7},
+  chevron: { color: "#FFFFFF", fontSize: 14, opacity: 0.7 },
 });

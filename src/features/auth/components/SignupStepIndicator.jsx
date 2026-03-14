@@ -1,13 +1,13 @@
 // src/features/auth/components/SignupStepIndicator.jsx
 import React from "react";
-import {View, Text, StyleSheet} from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
 const TOTAL_STEPS = 3;
 
-const SignupStepIndicator = ({currentStep}) => {
+const SignupStepIndicator = ({ currentStep }) => {
   return (
     <View style={styles.container}>
-      {Array.from({length: TOTAL_STEPS}).map((_, index) => {
+      {Array.from({ length: TOTAL_STEPS }).map((_, index) => {
         const step = index + 1;
         const isActive = step === currentStep;
 

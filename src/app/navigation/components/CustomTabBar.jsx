@@ -1,6 +1,9 @@
 import React, { memo } from "react";
 import { View, StyleSheet } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import TabBarItem from "./TabBarItem";
 import { getDeepActiveRouteName } from "../utils/navigationHelper";
 
@@ -8,8 +11,8 @@ const CustomTabBar = memo(function CustomTabBar({
   state,
   descriptors,
   navigation,
-  colors,        // { active, inactive }
-  hiddenRoutes,  // ["CameraScreen", "EditScreen"]
+  colors, // { active, inactive }
+  hiddenRoutes, // ["CameraScreen", "EditScreen"]
 }) {
   const insets = useSafeAreaInsets();
 
@@ -72,7 +75,7 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
     height: 60,
-    paddingHorizontal: '7%',
+    paddingHorizontal: "7%",
     justifyContent: "space-between",
     alignItems: "center",
     // borderWidth:1,

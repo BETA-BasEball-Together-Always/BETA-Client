@@ -3,9 +3,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 // 각 화면
 import HomeScreen from "@features/home/screens/Home/HomeScreen";
-import CommunityScreen from "@features/community/screens/CommunityScreen";
 import ProfileScreen from "@features/profile/screens/Profile/ProfileScreen";
 import PhotoBoothStack from "./PhotoBoothStack";
+import CommunityStack from "./CommunityStack";
 
 // 커스텀 탭바
 import CustomTabBar from "./components/CustomTabBar";
@@ -33,7 +33,7 @@ const HIDDEN_ROUTES = ["Camera", "Edit"];
 export default function MainTabNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="Community"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
@@ -59,7 +59,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Community"
-        component={CommunityScreen}
+        component={CommunityStack}
         options={{
           tabBarIcon: ({ color = COLORS.inactive }) => (
             <TeamIcon

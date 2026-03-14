@@ -1,9 +1,8 @@
 import React from "react";
 import AuthStack from "./AuthStack";
 import MainTabNavigator from "./MainTabNavigator";
-import {createNativeStackNavigator} from "@react-navigation/native-stack";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "@app/SplashScreen";
-import CreatePostScreen from "../../features/community/screens/CreatePost/CreatePostScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -13,8 +12,8 @@ const RootNavigator = () => {
 
   return (
     <Stack.Navigator
-      screenOptions={{headerShown: false}}
-      initialRouteName="CreatePost"
+      screenOptions={{ headerShown: false }}
+      initialRouteName="Main"
     >
       {/* <Stack.Screen name="Splash" component={SplashScreen} /> */}
       {/* {accessToken ? ( */}
@@ -22,7 +21,6 @@ const RootNavigator = () => {
       {/* ) : ( */}
       <Stack.Screen name="Auth" component={AuthStack} />
       {/* )} */}
-      <Stack.Screen name="CreatePost" component={CreatePostScreen} />
     </Stack.Navigator>
   );
 };

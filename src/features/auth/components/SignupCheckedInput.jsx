@@ -87,7 +87,7 @@ export default SignupCheckedInput;
 
 // 스타일은 NativeSignupScreen에서 쓰던 것 그대로 옮겨오고, 필요하면 props로 override
 const styles = StyleSheet.create({
-  fieldGroup: {marginBottom: 16},
+  fieldGroup: { marginBottom: 16 },
   label: {
     fontSize: 13,
     color: "#FFFFFF",
