@@ -1,7 +1,7 @@
 // app.config.js
 import "dotenv/config";
 
-export default ({config}) => ({
+export default ({ config }) => ({
   ...config,
   extra: {
     ...config.extra,
@@ -13,6 +13,7 @@ export default ({config}) => ({
   },
   plugins: [
     ...(config.plugins || []),
+    "expo-secure-store",
     [
       "@react-native-seoul/naver-login",
       {

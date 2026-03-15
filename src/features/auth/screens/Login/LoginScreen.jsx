@@ -1,27 +1,96 @@
 // src/features/auth/screens/LoginScreen.jsx
-import React, {useState} from "react";
-import {View, Text, StyleSheet, TouchableOpacity, Alert} from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
-import {login, unlink} from "@react-native-seoul/kakao-login";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { login, unlink } from "@react-native-seoul/kakao-login";
 
 import AuthBackground from "../../components/AuthBackground";
-import {kakaoSignIn} from "../../libs/Login/kakaoSignIn";
-import {naverSignIn} from "../../libs/Login/naverSignIn";
-import {useSocialLoginMutation} from "../../services/socialLoginMutation";
+import { kakaoSignIn } from "../../libs/Login/kakaoSignIn";
+import { naverSignIn } from "../../libs/Login/naverSignIn";
+import { appleSignIn } from "../../libs/Login/appleSignIn";
+import { useSocialLoginMutation } from "../../services/socialLoginMutation";
+
+import * as SecureStore from "expo-secure-store";
+import { getDeviceId } from "../../libs/Login/deviceUtils";
 
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "../../assets/Login/kakao.svg";
 import NaverIcon from "../../assets/Login/naver.svg";
 import AppleIcon from "../../assets/Login/apple.svg";
+import { useSignupSecretStore } from "../../stores/useSignupSecretStore";
 
-const LoginScreen = ({navigation}) => {
+const LoginScreen = ({ navigation }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
 
-  const handleAppleLogin = () => {
-    // TODO: 애플 로그인 붙일 때 여기 구현
-    Alert.alert("준비 중", "애플 로그인은 아직 연결되지 않았어요.");
+  const handleAppleLogin = async () => {
+    if (isSocialLoading) return;
+    setIsSocialLoading(true);
+
+    try {
+      const { token, cancelled } = await appleSignIn();
+      if (cancelled) {
+        console.log("Apple 로그인 취소됨");
+        return;
+      }
+
+      console.log("애플 identityToken:", token?.identityToken);
+
+      if (!token?.identityToken) {
+        console.log("identityToken 없음");
+        return;
+      }
+
+      const deviceId = await getDeviceId();
+      console.log("deviceID: ", deviceId);
+
+      socialLoginMutation.mutate(
+        { provider: "APPLE", token: token.identityToken, deviceId },
+        {
+          onSuccess: async (response) => {
+            console.log("Apple 로그인 서버 응답 성공!");
+            console.log("전체 응답: ", response?.data);
+
+            const { isNewUser, userResponse } = response.data;
+
+            console.log("isNewUser: ", isNewUser);
+            console.log("accessToken: ", userResponse?.accessToken);
+            console.log("refreshToken: ", userResponse?.refreshToken);
+            console.log("서버 device id: ", userResponse?.deviceId);
+
+            // 로그인 이후 자동 로그인 위해 필요함!!
+            await SecureStore.setItemAsync(
+              "accessToken",
+              userResponse.accessToken,
+            );
+            await SecureStore.setItemAsync(
+              "refreshToken",
+              userResponse.refreshToken,
+            );
+
+            console.log("토큰 SecureStore 저장 완료!");
+          },
+          onError: (error) => {
+            console.log("Apple 서버 로그인 실패");
+            console.log("상태 코드: ", error?.response.status);
+            console.log("에러 데이터: ", error?.response?.data);
+            console.log("에러 메시지: ", error?.message);
+            console.log("요청 URL:", error.config?.baseURL + error.config?.url);
+
+            Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
+          },
+        },
+      );
+    } catch (error) {
+      console.log("애플 로그인 js 단계 오류");
+      console.log("애플 로그인 오류:", error);
+      console.log("애플 로그인 오류 메시지:", error?.message);
+      console.log("애플 로그인 오류 코드:", error?.code);
+      Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
+    } finally {
+      setIsSocialLoading(false);
+    }
   };
 
   const handleKakaoLogin = async () => {
@@ -29,7 +98,7 @@ const LoginScreen = ({navigation}) => {
     setIsSocialLoading(true);
 
     try {
-      const {token, profile, cancelled} = await kakaoSignIn();
+      const { token, profile, cancelled } = await kakaoSignIn();
       if (cancelled) return;
 
       console.log("카카오 토큰:", token);
@@ -37,7 +106,7 @@ const LoginScreen = ({navigation}) => {
 
       // ✅ 카카오 버튼 눌렀을 때 기존 로직 그대로 동작
       socialLoginMutation.mutate(
-        {provider: "KAKAO", token: token.accessToken},
+        { provider: "KAKAO", token: token.accessToken },
         {
           onSuccess: (response) => {
             console.log("소셜 로그인 성공! newUser?:", response?.data?.newUser);
@@ -63,7 +132,7 @@ const LoginScreen = ({navigation}) => {
     setIsSocialLoading(true);
 
     try {
-      const {token, profile, cancelled} = await naverSignIn();
+      const { token, profile, cancelled } = await naverSignIn();
       if (cancelled) return;
 
       console.log("네이버 토큰:", token);

@@ -43,13 +43,13 @@ const api = axios.create({
 // // ✅ 요청 인터셉터: Zustand에서 accessToken 읽어서 Authorization 헤더에 세팅
 // api.interceptors.request.use(
 //   (config) => {
-//     const {accessToken} = authStore.getState(); // ✅ hook 아님, 그냥 상태 읽기
+//     const { accessToken } = authStore.getState(); // ✅ hook 아님, 그냥 상태 읽기
 //     if (accessToken) {
 //       config.headers.Authorization = `Bearer ${accessToken}`;
 //     }
 //     return config;
 //   },
-//   (error) => Promise.reject(error)
+//   (error) => Promise.reject(error),
 // );
 
 // // ✅ 401 처리 + refresh 로직 (동시 요청 queue 포함)
