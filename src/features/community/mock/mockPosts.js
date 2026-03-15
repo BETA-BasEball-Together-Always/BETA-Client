@@ -1,0 +1,62 @@
+export const mockPosts = [
+  {
+    postId: 1,
+    author: {
+      userId: 101,
+      nickname: "왕밤빵e",
+      teamCode: "KIA",
+    },
+    content: "7회 말 역전 홈런 미쳤다...",
+    channel: "KIA",
+    images: [],
+    hashtags: ["KIA", "직관"],
+    reactionCounts: {
+      EMO_JOY: 4,
+      EMO_SAD: 1,
+      EMO_FUN: 2,
+      EMO_HYPE: 6,
+    },
+    commentCount: 7,
+    createdAt: "2025-03-01T14:22:00",
+  },
+  {
+    postId: 2,
+    author: {
+      userId: 102,
+      nickname: "하느링",
+      teamCode: "KIA",
+    },
+    content: "선발 로테이션 좋다",
+    channel: "KIA",
+    images: [],
+    hashtags: ["KIA"],
+    reactionCounts: {
+      EMO_JOY: 4,
+      EMO_SAD: 1,
+      EMO_FUN: 2,
+      EMO_HYPE: 6,
+    },
+    commentCount: 2,
+    createdAt: "2025-03-01T13:10:00",
+  },
+  {
+    postId: 3,
+    author: {
+      userId: 103,
+      nickname: "하하",
+      teamCode: "KIA",
+    },
+    content: "마무리 투수 흔들린 듯",
+    channel: "KIA",
+    images: [],
+    hashtags: ["KIA", "야구"],
+    reactionCounts: {
+      EMO_JOY: 4,
+      EMO_SAD: 1,
+      EMO_FUN: 2,
+      EMO_HYPE: 6,
+    },
+    commentCount: 5,
+    createdAt: "2025-03-01T12:30:00",
+  },
+];

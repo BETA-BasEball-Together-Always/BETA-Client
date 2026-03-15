@@ -26,13 +26,14 @@ const reactions = [
 ];
 
 const PostReactions = ({ post, onSelectReaction }) => {
+  if (!post) return null;
   const [actionY, setActionY] = useState(0);
 
   const [selectedReaction, setSelectedReaction] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   const [reactionCounts, setReactionCounts] = useState(
-    post.reactionCounts || {
+    post?.reactionCounts || {
       EMO_JOY: 0,
       EMO_SAD: 0,
       EMO_FUN: 0,

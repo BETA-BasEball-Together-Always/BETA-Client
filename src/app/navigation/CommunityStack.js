@@ -15,8 +15,8 @@ const CommunityStack = () => {
     >
       <Stack.Screen name="CommunityMain" component={CommunityScreen} />
       {/* <Stack.Screen name="PostDetail" component={PostDetailScreen} /> */}
-      <Stack.Screen name="CreatePost" component={CreatePostScreen} />
-      <Stack.Screen name="UploadSuccess" component={UploadSuccessScreen} />
+      {/* <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+      <Stack.Screen name="UploadSuccess" component={UploadSuccessScreen} /> */}
     </Stack.Navigator>
   );
 };

@@ -12,7 +12,7 @@ const ReactionSummary = ({
     <View style={styles.reactionSummary}>
       <View style={styles.reactionIconRow}>
         {reactions.map((reaction) =>
-          reactionCounts[reaction.id] > 0 ? (
+          reactionCounts?.[reaction.id] > 0 ? (
             <View
               key={reaction.id}
               style={[
