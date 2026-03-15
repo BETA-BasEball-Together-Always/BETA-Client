@@ -1,4 +1,4 @@
-import {StyleSheet, Text, View} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import React from "react";
 
 const AuthBackground = () => {
@@ -22,13 +22,13 @@ const AuthBackground = () => {
       <View
         style={[
           styles.ellipseShape,
-          {backgroundColor: "#443D4D", right: "-25%", top: "0%"},
+          { backgroundColor: "#443D4D", right: "-25%", top: "0%" },
         ]}
       />
       <View
         style={[
           styles.ellipseShape,
-          {backgroundColor: "#7284DB", left: "-15%", top: "8%"},
+          { backgroundColor: "#7284DB", left: "-15%", top: "8%" },
         ]}
       />
       <View
@@ -44,13 +44,13 @@ const AuthBackground = () => {
       <View
         style={[
           styles.ellipseShape,
-          {backgroundColor: "#705762ff", left: "-28%", top: "38%"},
+          { backgroundColor: "#705762ff", left: "-28%", top: "38%" },
         ]}
       />
       <View
         style={[
           styles.ellipseShape,
-          {backgroundColor: "#b74a2cff", right: "-28%", top: "66%"},
+          { backgroundColor: "#b74a2cff", right: "-28%", top: "66%" },
         ]}
       />
     </>

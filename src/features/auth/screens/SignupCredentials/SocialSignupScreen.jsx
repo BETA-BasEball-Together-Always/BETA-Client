@@ -2,7 +2,6 @@
 import React, { useMemo, useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -13,57 +12,66 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppText } from "../../../../shared/theme/components/AppText";
 
 import AuthBackground from "../../components/AuthBackground";
-import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
-
 import SignupCheckedInput from "../../components/SignupCheckedInput";
-import TermsAgreementCard from "../../components/TermsAgreementCard";
+import SignupStepIndicator from "../../components/SignupStepIndicator";
 import { useCheckedField } from "../../hooks/useCheckedField";
-import { useEmailCheckMutation } from "../../services/emailCheckMutation";
+import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
+
+import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
 const { height } = Dimensions.get("window");
 
 const SocialSignupScreen = ({ navigation, route }) => {
-  const [terms, setTerms] = useState({
-    all: false,
-    over14: false,
-    tos: false,
-    privacyRequired: false,
-    privacyMarketing: false,
-  });
+  const signup = route?.params?.signup ?? {};
+  const readonlyEmail = signup.email ?? "";
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const emailCheckMutation = useEmailCheckMutation();
+  const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
 
-  const validateEmail = (value) => {
-    if (!value) return "이메일을 입력해 주세요.";
-    if (!emailRegex.test(value)) return "올바른 이메일 형식을 입력해 주세요.";
+  const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
+
+  const validateNickname = (value) => {
+    if (!value) return "닉네임을 입력해주세요.";
+
+    const trimmed = value.trim();
+
+    if (trimmed.length < 2 || trimmed.length > 13) {
+      return "닉네임은 2~13자 이내로 입력해주세요.";
+    }
+
+    if (!nicknameRegex.test(trimmed)) {
+      return "한글, 영문, 숫자만 사용할 수 있어요.";
+    }
+
     return "";
   };
 
-  const emailField = useCheckedField({
-    validate: validateEmail,
-    checkAvailability: async (trimmedEmail) => {
-      const isDuplicate = await emailCheckMutation.mutateAsync(trimmedEmail);
-      return !isDuplicate; // useCheckedField는 available(boolean)만 기대
+  const nicknameField = useCheckedField({
+    validate: validateNickname,
+    checkAvailability: async (trimmedNickname) => {
+      const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
+      return !isDuplicate;
     },
   });
 
   const isFormValid = useMemo(() => {
-    const requiredChecked = terms.over14 && terms.tos && terms.privacyRequired;
-    const emailValid = !emailField.error && emailField.isAvailable;
-    return requiredChecked && emailValid;
-  }, [terms, emailField.error, emailField.isAvailable]);
+    return (
+      !!nicknameField.value && !nicknameField.error && nicknameField.isAvailable
+    );
+  }, [nicknameField.value, nicknameField.error, nicknameField.isAvailable]);
 
   const handleNext = () => {
     if (!isFormValid) return;
 
-    navigation.navigate("SignupNickname", {
+    const nickname = nicknameField.value.trim();
+
+    navigation.navigate("SignupFavoriteTeam", {
       signup: {
-        email: emailField.value,
-        personalInfoRequired: terms.privacyRequired,
-        agreeMarketing: terms.privacyMarketing,
+        ...signup,
+        email: readonlyEmail,
+        nickname,
       },
     });
   };
@@ -82,54 +90,79 @@ const SocialSignupScreen = ({ navigation, route }) => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.inner}>
-              <View>
-                {/* 로고 */}
-                <View style={styles.logoWrapper}>
-                  <BetaLogo width={120} />
+              {/* 헤더 (뒤로가기 + 스텝 인디케이터) */}
+              <View style={styles.headerRow}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => navigation.goBack()}
+                  activeOpacity={0.8}
+                >
+                  <BackIcon />
+                </TouchableOpacity>
+
+                <View style={styles.stepWrapper}>
+                  <SignupStepIndicator currentStep={1} />
                 </View>
 
-                {/* 이메일 */}
-                <View style={styles.formWrapper}>
+                <View style={styles.rightPlaceholder} />
+              </View>
+
+              {/* 이메일 (읽기 전용) */}
+              <View style={styles.section}>
+                <AppText variant="displayTitle" style={styles.sectionTitle}>
+                  회원가입 이메일
+                </AppText>
+                <AppText
+                  variant="smallRegular"
+                  style={styles.sectionDescription}
+                >
+                  * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
+                  사용됩니다.
+                </AppText>
+
+                <View style={styles.readonlyEmailBox}>
+                  <AppText variant="middle" style={styles.readonlyEmailText}>
+                    {readonlyEmail || "-"}
+                  </AppText>
+                </View>
+              </View>
+
+              {/* 닉네임 입력 */}
+              <View style={[styles.section, { marginTop: 32 }]}>
+                <AppText variant="displayTitle" style={styles.sectionTitle}>
+                  닉네임을 입력해주세요
+                </AppText>
+
+                <View style={styles.nicknameInputWrapper}>
                   <SignupCheckedInput
-                    label="이메일"
-                    placeholder="이메일을 입력해주세요."
-                    keyboardType="email-address"
-                    field={emailField}
+                    label={null}
+                    placeholder="닉네임을 입력해주세요."
+                    maxLength={13}
+                    field={nicknameField}
                     buttonLabel="중복확인"
                   />
-
-                  {/* 이용약관 */}
-                  <TermsAgreementCard
-                    value={terms}
-                    onChange={setTerms}
-                    onPressDetail={(type) => {
-                      navigation.navigate("TermsDetail", { type });
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.nextButton,
-                      !isFormValid && styles.nextButtonDisabled,
-                    ]}
-                    activeOpacity={isFormValid ? 0.8 : 1}
-                    onPress={handleNext}
-                    disabled={!isFormValid}
-                  >
-                    <Text
-                      style={[
-                        styles.nextButtonText,
-                        !isFormValid && styles.nextButtonTextDisabled,
-                      ]}
-                    >
-                      다음
-                    </Text>
-                  </TouchableOpacity>
+                  <AppText variant="labelSmall" style={styles.lengthText}>
+                    {nicknameField.value.length}/13
+                  </AppText>
                 </View>
               </View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
+      {/* 하단 버튼 */}
+      <View style={styles.bottomButtonArea}>
+        <TouchableOpacity
+          style={[styles.nextButton, !isFormValid && styles.nextButtonDisabled]}
+          activeOpacity={isFormValid ? 0.8 : 1}
+          onPress={handleNext}
+          disabled={!isFormValid}
+        >
+          <AppText variant="heading" style={styles.nextButtonText}>
+            다음
+          </AppText>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -146,8 +179,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: height * 0.15,
-    paddingBottom: height * 0.2,
     paddingHorizontal: 20,
   },
   inner: {
@@ -155,33 +186,74 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 390,
     alignSelf: "center",
+  },
+  headerRow: {
+    flexDirection: "row",
     justifyContent: "space-between",
-  },
-  logoWrapper: {
     alignItems: "center",
-    marginBottom: 32,
+    height: height * 0.1,
+    marginBottom: 20,
   },
-  formWrapper: {
-    flex: 1,
+  backButton: {
+    width: 32,
+    alignItems: "center",
+  },
+  stepWrapper: {
+    alignItems: "center",
+    width: 180,
+  },
+  rightPlaceholder: {
+    width: 32,
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    color: "#FFFFFF",
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 12,
+  },
+  readonlyEmailBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(206, 206, 206, 0.34)",
+    paddingHorizontal: 14,
+    paddingVertical: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  readonlyEmailText: {
+    color: "rgba(255,255,255,0.6)",
+  },
+  nicknameInputWrapper: {
+    marginTop: 8,
+  },
+  lengthText: {
+    color: "#FFFFFF",
+    textAlign: "right",
+    marginTop: -9,
+  },
+  bottomButtonArea: {
+    position: "absolute",
+    bottom: 60,
+    right: 0,
+    left: 0,
   },
   nextButton: {
-    marginTop: 24, // 약관 카드와 간격
-    width: "100%",
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    backgroundColor: "#F9F9F9",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 20,
+    marginHorizontal: 20.8,
   },
   nextButtonDisabled: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "#232323",
   },
   nextButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111111",
-  },
-  nextButtonTextDisabled: {
-    color: "rgba(255,255,255,0.45)",
+    color: "#3E3E3E",
   },
 });

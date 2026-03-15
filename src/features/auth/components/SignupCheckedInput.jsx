@@ -1,14 +1,10 @@
 // src/features/auth/components/SignupCheckedInput.jsx
 import React from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import EmailCheckSuccessIcon from "../assets/common/svg/CheckSuccessIcon.svg";
 import EmailCheckFailIcon from "../assets/common/svg/CheckFailIcon.svg";
+
+import { AppText } from "../../../shared/theme/components/AppText";
 
 const SignupCheckedInput = ({
   label,
@@ -31,13 +27,13 @@ const SignupCheckedInput = ({
 
   return (
     <View style={styles.fieldGroup}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <AppText style={styles.label}>{label}</AppText>}
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor="#B8B8C4"
+          placeholderTextColor="#F9F9F9"
           value={value}
           onChangeText={handleChange}
           onBlur={handleBlur}
@@ -68,16 +64,22 @@ const SignupCheckedInput = ({
             disabled={!value || !!error || isChecking}
             onPress={handleCheck}
           >
-            <Text style={styles.checkButtonText}>
+            <AppText variant="labelSmall" style={styles.checkButtonText}>
               {isChecking ? "확인중..." : buttonLabel}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         )}
       </View>
 
-      {touched && !!error && <Text style={styles.errorText}>{error}</Text>}
+      {touched && !!error && (
+        <AppText variant="semi13" style={styles.errorText}>
+          {error}
+        </AppText>
+      )}
       {touched && !error && status === "success" && (
-        <Text style={styles.successText}>사용 가능한 값이에요.</Text>
+        <AppText variant="semi13" style={styles.successText}>
+          사용 가능한 값이에요.
+        </AppText>
       )}
     </View>
   );
@@ -87,28 +89,25 @@ export default SignupCheckedInput;
 
 // 스타일은 NativeSignupScreen에서 쓰던 것 그대로 옮겨오고, 필요하면 props로 override
 const styles = StyleSheet.create({
-  fieldGroup: {marginBottom: 16},
+  fieldGroup: { marginBottom: 16 },
   label: {
-    fontSize: 13,
     color: "#FFFFFF",
     marginBottom: 6,
-    fontWeight: "500",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-    backgroundColor: "rgba(0,0,0,0.25)",
+    borderColor: "rgba(206, 206, 206, 0.34)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
     overflow: "hidden",
-    height: 48,
+    height: 55,
   },
   input: {
     flex: 1,
     paddingHorizontal: 14,
     color: "#FFFFFF",
-    fontSize: 14,
   },
   rightAddon: {
     height: "100%",
@@ -117,28 +116,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkButton: {
-    height: "100%",
-    paddingHorizontal: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#EFEFEF",
+    backgroundColor: "#252823",
+    borderRadius: 5,
+    right: 10,
   },
   checkButtonDisabled: {
-    backgroundColor: "#3E3E3E",
+    backgroundColor: "#252823",
   },
   checkButtonText: {
-    fontSize: 12,
-    color: "#3E3E3E",
-    fontWeight: "500",
+    color: "#6F9D48",
   },
   errorText: {
-    marginTop: 4,
-    fontSize: 11,
-    color: "#FF6B6B",
+    marginTop: 3,
+    color: "#F34E4E",
+    paddingHorizontal: 4,
   },
   successText: {
-    marginTop: 4,
-    fontSize: 11,
-    color: "#7BE495",
+    color: "#6F9D48",
+    paddingHorizontal: 4,
+    marginTop: 3,
+    marginBottom: -20,
   },
 });

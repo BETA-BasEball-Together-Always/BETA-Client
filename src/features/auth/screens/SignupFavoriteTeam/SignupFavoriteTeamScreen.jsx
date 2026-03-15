@@ -1,7 +1,6 @@
-import React, {useState, useMemo} from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -11,9 +10,9 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import AuthBackground from "../../components/AuthBackground";
+import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
 
 // 🔽 팀 로고 SVG (경로는 프로젝트에 맞게 조정)
@@ -28,22 +27,25 @@ import Kiwoom from "../../../../shared/assets/svg/teams/Kiwoom.svg";
 import Doosan from "../../../../shared/assets/svg/teams/Doosan.svg";
 import Kia from "../../../../shared/assets/svg/teams/KIA.svg";
 
-const {height} = Dimensions.get("window");
+import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
+import { AppText } from "../../../../shared/theme/components/AppText";
+
+const { height } = Dimensions.get("window");
 
 const TEAMS = [
-  {key: "LG", label: "LG 트윈스", Icon: LG},
-  {key: "HANWHA", label: "한화 이글스", Icon: Hanwha},
-  {key: "SSG", label: "SSG 랜더스", Icon: SSG},
-  {key: "SAMSUNG", label: "삼성 라이온즈", Icon: Samsung},
-  {key: "NC", label: "NC 다이노스", Icon: NC},
-  {key: "KT", label: "KT 위즈", Icon: KT},
-  {key: "LOTTE", label: "롯데 자이언츠", Icon: Lotte},
-  {key: "KIWOOM", label: "키움 히어로즈", Icon: Kiwoom},
-  {key: "DOOSAN", label: "두산 베어스", Icon: Doosan},
-  {key: "KIA", label: "기아 타이거즈", Icon: Kia},
+  { key: "LG", label: "LG 트윈스", Icon: LG },
+  { key: "HANWHA", label: "한화 이글스", Icon: Hanwha },
+  { key: "SSG", label: "SSG 랜더스", Icon: SSG },
+  { key: "SAMSUNG", label: "삼성 라이온즈", Icon: Samsung },
+  { key: "NC", label: "NC 다이노스", Icon: NC },
+  { key: "KT", label: "KT 위즈", Icon: KT },
+  { key: "LOTTE", label: "롯데 자이언츠", Icon: Lotte },
+  { key: "KIWOOM", label: "키움 히어로즈", Icon: Kiwoom },
+  { key: "DOOSAN", label: "두산 베어스", Icon: Doosan },
+  { key: "KIA", label: "기아 타이거즈", Icon: Kia },
 ];
 
-const SignupFavoriteTeamScreen = ({navigation, route}) => {
+const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
 
   // ✅ signup 객체로만 누적 전달
@@ -69,12 +71,12 @@ const SignupFavoriteTeamScreen = ({navigation, route}) => {
           style={styles.container}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <AuthBackground />
-
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
+            <SelectTeamBackground />
+
             <View style={styles.inner}>
               {/* 헤더 */}
               <View style={styles.headerRow}>
@@ -82,7 +84,7 @@ const SignupFavoriteTeamScreen = ({navigation, route}) => {
                   onPress={() => navigation.goBack()}
                   style={styles.backButton}
                 >
-                  <Text style={styles.backButtonText}>{"<"}</Text>
+                  <BackIcon />
                 </TouchableOpacity>
                 <View style={styles.stepWrapper}>
                   <SignupStepIndicator currentStep={2} />
@@ -92,13 +94,13 @@ const SignupFavoriteTeamScreen = ({navigation, route}) => {
               </View>
 
               {/* 타이틀 */}
-              <Text style={styles.title}>
+              <AppText variant="displayTitle" style={styles.title}>
                 회원님의 팬심을 보여줄 구단을 선택해주세요!
-              </Text>
+              </AppText>
 
               {/* 팀 선택 */}
               <View style={styles.grid}>
-                {TEAMS.map(({key, label, Icon}) => {
+                {TEAMS.map(({ key, label, Icon }) => {
                   const selected = selectedTeam === key;
 
                   return (
@@ -117,14 +119,15 @@ const SignupFavoriteTeamScreen = ({navigation, route}) => {
                         <Icon width={100} height={100} />
                       </View>
 
-                      <Text
+                      <AppText
+                        variant="bodyMedium"
                         style={[
                           styles.teamLabel,
                           selected && styles.teamLabelSelected,
                         ]}
                       >
                         {label}
-                      </Text>
+                      </AppText>
                     </TouchableOpacity>
                   );
                 })}
@@ -143,14 +146,15 @@ const SignupFavoriteTeamScreen = ({navigation, route}) => {
               activeOpacity={selectedTeam ? 0.85 : 1}
               onPress={handleNext}
             >
-              <Text
+              <AppText
+                variant="heading"
                 style={[
                   styles.completeButtonText,
                   !selectedTeam && styles.completeButtonTextDisabled,
                 ]}
               >
                 선택완료
-              </Text>
+              </AppText>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -171,8 +175,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: height * 0.02,
-    paddingBottom: height * 0.2,
     paddingHorizontal: 20,
   },
   inner: {
@@ -210,11 +212,9 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 22,
-    fontWeight: "700",
+    paddingHorizontal: 30,
     color: "#FFFFFF",
     marginBottom: 24,
-    lineHeight: 30,
   },
 
   grid: {
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.25,
     shadowRadius: 10,
-    shadowOffset: {width: 0, height: 6},
+    shadowOffset: { width: 0, height: 6 },
 
     // Android 그림자
     elevation: 8,
@@ -263,9 +263,7 @@ const styles = StyleSheet.create({
 
   teamLabel: {
     marginTop: 10,
-    fontSize: 14,
     color: "rgba(255,255,255,0.75)",
-    fontWeight: "600",
     textAlign: "center",
   },
 
@@ -283,9 +281,8 @@ const styles = StyleSheet.create({
   },
 
   completeButton: {
-    paddingVertical: 12,
-    // height: 52,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 10,
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
@@ -296,8 +293,6 @@ const styles = StyleSheet.create({
   },
 
   completeButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
     color: "#111111",
   },
 
