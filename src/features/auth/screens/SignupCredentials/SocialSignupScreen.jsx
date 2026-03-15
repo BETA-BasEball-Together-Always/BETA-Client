@@ -1,5 +1,5 @@
 // src/features/auth/screens/SignupCredentials/SocialSignupScreen.jsx
-import React, {useMemo, useState} from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,19 +12,19 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import AuthBackground from "../../components/AuthBackground";
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 
 import SignupCheckedInput from "../../components/SignupCheckedInput";
 import TermsAgreementCard from "../../components/TermsAgreementCard";
-import {useCheckedField} from "../../hooks/useCheckedField";
-import {useEmailCheckMutation} from "../../services/emailCheckMutation";
+import { useCheckedField } from "../../hooks/useCheckedField";
+import { useEmailCheckMutation } from "../../services/emailCheckMutation";
 
-const {height} = Dimensions.get("window");
+const { height } = Dimensions.get("window");
 
-const SocialSignupScreen = ({navigation, route}) => {
+const SocialSignupScreen = ({ navigation, route }) => {
   const [terms, setTerms] = useState({
     all: false,
     over14: false,
@@ -103,7 +103,7 @@ const SocialSignupScreen = ({navigation, route}) => {
                     value={terms}
                     onChange={setTerms}
                     onPressDetail={(type) => {
-                      navigation.navigate("TermsDetail", {type});
+                      navigation.navigate("TermsDetail", { type });
                     }}
                   />
                   <TouchableOpacity

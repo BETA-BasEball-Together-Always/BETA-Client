@@ -1,6 +1,6 @@
 // src/features/auth/services/signupCompleteMutation.js
-import {useMutation} from "@tanstack/react-query";
-import {authKeys} from "./authKeys";
+import { useMutation } from "@tanstack/react-query";
+import { authKeys } from "./authKeys";
 import api from "../../../shared/libs/api"; // TODO: 경로 수정
 
 /**
