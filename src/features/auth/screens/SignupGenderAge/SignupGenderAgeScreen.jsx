@@ -16,7 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
-import { useSignupSecretStore } from "../../stores/useSignupSecretStore";
+import { useSignupCompleteMutation } from "../../services/signupCompleteMutation";
+import { useStepBack } from "../../hooks/useStepBack";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -27,11 +28,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
   const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
   const [age, setAge] = useState("");
 
-  // ✅ 누적된 회원가입 정보
-  const signup = route?.params?.signup ?? {};
-
-  // ✅ password는 params가 아니라 zustand 메모리에서
-  const { password, clearSecrets } = useSignupSecretStore();
+  const handleBack = useStepBack("SignupFavoriteTeam");
 
   const isNextEnabled = useMemo(() => {
     return !!age && Number(age) > 0;
@@ -41,37 +38,54 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
     console.log("gender", gender);
   }, [gender]);
 
-  // ✅ 마지막 제출 로직
-  const submitSignup = async ({ genderValue, ageValue }) => {
-    // password가 없으면(새로고침/앱종료 등) 안전하게 되돌리기
-    if (signup.signupType === "NATIVE" && !password) {
-      // UX는 프로젝트 스타일에 맞게 토스트/알럿 처리 추천
-      navigation.replace("Login");
-      return;
-    }
+  const signupCompleteMutation = useSignupCompleteMutation();
 
-    // ✅ 최종 payload 조립 (필요 필드만 백엔드 명세대로 맞춰)
-    const payload = {
-      social: signup.signupType ?? null,
-      email: signup.email,
-      password, // ✅ 여기서만 사용
-      agreeMarketing: signup.agreeMarketing,
-      personalInfoRequired: signup.personalInfoRequired,
-      nickName: signup.nickname,
-      favoriteTeam: signup.favoriteTeam,
-      gender: genderValue ?? null, // 선택사항
-      age: ageValue ?? null, // 선택사항
+  // 재진입 시 route.params.signup + AsyncStorage에서 데이터 복구!!
+  useEffect(() => {
+    const restoreSignupData = async () => {
+      const routeSignup = route?.params?.signup ?? {};
+      let storedSignup = {};
+
+      try {
+        const stored = await AsyncStorage.getItem("@signupData");
+        if (stored) storedSignup = JSON.parse(stored);
+      } catch (e) {
+        console.log("async storage 불러오기 실패: ", e);
+        console.log("async storage 불러오기 실패 에러 데이터: ", e.data);
+        console.log("async storage 불러오기 실패 에러 리스폰스: ", e.response);
+      }
+
+      setSignupData({
+        ...storedSignup,
+        ...routeSignup,
+      });
     };
-    console.log("최종 회원가입 payload:", payload);
+    restoreSignupData();
+  }, [route]);
 
-    // ✅ API 호출 (엔드포인트는 너희 명세로 수정)
-    // await api.post("/api/auth/signup", payload);
-
-    // ✅ 성공 시 비밀번호 즉시 제거
-    // clearSecrets();
-
-    // ✅ 완료 후 이동 (완료 화면/로그인/메인 등 너희 플로우로)
-    // navigation.replace("Login"); // 예시
+  // 호출 시 signupData 포함하도록 수정
+  const submitSignup = ({ genderValue, ageValue }) => {
+    signupCompleteMutation.mutate(
+      {
+        ...signupData,
+        gender: genderValue ?? undefined,
+        age: typeof ageValue === "number" ? ageValue : undefined,
+      },
+      {
+        onSuccess: () => {
+          navigation.replace("SignupComplete", {
+            signup: {
+              ...signupData,
+              favoriteTeamCode: genderValue ?? undefined,
+              favoriteTeamCode: route?.params?.favoriteTeamLabel,
+            },
+          });
+        },
+        onError: (err) => {
+          console.log("회원가입 완료 mutation 에러: ", err);
+        },
+      },
+    );
   };
 
   const handleNext = async () => {
@@ -108,7 +122,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
               <View style={styles.headerRow}>
                 <TouchableOpacity
                   style={styles.backButton}
-                  onPress={() => navigation.goBack()}
+                  onPress={handleBack}
                   activeOpacity={0.8}
                 >
                   <BackIcon />

@@ -16,6 +16,7 @@ import { kakaoSignIn } from "../../libs/Login/kakaoSignIn";
 import { naverSignIn } from "../../libs/Login/naverSignIn";
 import { appleSignIn } from "../../libs/Login/appleSignIn";
 import { useSocialLoginMutation } from "../../services/socialLoginMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 
 import * as SecureStore from "expo-secure-store";
 import { getDeviceId } from "../../libs/Login/deviceUtils";
@@ -30,6 +31,7 @@ const LoginScreen = ({ navigation }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
   const [providerConflict, setProviderConflict] = useState(null); // 'KAKAO' | 'NAVER' | 'APPLE' | null
+  const signupStatusMutation = useSignupStatusMutation();
 
   const conflictColors = useMemo(
     () => ({
@@ -49,7 +51,7 @@ const LoginScreen = ({ navigation }) => {
     [],
   );
 
-  const handleSocialLoginResult = (provider, response) => {
+  const handleSocialLoginResult = async (provider, response) => {
     const data = response?.data;
     const isNewUser =
       typeof data?.isNewUser === "boolean"
@@ -70,37 +72,61 @@ const LoginScreen = ({ navigation }) => {
 
     if (!isNewUser) {
       // 기존 회원 → 바로 메인으로
-      navigation.replace("Home");
+      navigation.replace("Main");
       return;
     }
 
-    const signupStep = userResponse.signupStep;
-    console.log("회원가입 진행 단계: ", signupStep);
+    // 신규 or 회원가입 미완료 → 서버에서 최신 signupStep / 데이터 조회
+    let signupStep = userResponse.signupStep;
+    let emailFromServer = null;
+    let teamListFromServer = null;
 
-    if (signupStep === "SOCIAL_AUTHENTICATED") {
-      navigation.navigate("SocialSignup");
-      return;
+    try {
+      const status = await signupStatusMutation.mutateAsync();
+      if (status?.signupStep) {
+        signupStep = status.signupStep;
+      }
+      emailFromServer = status?.email ?? null;
+      teamListFromServer = status?.teamList ?? null;
+    } catch (e) {
+      console.log("signup/status 조회 실패:", e);
     }
 
-    if (!signupStep || signupStep === "TEAM_SELECTED") {
-      // 거의 가입 완료 단계라면 메인으로 보냄 (필요 시 완료 API 추가 호출)
-      navigation.replace("Home");
-      return;
-    }
+    console.log("회원가입 진행 단계 (복원 포함): ", signupStep);
 
-    // 신규/미완료 회원 → 회원가입 플로우 진입
-    // 현재 화면 네이밍에 맞춰 약관부터 시작
-    navigation.navigate("SocialSignup", {
-      // signupStep,
-      // social: userResponse.social ?? provider,
-      signup: {
-        signupType: "SOCIAL",
-        social: provider,
-        email: userResponse.email,
-        socialToken: userResponse.accessToken,
-        signupStep,
-      },
-    });
+    switch (signupStep) {
+      case "SOCIAL_AUTHENTICATED":
+        // 약관 동의 페이지로
+        navigation.replace("TermsDetail");
+        break;
+
+      case "CONSENT_AGREED":
+        // 1단계: 이메일(읽기 전용) + 닉네임
+        navigation.replace("SocialSignup", {
+          signup: {
+            email: emailFromServer || userResponse.email,
+          },
+        });
+        break;
+
+      case "PROFILE_COMPLETED":
+        // 2단계: 팀 선택 (teamList 필요)
+        navigation.replace("SignupFavoriteTeam", {
+          signup: {},
+          teamList: teamListFromServer || [],
+        });
+        break;
+
+      case "TEAM_SELECTED":
+        // 3단계: 성별/나이 입력
+        navigation.replace("SignupGenderAge", { signup: {} });
+        break;
+
+      default:
+        // 알 수 없는 상태면 약관부터 시작
+        navigation.replace("TermsDetail");
+        break;
+    }
   };
 
   const handleAppleLogin = async () => {

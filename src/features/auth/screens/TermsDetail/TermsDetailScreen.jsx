@@ -1,4 +1,5 @@
-import React, {useMemo} from "react";
+// src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,33 +7,29 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AuthBackground from "../../components/AuthBackground";
+import TermsAgreementCard from "../../components/TermsAgreementCard";
+import { AppText } from "../../../../shared/theme/components/AppText";
+import { useSignupConsentMutation } from "../../services/signupConsentMutation";
 
-const TermsDetailScreen = ({navigation, route}) => {
-  const type = route?.params?.type;
+import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
-  const {title, body} = useMemo(() => {
-    switch (type) {
-      case "tos":
-        return {
-          title: "이용약관",
-          body: "여기에 이용약관 내용을 넣어주세요.\n\n- 서비스 목적\n- 회원 의무\n- 금지 행위\n- 책임 제한\n- 분쟁 해결\n\n(백엔드/노션/웹뷰 등으로 연결 예정이면 이 부분을 교체)",
-        };
-      case "privacyRequired":
-        return {
-          title: "개인정보 수집 및 이용 동의",
-          body: "여기에 개인정보 수집/이용 동의 내용을 넣어주세요.\n\n- 수집 항목\n- 이용 목적\n- 보유 기간\n- 동의 거부 권리 및 불이익",
-        };
-      case "privacyMarketing":
-        return {
-          title: "개인정보 마케팅 활용 동의",
-          body: "여기에 마케팅 활용 동의 내용을 넣어주세요.\n\n- 활용 항목\n- 활용 목적\n- 보유 기간\n- 수신 동의/철회 방법",
-        };
-      default:
-        return {title: "약관", body: "표시할 약관 타입이 없습니다."};
-    }
-  }, [type]);
+const TermsDetailScreen = ({ navigation }) => {
+  const [terms, setTerms] = useState({
+    all: false,
+    over14: false,
+    tos: false,
+    privacyRequired: false,
+    privacyMarketing: false,
+  });
+
+  const isRequiredAgreed = useMemo(
+    () => terms.over14 && terms.tos && terms.privacyRequired,
+    [terms],
+  );
+
+  const signupConsentMutation = useSignupConsentMutation();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,20 +39,77 @@ const TermsDetailScreen = ({navigation, route}) => {
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.replace("PrevStep")}
           activeOpacity={0.85}
         >
-          <Text style={styles.backButtonText}>{"<"}</Text>
+          <BackIcon />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={styles.headerTitle}>이용약관 동의</Text>
 
-        <View style={{width: 32}} />
+        <View style={{ width: 32 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.bodyText}>{body}</Text>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.titleBlock}>
+          <AppText variant="displayTitle2" style={styles.mainText}>
+            BETA 서비스 이용을 위해
+          </AppText>
+          <AppText variant="displayTitle2" style={styles.mainText}>
+            약관에 동의해 주세요.
+          </AppText>
+        </View>
+
+        <TermsAgreementCard
+          value={terms}
+          onChange={setTerms}
+          onPressDetail={() => {
+            // 필요 시 상세 약관 화면/웹뷰로 연결
+          }}
+        />
       </ScrollView>
+
+      <View style={styles.bottomArea}>
+        <TouchableOpacity
+          style={[
+            styles.nextButton,
+            !isRequiredAgreed && styles.nextButtonDisabled,
+          ]}
+          activeOpacity={isRequiredAgreed ? 0.85 : 1}
+          disabled={!isRequiredAgreed}
+          onPress={() => {
+            if (!isRequiredAgreed) return;
+
+            signupConsentMutation.mutate(
+              {
+                personalInfoRequired: true,
+                agreeMarketing: terms.privacyMarketing,
+              },
+              {
+                onSuccess: (data) => {
+                  // data: { signupStep: 'CONSENT_AGREED', email }
+                  navigation.replace("SocialSignup", {
+                    signup: { email: data?.email ?? "" },
+                  });
+                },
+              },
+            );
+          }}
+        >
+          <AppText
+            variant="heading"
+            style={[
+              styles.nextButtonText,
+              !isRequiredAgreed && styles.nextButtonTextDisabled,
+            ]}
+          >
+            다음
+          </AppText>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -63,7 +117,7 @@ const TermsDetailScreen = ({navigation, route}) => {
 export default TermsDetailScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {flex: 1, backgroundColor: "#000"},
+  safeArea: { flex: 1, backgroundColor: "#000" },
   headerRow: {
     height: 56,
     paddingHorizontal: 20,
@@ -71,9 +125,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  backButton: {width: 32, alignItems: "center"},
-  backButtonText: {fontSize: 28, lineHeight: 20, color: "#fff"},
-  headerTitle: {color: "#fff", fontSize: 16, fontWeight: "700"},
-  content: {paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24},
-  bodyText: {color: "rgba(255,255,255,0.85)", fontSize: 13, lineHeight: 20},
+  backButton: { width: 32, alignItems: "center" },
+  backButtonText: { fontSize: 28, lineHeight: 20, color: "#fff" },
+  headerTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+  titleBlock: {
+    marginBottom: 24,
+  },
+  mainText: {
+    color: "#FFFFFF",
+  },
+  bottomArea: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  nextButton: {
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  nextButtonDisabled: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  nextButtonText: {
+    color: "#111111",
+  },
+  nextButtonTextDisabled: {
+    color: "rgba(255,255,255,0.45)",
+  },
 });

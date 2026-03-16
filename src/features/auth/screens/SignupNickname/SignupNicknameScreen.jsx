@@ -1,5 +1,5 @@
 ﻿// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
-import React, {useMemo} from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -16,15 +16,19 @@ import {
 import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
-import {useCheckedField} from "../../hooks/useCheckedField";
-import {SafeAreaView} from "react-native-safe-area-context";
-import {useNicknameCheckMutation} from "../../services/nicknameCheckMutation";
+import { useCheckedField } from "../../hooks/useCheckedField";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
+import { useStepBack } from "../../hooks/useStepBack";
 
-const {height} = Dimensions.get("window");
+import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
-const SignupNicknameScreen = ({navigation, route}) => {
+const { height } = Dimensions.get("window");
+
+const SignupNicknameScreen = ({ navigation, route }) => {
   const signup = route?.params?.signup ?? {}; // ? { signupType, email, terms ... }
-  const {mutateAsync: checkNicknameDuplicate} = useNicknameCheckMutation();
+  const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
+  const handleBack = useStepBack("Login");
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -94,10 +98,10 @@ const SignupNicknameScreen = ({navigation, route}) => {
               <View style={styles.headerRow}>
                 <TouchableOpacity
                   style={styles.backButton}
-                  onPress={() => navigation.goBack()}
+                  onPress={handleBack}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.backButtonText}>{"<"}</Text>
+                  <BackIcon />
                 </TouchableOpacity>
 
                 <View style={styles.stepWrapper}>

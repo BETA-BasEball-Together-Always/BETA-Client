@@ -19,6 +19,7 @@ import SignupCheckedInput from "../../components/SignupCheckedInput";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
+import { useSignupProfileMutation } from "../../services/signupProfileMutation";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
@@ -29,6 +30,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
   const readonlyEmail = signup.email ?? "";
 
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
+  const signupProfileMutation = useSignupProfileMutation();
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
 
@@ -67,13 +69,22 @@ const SocialSignupScreen = ({ navigation, route }) => {
 
     const nickname = nicknameField.value.trim();
 
-    navigation.navigate("SignupFavoriteTeam", {
-      signup: {
-        ...signup,
-        email: readonlyEmail,
-        nickname,
+    signupProfileMutation.mutate(
+      { nickname },
+      {
+        onSuccess: (data) => {
+          const teamList = data?.teamList ?? [];
+          navigation.replace("SignupFavoriteTeam", {
+            signup: {
+              ...signup,
+              email: readonlyEmail,
+              nickname,
+            },
+            teamList,
+          });
+        },
       },
-    });
+    );
   };
 
   return (

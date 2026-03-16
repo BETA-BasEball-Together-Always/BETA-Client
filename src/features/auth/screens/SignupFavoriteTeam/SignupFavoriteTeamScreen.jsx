@@ -12,8 +12,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import * as SecureStore from "expo-secure-store";
+
 import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
+import { useSignupTeamMutation } from "../../services/signupTeamMutation";
+import { useStepBack } from "../../hooks/useStepBack";
 
 // 🔽 팀 로고 SVG (경로는 프로젝트에 맞게 조정)
 import LG from "../../../../shared/assets/svg/teams/LG.svg";
@@ -50,18 +54,66 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   // ✅ signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
+  const externalTeamList = route?.params?.teamList ?? null;
+
+  const signupTeamMutation = useSignupTeamMutation();
 
   const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
+
+  const handleBack = useStepBack("SignupNickname");
+
+  const teams = useMemo(() => {
+    if (externalTeamList && externalTeamList.length > 0) {
+      // return externalTeamList.map((t) => ({
+      //   key: t.teamCode,
+      //   label: t.teamNameKr,
+      //   Icon: TEAMS.find((base) => base.key === t.teamCode)?.Icon ?? LG,
+      // }));
+
+      // TEAMS 배열 순서대로 정렬
+      return TEAMS.filter((base) =>
+        externalTeamList.some((t) => t.teamCode === base.key),
+      ).map((base) => {
+        const externalTeam = externalTeamList.find(
+          (t) => t.teamCode === base.key,
+        );
+        return {
+          key: base.key,
+          label: externalTeam?.teamNameKr ?? base.label,
+          Icon: base.Icon,
+        };
+      });
+    }
+    return TEAMS;
+  }, [externalTeamList]);
 
   const handleNext = () => {
     if (!isNextEnabled) return;
 
-    navigation.navigate("SignupGenderAge", {
-      signup: {
-        ...signup,
-        favoriteTeam: selectedTeam,
+    signupTeamMutation.mutate(
+      { teamCode: selectedTeam },
+      {
+        onSuccess: async () => {
+          const selectedTeamLabel = TEAMS.find(
+            (t) => t.key === selectedTeam,
+          )?.label;
+
+          // 로컬에도 저장
+          await SecureStore.setItemAsync(
+            "favoriteTeamLabel",
+            selectedTeamLabel,
+          );
+
+          navigation.replace("SignupGenderAge", {
+            signup: {
+              ...signup,
+              favoriteTeamCode: selectedTeam,
+            },
+            favoriteTeamLabel: selectedTeamLabel,
+          });
+        },
       },
-    });
+    );
   };
 
   return (
@@ -81,7 +133,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
               {/* 헤더 */}
               <View style={styles.headerRow}>
                 <TouchableOpacity
-                  onPress={() => navigation.goBack()}
+                  onPress={handleBack}
                   style={styles.backButton}
                 >
                   <BackIcon />
@@ -100,7 +152,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
               {/* 팀 선택 */}
               <View style={styles.grid}>
-                {TEAMS.map(({ key, label, Icon }) => {
+                {teams.map(({ key, label, Icon }) => {
                   const selected = selectedTeam === key;
 
                   return (
