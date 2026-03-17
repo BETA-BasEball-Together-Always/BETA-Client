@@ -21,6 +21,7 @@ import { useStepBack } from "../../hooks/useStepBack";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
+import { useUserStore } from "../../../../shared/store/userStore";
 
 const { height } = Dimensions.get("window");
 
@@ -40,28 +41,12 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
   }, [gender]);
 
   const signupCompleteMutation = useSignupCompleteMutation();
+  const setUser = useUserStore((state) => state.setUser);
 
-  // 재진입 시 route.params.signup + AsyncStorage에서 데이터 복구!!
+  // 재진입 시 route.params.signup만 사용해 데이터 복구
   useEffect(() => {
-    const restoreSignupData = async () => {
-      const routeSignup = route?.params?.signup ?? {};
-      let storedSignup = {};
-
-      try {
-        const stored = await AsyncStorage.getItem("@signupData");
-        if (stored) storedSignup = JSON.parse(stored);
-      } catch (e) {
-        console.log("async storage 불러오기 실패: ", e);
-        console.log("async storage 불러오기 실패 에러 데이터: ", e.data);
-        console.log("async storage 불러오기 실패 에러 리스폰스: ", e.response);
-      }
-
-      setSignupData({
-        ...storedSignup,
-        ...routeSignup,
-      });
-    };
-    restoreSignupData();
+    const routeSignup = route?.params?.signup ?? {};
+    setSignupData(routeSignup);
   }, [route]);
 
   // 호출 시 signupData 포함하도록 수정
@@ -73,12 +58,18 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
         age: typeof ageValue === "number" ? ageValue : undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          // 백엔드에서 최종 UserDto를 내려준다고 가정하고 전역 상태에 저장
+          const userDto = data?.user ?? data;
+          if (userDto) {
+            setUser(userDto);
+          }
+
           navigation.replace("SignupComplete", {
             signup: {
               ...(signupData || {}),
-              // favoriteTeamCode: genderValue ?? undefined,
-              favoriteTeamCode: route?.params?.favoriteTeamLabel,
+              favoriteTeamLabel:
+                userDto?.favoriteTeamName ?? route?.params?.favoriteTeamLabel,
             },
           });
         },

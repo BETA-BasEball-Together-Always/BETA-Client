@@ -18,36 +18,12 @@ import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
 import { useStepBack } from "../../hooks/useStepBack";
-
-// 🔽 팀 로고 SVG (경로는 프로젝트에 맞게 조정)
-import LG from "../../../../shared/assets/svg/teams/LG.svg";
-import Hanwha from "../../../../shared/assets/svg/teams/Hanhwa.svg";
-import SSG from "../../../../shared/assets/svg/teams/SSG.svg";
-import Samsung from "../../../../shared/assets/svg/teams/Samsung.svg";
-import NC from "../../../../shared/assets/svg/teams/NC.svg";
-import KT from "../../../../shared/assets/svg/teams/KT.svg";
-import Lotte from "../../../../shared/assets/svg/teams/Lotte.svg";
-import Kiwoom from "../../../../shared/assets/svg/teams/Kiwoom.svg";
-import Doosan from "../../../../shared/assets/svg/teams/Doosan.svg";
-import Kia from "../../../../shared/assets/svg/teams/KIA.svg";
+import { TEAM_DATA, TEAM_LIST } from "../../../../shared/constants/teams";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 
 const { height } = Dimensions.get("window");
-
-const TEAMS = [
-  { key: "LG", label: "LG 트윈스", Icon: LG },
-  { key: "HANWHA", label: "한화 이글스", Icon: Hanwha },
-  { key: "SSG", label: "SSG 랜더스", Icon: SSG },
-  { key: "SAMSUNG", label: "삼성 라이온즈", Icon: Samsung },
-  { key: "NC", label: "NC 다이노스", Icon: NC },
-  { key: "KT", label: "KT 위즈", Icon: KT },
-  { key: "LOTTE", label: "롯데 자이언츠", Icon: Lotte },
-  { key: "KIWOOM", label: "키움 히어로즈", Icon: Kiwoom },
-  { key: "DOOSAN", label: "두산 베어스", Icon: Doosan },
-  { key: "KIA", label: "기아 타이거즈", Icon: Kia },
-];
 
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -62,29 +38,39 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   const handleBack = useStepBack("SignupNickname");
 
-  const teams = useMemo(() => {
-    if (externalTeamList && externalTeamList.length > 0) {
-      // return externalTeamList.map((t) => ({
-      //   key: t.teamCode,
-      //   label: t.teamNameKr,
-      //   Icon: TEAMS.find((base) => base.key === t.teamCode)?.Icon ?? LG,
-      // }));
+  // const teams = useMemo(() => {
+  //   if (externalTeamList && externalTeamList.length > 0) {
+  //     // return externalTeamList.map((t) => ({
+  //     //   key: t.teamCode,
+  //     //   label: t.teamNameKr,
+  //     //   Icon: TEAMS.find((base) => base.key === t.teamCode)?.Icon ?? LG,
+  //     // }));
 
-      // TEAMS 배열 순서대로 정렬
-      return TEAMS.filter((base) =>
-        externalTeamList.some((t) => t.teamCode === base.key),
-      ).map((base) => {
-        const externalTeam = externalTeamList.find(
-          (t) => t.teamCode === base.key,
-        );
-        return {
-          key: base.key,
-          label: externalTeam?.teamNameKr ?? base.label,
-          Icon: base.Icon,
-        };
-      });
-    }
-    return TEAMS;
+  //     // TEAMS 배열 순서대로 정렬
+  //     return TEAMS.filter((base) =>
+  //       externalTeamList.some((t) => t.teamCode === base.key),
+  //     ).map((base) => {
+  //       const externalTeam = externalTeamList.find(
+  //         (t) => t.teamCode === base.key,
+  //       );
+  //       return {
+  //         key: base.key,
+  //         label: externalTeam?.teamNameKr ?? base.label,
+  //         Icon: base.Icon,
+  //       };
+  //     });
+  //   }
+  //   return TEAMS;
+  // }, [externalTeamList]);
+
+  const teams = useMemo(() => {
+    // teamList 있으면 필터링, 없으면 team_list 전체 사용
+    const baseList = externalTeamList
+      ? TEAM_LIST.filter((t) =>
+          externalTeamList.som((ext) => ext.teamCode === t.key),
+        )
+      : TEAM_LIST;
+    return baseList;
   }, [externalTeamList]);
 
   const handleNext = () => {
@@ -153,7 +139,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
                 {/* 팀 선택 */}
                 <View style={styles.grid}>
-                  {teams.map(({ key, label, Icon }) => {
+                  {teams.map(({ key, label, MainIcon }) => {
                     const selected = selectedTeam === key;
 
                     return (
@@ -169,7 +155,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
                             selected && styles.iconBoxSelected,
                           ]}
                         >
-                          <Icon width={100} height={100} />
+                          <MainIcon width={100} height={100} />
                         </View>
 
                         <AppText
