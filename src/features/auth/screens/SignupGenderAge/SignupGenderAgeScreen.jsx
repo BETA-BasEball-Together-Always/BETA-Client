@@ -27,6 +27,7 @@ const { height } = Dimensions.get("window");
 const SignupGenderAgeScreen = ({ navigation, route }) => {
   const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
   const [age, setAge] = useState("");
+  const [signupData, setSignupData] = useState({});
 
   const handleBack = useStepBack("SignupFavoriteTeam");
 
@@ -67,7 +68,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
   const submitSignup = ({ genderValue, ageValue }) => {
     signupCompleteMutation.mutate(
       {
-        ...signupData,
+        ...(signupData || {}),
         gender: genderValue ?? undefined,
         age: typeof ageValue === "number" ? ageValue : undefined,
       },
@@ -75,8 +76,8 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
         onSuccess: () => {
           navigation.replace("SignupComplete", {
             signup: {
-              ...signupData,
-              favoriteTeamCode: genderValue ?? undefined,
+              ...(signupData || {}),
+              // favoriteTeamCode: genderValue ?? undefined,
               favoriteTeamCode: route?.params?.favoriteTeamLabel,
             },
           });
@@ -105,147 +106,146 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <AuthBackground />
-
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
+    <View style={styles.root}>
+      <AuthBackground />
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <View style={styles.inner}>
-              {/* 헤더 */}
-              <View style={styles.headerRow}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleBack}
-                  activeOpacity={0.8}
-                >
-                  <BackIcon />
-                </TouchableOpacity>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.inner}>
+                {/* 헤더 */}
+                <View style={styles.headerRow}>
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleBack}
+                    activeOpacity={0.8}
+                  >
+                    <BackIcon />
+                  </TouchableOpacity>
 
-                <View style={styles.stepWrapper}>
-                  <SignupStepIndicator currentStep={3} />
+                  <View style={styles.stepWrapper}>
+                    <SignupStepIndicator currentStep={3} />
+                  </View>
+
+                  <View style={styles.rightPlaceholder} />
                 </View>
 
-                <View style={styles.rightPlaceholder} />
-              </View>
+                {/* 성별 */}
+                <View style={styles.textWrap}>
+                  <AppText variant="displayTitle" style={styles.title}>
+                    성별을 선택해주세요
+                  </AppText>
+                  <AppText variant="labelSmall" style={styles.optional}>
+                    * 선택사항
+                  </AppText>
+                </View>
 
-              {/* 성별 */}
-              <View style={styles.textWrap}>
-                <AppText variant="displayTitle" style={styles.title}>
-                  성별을 선택해주세요
-                </AppText>
-                <AppText variant="labelSmall" style={styles.optional}>
-                  * 선택사항
-                </AppText>
-              </View>
-
-              <View style={styles.genderRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.genderButton,
-                    gender === "F" && styles.genderSelected,
-                  ]}
-                  onPress={() => setGender("F")}
-                  activeOpacity={0.85}
-                >
-                  <AppText
-                    variant="semi18"
+                <View style={styles.genderRow}>
+                  <TouchableOpacity
                     style={[
-                      styles.genderText,
-                      gender === "F" && styles.genderTextSelected,
+                      styles.genderButton,
+                      gender === "F" && styles.genderSelected,
                     ]}
+                    onPress={() => setGender("F")}
+                    activeOpacity={0.85}
                   >
-                    여성
+                    <AppText
+                      variant="semi18"
+                      style={[
+                        styles.genderText,
+                        gender === "F" && styles.genderTextSelected,
+                      ]}
+                    >
+                      여성
+                    </AppText>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.genderButton,
+                      gender === "M" && styles.genderSelected,
+                    ]}
+                    onPress={() => setGender("M")}
+                    activeOpacity={0.85}
+                  >
+                    <AppText
+                      variant="semi18"
+                      style={[
+                        styles.genderText,
+                        gender === "M" && styles.genderTextSelected,
+                      ]}
+                    >
+                      남성
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 나이 */}
+                <View style={styles.textWrap}>
+                  <AppText variant="displayTitle" style={styles.title}>
+                    나이를 입력해주세요
+                  </AppText>
+                  <AppText variant="labelSmall" style={styles.optional}>
+                    * 선택사항
+                  </AppText>
+                </View>
+
+                <View style={styles.ageInputWrapper}>
+                  <TextInput
+                    style={styles.ageInput}
+                    value={age}
+                    onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ""))}
+                    keyboardType="number-pad"
+                    placeholder=""
+                    placeholderTextColor="#B8B8C4"
+                    maxLength={3}
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* 하단 버튼 */}
+            <View style={styles.floatingBottomArea}>
+              {isNextEnabled && (
+                <TouchableOpacity
+                  style={styles.nextButton}
+                  activeOpacity={0.85}
+                  onPress={handleNext}
+                >
+                  <AppText variant="heading" className="text-[#111111]">
+                    다음
                   </AppText>
                 </TouchableOpacity>
+              )}
 
-                <TouchableOpacity
-                  style={[
-                    styles.genderButton,
-                    gender === "M" && styles.genderSelected,
-                  ]}
-                  onPress={() => setGender("M")}
-                  activeOpacity={0.85}
-                >
-                  <AppText
-                    variant="semi18"
-                    style={[
-                      styles.genderText,
-                      gender === "M" && styles.genderTextSelected,
-                    ]}
-                  >
-                    남성
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-
-              {/* 나이 */}
-              <View style={styles.textWrap}>
-                <AppText variant="displayTitle" style={styles.title}>
-                  나이를 입력해주세요
-                </AppText>
-                <AppText variant="labelSmall" style={styles.optional}>
-                  * 선택사항
-                </AppText>
-              </View>
-
-              <View style={styles.ageInputWrapper}>
-                <TextInput
-                  style={styles.ageInput}
-                  value={age}
-                  onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ""))}
-                  keyboardType="number-pad"
-                  placeholder=""
-                  placeholderTextColor="#B8B8C4"
-                  maxLength={3}
-                />
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* 하단 버튼 */}
-          <View style={styles.floatingBottomArea}>
-            {isNextEnabled && (
               <TouchableOpacity
-                style={styles.nextButton}
-                activeOpacity={0.85}
-                onPress={handleNext}
+                style={styles.skipButton}
+                activeOpacity={0.8}
+                onPress={handleSkip}
               >
-                <AppText variant="heading" className="text-[#111111]">
-                  다음
+                <AppText variant="heading" className="text-[#FFFFFF]">
+                  건너뛰기
                 </AppText>
               </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.skipButton}
-              activeOpacity={0.8}
-              onPress={handleSkip}
-            >
-              <AppText variant="heading" className="text-[#FFFFFF]">
-                건너뛰기
-              </AppText>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-    </SafeAreaView>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default SignupGenderAgeScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
+  root: { flex: 1, backgroundColor: "#000000" },
+  safeArea: { flex: 1, backgroundColor: "transparent" },
   container: {
     flex: 1,
   },

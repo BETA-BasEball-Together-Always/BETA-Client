@@ -1,22 +1,18 @@
-// GradientBlob.jsx
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 
 const GradientBlob = ({ colors, style }) => {
-  // colors는 항상 2개씩 나란히 전달됨
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.row}>
-        {colors.map((color, idx) => (
-          <View
-            key={idx}
-            style={[
-              styles.colorBlock,
-              { backgroundColor: color, width: `${100 / colors.length}%` },
-            ]}
-          />
-        ))}
-      </View>
+      <LinearGradient
+        colors={colors}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <BlurView intensity={200} tint="light" style={styles.blur} />
     </View>
   );
 };
@@ -27,15 +23,10 @@ const styles = StyleSheet.create({
   container: {
     position: "absolute",
     overflow: "hidden",
-    // borderRadius: 200, // blob 모양
+    // borderRadius: 999,
   },
-  row: {
-    flexDirection: "row",
-    width: "100%",
-    height: "100%",
-  },
-  colorBlock: {
-    height: "100%",
-    opacity: 0.6, // 블러 적용 전 임시
+  blur: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
   },
 });

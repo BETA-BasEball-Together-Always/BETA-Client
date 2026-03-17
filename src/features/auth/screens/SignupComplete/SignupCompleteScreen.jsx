@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View, SafeAreaView, TouchableOpacity } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import AuthBackground from "../../components/AuthBackground";
@@ -22,37 +22,39 @@ const SignupCompleteScreen = ({ navigation, route }) => {
   }, [route?.params]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.root}>
       <AuthBackground />
-      <View style={styles.container}>
-        <CompleteIcon width={273.721} height={251.031} />
-        <AppText variant="displayTitle2" style={styles.mainText}>
-          회원가입이 완료되었습니다!
-        </AppText>
-        <AppText variant="semi14" style={styles.subText}>
-          {favoriteTeamLabel} 팬 일환이 된 것을 축하합니다~
-        </AppText>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.replace("Main")}
-        >
-          <AppText variant="heading" style={styles.btnText}>
-            응원하러 가기
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <View style={styles.container}>
+          <CompleteIcon width={273.721} height={251.031} />
+          <AppText variant="displayTitle2" style={styles.mainText}>
+            회원가입이 완료되었습니다!
           </AppText>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <AppText variant="semi14" style={styles.subText}>
+            {favoriteTeamLabel} 팬 일환이 된 것을 축하합니다~
+          </AppText>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigation.replace("Main")}
+            >
+              <AppText variant="heading" style={styles.btnText}>
+                응원하러 가기
+              </AppText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default SignupCompleteScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
+  root: { flex: 1, backgroundColor: "#000000" },
+  safeArea: { flex: 1, backgroundColor: "transparent" },
   container: {
     flex: 1,
     justifyContent: "center",
@@ -70,10 +72,18 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: "center",
   },
+  buttonContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
   button: {
     width: "100%",
     height: 52,
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",

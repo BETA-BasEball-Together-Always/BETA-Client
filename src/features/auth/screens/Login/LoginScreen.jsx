@@ -218,17 +218,52 @@ const LoginScreen = ({ navigation }) => {
       console.log("카카오 프로필:", profile);
 
       const deviceId = await getDeviceId();
+      console.log("deviceID: ", deviceId);
 
       socialLoginMutation.mutate(
         { provider: "KAKAO", token: token.accessToken, deviceId },
         {
-          onSuccess: (response) => handleSocialLoginResult("KAKAO", response),
+          onSuccess: async (response) => {
+            const userResponse = response.data.userResponse;
+
+            // 토큰 SecureStore 저장
+            await SecureStore.setItemAsync(
+              "accessToken",
+              userResponse.accessToken,
+            );
+            await SecureStore.setItemAsync(
+              "refreshToken",
+              userResponse.refreshToken,
+            );
+
+            await SecureStore.setItemAsync(
+              "accessToken",
+              response.data.userResponse.accessToken,
+            );
+            await SecureStore.setItemAsync(
+              "refreshToken",
+              response.data.userResponse.refreshToken,
+            );
+            handleSocialLoginResult("KAKAO", response);
+          },
           onError: (error) => {
-            console.log("소셜 로그인 실패:", error);
+            console.log("카카오 서버 로그인 실패");
+            console.log("상태 코드: ", error?.response?.status);
+            console.log("에러 데이터: ", error?.response?.data);
+            console.log("에러 메시지: ", error?.message);
+            console.log("요청 URL:", error.config?.baseURL + error.config?.url);
+
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
               setProviderConflict(socialProvider || "KAKAO");
+              return;
+            }
+            if (error?.response?.status === 400 && code === "SOCIAL004") {
+              Alert.alert(
+                "카카오 로그인 오류",
+                "카카오 계정에 이메일이 등록되어 있지 않습니다.",
+              );
               return;
             }
             Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
@@ -236,6 +271,7 @@ const LoginScreen = ({ navigation }) => {
         },
       );
     } catch (error) {
+      console.log("카카오 로그인 JS 단계 오류:", error);
       Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
     } finally {
       setIsSocialLoading(false);
@@ -258,7 +294,20 @@ const LoginScreen = ({ navigation }) => {
       socialLoginMutation.mutate(
         { provider: "NAVER", token: token.accessToken, deviceId },
         {
-          onSuccess: (response) => handleSocialLoginResult("NAVER", response),
+          onSuccess: async (response) => {
+            const userResponse = response.data.userResponse;
+
+            await SecureStore.setItemAsync(
+              "accessToken",
+              userResponse.accessToken,
+            );
+            await SecureStore.setItemAsync(
+              "refreshToken",
+              userResponse.refreshToken,
+            );
+
+            handleSocialLoginResult("NAVER", response);
+          },
           onError: (error) => {
             console.log("네이버 소셜 로그인 실패:", error);
             const code = error?.response?.data?.code;
@@ -267,146 +316,160 @@ const LoginScreen = ({ navigation }) => {
               setProviderConflict(socialProvider || "NAVER");
               return;
             }
+            if (error?.response?.status === 400 && code === "SOCIAL004") {
+              Alert.alert(
+                "네이버 로그인 오류",
+                "네이버 계정에 이메일이 등록되어 있지 않습니다.",
+              );
+              return;
+            }
             Alert.alert("네이버 로그인 실패", "잠시 후 다시 시도해주세요.");
           },
         },
       );
     } catch (error) {
       console.log(error);
+      console.log("네이버 로그인 JS 단계 오류:", error);
       Alert.alert("네이버 로그인 실패", "잠시 후 다시 시도해주세요.");
     } finally {
       setIsSocialLoading(false);
     }
   };
 
-  const hardResetKakao = async () => {
-    try {
-      // 1) 먼저 로그인해서 토큰 확보 (자동 로그인으로 바로 될 수도 있음)
-      const token = await login();
-      console.log("현재 카카오 토큰:", token);
+  // const hardResetKakao = async () => {
+  //   try {
+  //     // 1) 먼저 로그인해서 토큰 확보 (자동 로그인으로 바로 될 수도 있음)
+  //     const token = await login();
+  //     console.log("현재 카카오 토큰:", token);
 
-      // 2) 그 토큰을 가진 상태에서 unlink → 카카오 계정 ↔ 앱 연결 끊기
-      await unlink();
-      console.log("카카오 앱 연결 해제 완료 (동의 초기화)");
-    } catch (e) {
-      console.log("hardResetKakao 실패:", e);
-    }
-  };
+  //     // 2) 그 토큰을 가진 상태에서 unlink → 카카오 계정 ↔ 앱 연결 끊기
+  //     await unlink();
+  //     console.log("카카오 앱 연결 해제 완료 (동의 초기화)");
+  //   } catch (e) {
+  //     console.log("hardResetKakao 실패:", e);
+  //   }
+  // };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <AuthBackground />
+    <View style={styles.root}>
+      <AuthBackground />
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <View style={styles.container}>
+          {/* 중앙 로고 텍스트 */}
+          <View style={styles.logoArea}>
+            <BetaLogo width={150} height={50} />
+          </View>
 
-        {/* 중앙 로고 텍스트 */}
-        <View style={styles.logoArea}>
-          <BetaLogo width={150} height={50} />
-        </View>
+          {/* 하단 버튼 영역 */}
+          <View style={styles.bottomArea}>
+            <TouchableOpacity
+              style={[styles.fullButton, styles.appleButton]}
+              onPress={handleAppleLogin}
+              activeOpacity={0.85}
+              disabled={isSocialLoading}
+            >
+              <AppleIcon width={20} height={20} />
+              <Text style={[styles.fullButtonText, styles.appleText]}>
+                Apple 로그인
+              </Text>
+            </TouchableOpacity>
 
-        {/* 하단 버튼 영역 */}
-        <View style={styles.bottomArea}>
-          <TouchableOpacity
-            style={[styles.fullButton, styles.appleButton]}
-            onPress={handleAppleLogin}
-            activeOpacity={0.85}
-            disabled={isSocialLoading}
-          >
-            <AppleIcon width={20} height={20} />
-            <Text style={[styles.fullButtonText, styles.appleText]}>
-              Apple 로그인
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.fullButton, styles.kakaoButton]}
+              onPress={handleKakaoLogin}
+              activeOpacity={0.85}
+              disabled={isSocialLoading}
+            >
+              <KakaoIcon width={18} height={18} />
+              <Text style={[styles.fullButtonText, styles.kakaoText]}>
+                카카오 로그인
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.fullButton, styles.kakaoButton]}
-            onPress={handleKakaoLogin}
-            activeOpacity={0.85}
-            disabled={isSocialLoading}
-          >
-            <KakaoIcon width={18} height={18} />
-            <Text style={[styles.fullButtonText, styles.kakaoText]}>
-              카카오 로그인
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.fullButton, styles.naverButton]}
+              onPress={handleNaverLogin}
+              activeOpacity={0.85}
+              disabled={isSocialLoading}
+            >
+              <NaverIcon width={16} height={16} />
+              <Text style={[styles.fullButtonText, styles.naverText]}>
+                네이버 로그인
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.fullButton, styles.naverButton]}
-            onPress={handleNaverLogin}
-            activeOpacity={0.85}
-            disabled={isSocialLoading}
-          >
-            <NaverIcon width={16} height={16} />
-            <Text style={[styles.fullButtonText, styles.naverText]}>
-              네이버 로그인
-            </Text>
-          </TouchableOpacity>
-
-          {/* <TouchableOpacity onPress={hardResetKakao}>
+            {/* <TouchableOpacity onPress={hardResetKakao}>
             <Text style={{color: "white"}}>카카오 세션 초기화</Text>
           </TouchableOpacity> */}
-        </View>
-
-        {/* 이미 다른 소셜로 가입된 계정 안내 모달 */}
-        <Modal
-          visible={!!providerConflict}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setProviderConflict(null)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              {providerConflict && (
-                <>
-                  <Text style={styles.modalLine}>
-                    <Text
-                      style={[
-                        styles.modalHighlight,
-                        { color: conflictColors[providerConflict] },
-                      ]}
-                    >
-                      {conflictProviderName[providerConflict]}
-                    </Text>
-                    로 가입된 계정입니다.
-                  </Text>
-                  <Text style={styles.modalLine}>
-                    <Text
-                      style={[
-                        styles.modalHighlight,
-                        { color: conflictColors[providerConflict] },
-                      ]}
-                    >
-                      {conflictProviderName[providerConflict]} 로그인
-                    </Text>
-                    을 이용해 주세요.
-                  </Text>
-                </>
-              )}
-
-              <TouchableOpacity
-                style={styles.modalButton}
-                activeOpacity={0.85}
-                onPress={() => setProviderConflict(null)}
-              >
-                <Text style={styles.modalButtonText}>확인</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </Modal>
-      </View>
-    </SafeAreaView>
+
+          {/* 이미 다른 소셜로 가입된 계정 안내 모달 */}
+          <Modal
+            visible={!!providerConflict}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setProviderConflict(null)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                {providerConflict && (
+                  <>
+                    <Text style={styles.modalLine}>
+                      <Text
+                        style={[
+                          styles.modalHighlight,
+                          { color: conflictColors[providerConflict] },
+                        ]}
+                      >
+                        {conflictProviderName[providerConflict]}
+                      </Text>
+                      로 가입된 계정입니다.
+                    </Text>
+                    <Text style={styles.modalLine}>
+                      <Text
+                        style={[
+                          styles.modalHighlight,
+                          { color: conflictColors[providerConflict] },
+                        ]}
+                      >
+                        {conflictProviderName[providerConflict]} 로그인
+                      </Text>
+                      을 이용해 주세요.
+                    </Text>
+                  </>
+                )}
+
+                <TouchableOpacity
+                  style={styles.modalButton}
+                  activeOpacity={0.85}
+                  onPress={() => setProviderConflict(null)}
+                >
+                  <Text style={styles.modalButtonText}>확인</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
     backgroundColor: "#000000",
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 30,
   },
 
   logoArea: {

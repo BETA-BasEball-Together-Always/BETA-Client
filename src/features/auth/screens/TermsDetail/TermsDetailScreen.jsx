@@ -32,8 +32,9 @@ const TermsDetailScreen = ({ navigation }) => {
   const signupConsentMutation = useSignupConsentMutation();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.root}>
       <AuthBackground />
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
 
       {/* Header */}
       <View style={styles.headerRow}>
@@ -110,14 +111,16 @@ const TermsDetailScreen = ({ navigation }) => {
           </AppText>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default TermsDetailScreen;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#000" },
+  root: { flex: 1, backgroundColor: "#000" },
+  safeArea: { flex: 1, backgroundColor: "transparent" },
   headerRow: {
     height: 56,
     paddingHorizontal: 20,

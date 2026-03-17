@@ -1,46 +1,25 @@
-// SelectTeamBackground.jsx
 import React from "react";
-import { View, StyleSheet } from "react-native";
-import GradientBlob from "./GradientBlob";
+import { View, StyleSheet, Dimensions } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+
+const { height } = Dimensions.get("window");
 
 const SelectTeamBackground = () => {
-  // 총 7개 색상 (나중에 GradientBlob에서 그라데이션 적용 가능)
-  const colors = [
-    "#C00C3F",
-    "#FF8000",
-    "#CF0022",
-    "#0066B3",
-    "#284579",
-    "#221E1F",
-    "#032345",
-    "#4F0A1A",
-    "#01003A",
-    "#EB0029",
-  ];
-
   return (
     <View style={styles.container}>
-      <GradientBlob
-        colors={[colors[0], colors[1]]}
-        style={{ top: 140, left: 0, width: 390, height: 198 }}
-      />
+      {/* 컬러 blob */}
+      <View style={[styles.blob, styles.red]} />
+      <View style={[styles.blob, styles.orange]} />
+      <View style={[styles.blob, styles.blue]} />
+      <View style={[styles.blob, styles.purple]} />
+      <View style={[styles.blob, styles.darkblue]} />
 
-      <GradientBlob
-        colors={[colors[2], colors[3]]}
-        style={{ top: 338, left: 0, width: 390, height: 198 }}
-      />
-
-      <GradientBlob
-        colors={[colors[4], colors[5]]}
-        style={{ bottom: 313, left: 0, width: 390, height: 198 }}
-      />
-      <GradientBlob
-        colors={[colors[6], colors[7]]}
-        style={{ top: 700, left: 0, width: 390, height: 198 }}
-      />
-      <GradientBlob
-        colors={[colors[8], colors[9]]}
-        style={{ bottom: 0, left: 0, width: 390, height: 198 }}
+      {/* 오른쪽 dark gradient */}
+      <LinearGradient
+        colors={["#1C1C1C", "#10101073", "#1C1C1C00"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 0 }}
+        style={styles.overlay}
       />
     </View>
   );
@@ -50,6 +29,53 @@ export default SelectTeamBackground;
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#0A0A0A",
+    overflow: "hidden",
+    height: height * 2,
+  },
+
+  blob: {
+    position: "absolute",
+    width: 300,
+    height: "100%",
+    // borderRadius: 250,
+    opacity: 0.6,
+  },
+
+  red: {
+    backgroundColor: "#C00C3F",
+    top: 100,
+    left: 0,
+  },
+
+  orange: {
+    backgroundColor: "#FF8000",
+    top: 100,
+    right: 0,
+  },
+
+  blue: {
+    backgroundColor: "#0066B3",
+    top: 220,
+    left: 80,
+  },
+
+  purple: {
+    backgroundColor: "#4F0A1A",
+    bottom: 160,
+    left: -100,
+  },
+
+  darkblue: {
+    backgroundColor: "#01003A",
+    bottom: -120,
+    left: 60,
+  },
+
+  overlay: {
+    position: "absolute",
+    top: 0,
+    width: "100%",
+    height: "40%",
   },
 });
