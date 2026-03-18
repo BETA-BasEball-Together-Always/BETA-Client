@@ -19,7 +19,7 @@ export const kakaoSignIn = async () => {
     const profile = await getProfile();
     // console.log("Kakao profile:", profile);
 
-    return { token, profile };
+    return { token, profile, cancelled: false };
   } catch (error) {
     // 사용자가 취소한 경우
     if (error.code === "E_CANCELLED_OPERATION") {
