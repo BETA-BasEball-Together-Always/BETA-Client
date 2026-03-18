@@ -21,5 +21,6 @@ export const createPostApi = async (data) => {
 };
 
 export const deletePostApi = async (postId) => {
-  return await api.delete(`/api/v1/posts/${postId}`);
+  const res = await api.delete(`/api/v1/community/posts/${postId}`);
+  return res.data;
 };

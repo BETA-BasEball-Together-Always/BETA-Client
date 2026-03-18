@@ -4,10 +4,12 @@ import api from "../../../../shared/libs/api";
 
 // 게시글 작성!
 const createPostApi = async (formData) => {
-  const res = await api.post("/api/v1/community/post", formData, {
+  // Content-Type은 지정하지 말고 axios가 boundary 포함해 자동 설정하도록 둔다.
+  const res = await api.post("/api/v1/community/posts", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
+    timeout: 20000,
   });
   return res.data;
 };

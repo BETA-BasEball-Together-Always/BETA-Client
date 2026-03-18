@@ -11,7 +11,7 @@ const deletePostApi = async (postId) => {
 
 export const useDeletePostMutation = () => {
   return useMutation({
-    mutationKey: postKeys.delete(),
+    mutationKey: postKeys.deletePost(),
 
     mutationFn: (postId) => deletePostApi(postId),
 

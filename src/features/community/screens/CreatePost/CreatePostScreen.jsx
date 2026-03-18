@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   Dimensions,
+  Easing,
   Image,
   Modal,
   Pressable,
@@ -13,14 +15,24 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import AppHeader from "../../../../shared/component/AppHeader";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import CameraIcon from "../../../community/assets/svg/CommunityPost/camera.svg";
 import GalleryIcon from "../../../community/assets/svg/CommunityPost/image.svg";
 import DropDownIcon from "../../assets/svg/CommunityPost/dropDown.svg";
-// import * as ImagePicker from "expo-image-picker";
+import { useUserStore } from "../../../../shared/store/userStore";
+import { TEAM_DATA } from "../../../../shared/constants/teams";
+import * as ImagePicker from "expo-image-picker";
+import { useCreatePostMutation } from "../../services/post/createPostMutation";
+import { useQueryClient } from "@tanstack/react-query";
+
+import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoading.svg";
+
+import ImagePreviewList from "../../component/createPost/ImagePreviewList";
+import HashTagInput from "../../component/createPost/HashTagInput";
 
 const { width } = Dimensions.get("window");
 
@@ -28,20 +40,59 @@ const MAX_CONTENT_LENGTH = 2000;
 const MAX_IMAGES = 5;
 
 const CreatePostScreen = () => {
+  const scrollRef = useRef(null);
+  const inputOffsetY = useRef(0);
+
   const navigation = useNavigation();
+  const route = useRoute();
+  const author = useUserStore((state) => state.user);
+  const queryClient = useQueryClient();
+  const createPostMutation = useCreatePostMutation();
 
   const [content, setContent] = useState("");
-  const [selectedBoardId, setSelectedBoardId] = useState("cheer");
+  const [selectedBoardId, setSelectedBoardId] = useState("TEAM");
   const [isBoardModalVisible, setIsBoardModalVisible] = useState(false);
   const [images, setImages] = useState([]);
   const [isImageLimitModalVisible, setIsImageLimitModalVisible] =
     useState(false);
   const [isHashEditing, setIsHashEditing] = useState(false);
   const [hashTagRaw, setHashTagRaw] = useState("");
+  const [hashTags, setHashTags] = useState([]);
+  const [isHashLimitModalVisible, setIsHashLimitModalVisible] = useState(false);
 
+  const [isPickingMedia, setIsPickingMedia] = useState(false);
+
+  const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
+
+  const isContentMax = content.length >= MAX_CONTENT_LENGTH;
+  const isImagesMax = images.length >= MAX_IMAGES;
   const isUploadEnabled = content.trim().length > 0 || images.length > 0;
 
-  // 드롭다운 아이콘 버튼 위치
+  const isUploading = createPostMutation.isPending;
+  const isSpinning = isPickingMedia || isUploading;
+
+  const spinAnim = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isSpinning) {
+      spinAnim.stopAnimation(() => spinAnim.setValue(0));
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 900,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+      spinAnim.setValue(0);
+    };
+  }, [isSpinning]);
+
   const [dropdownLayout, setDropdownLayout] = useState({
     x: 0,
     y: 0,
@@ -49,40 +100,36 @@ const CreatePostScreen = () => {
     height: 0,
   });
 
-  const mockUser = useMemo(
-    () => ({
-      nickname: "왕밤빵",
-      selectedTeam: "LG 트윈스",
-    }),
-    [],
-  );
+  const team = useMemo(() => {
+    const code = author?.favoriteTeamCode;
+    return code ? TEAM_DATA[code] : null;
+  }, [author?.favoriteTeamCode]);
+  const ProfileIcon = team?.ProfileIcon;
 
   const boards = useMemo(
     () => [
-      { id: "cheer", label: "응원팀 게시판" },
-      { id: "all", label: "전체 게시판" },
+      { id: "TEAM", label: "응원팀 게시판" },
+      { id: "ALL", label: "전체 게시판" },
     ],
     [],
   );
 
   const selectedBoardLabel = useMemo(() => {
-    const found = boards.find((b) => b.id === selectedBoardId);
-    return found?.label ?? "";
+    return boards.find((b) => b.id === selectedBoardId)?.label ?? "";
   }, [boards, selectedBoardId]);
 
-  const avatarText = useMemo(() => {
-    if (mockUser.nickname === "왕밤빵") return "왕";
-    return (mockUser.nickname?.trim()?.[0] ?? "U").toUpperCase();
-  }, [mockUser.nickname]);
+  const createPostChannel = selectedBoardId;
 
   const handleChangeContent = (text) => {
     const next = text.slice(0, MAX_CONTENT_LENGTH);
     setContent(next);
   };
 
-  const handleAddImages = (newUris) => {
+  // const isContentEmpty = content.length === 0;
+
+  const handleAddImages = (newAssets) => {
     setImages((prev) => {
-      const merged = [...prev, ...newUris];
+      const merged = [...prev, ...newAssets];
       if (merged.length <= MAX_IMAGES) return merged;
       setIsImageLimitModalVisible(true);
       return merged.slice(0, MAX_IMAGES);
@@ -90,50 +137,169 @@ const CreatePostScreen = () => {
   };
 
   const handlePressGallery = async () => {
-    // try {
-    //   const result = await ImagePicker.launchImageLibraryAsync({
-    //     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    //     allowsMultipleSelection: true,
-    //     quality: 0.8,
-    //   });
+    try {
+      setIsPickingMedia(true);
+      const remaining = MAX_IMAGES - images.length;
+      if (remaining <= 0) {
+        setIsImageLimitModalVisible(true);
+        return;
+      }
 
-    //   if (!result.canceled) {
-    //     const uris = result.assets.map((asset) => asset.uri);
-    //     handleAddImages(uris);
-    //   }
-    // } catch (error) {
-    //   console.log("이미지 선택 실패:", error);
-    // }
-    handleAddImages([`mock://image-${Date.now()}`]);
-  };
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return;
 
-  const handlePressCamera = () => {
-    // 촬영 완료 후 결과 uri를 handleAddImages로 전달할 것
-    const parentNav = navigation.getParent?.();
-    if (parentNav?.navigate) {
-      parentNav.navigate("PhotoBooth", { screen: "Camera" });
-      return;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: remaining,
+        quality: 0.9,
+        exif: false,
+        base64: false,
+        // ios 이미지는 heic이므로 jpeg 자동 변환 요청!!
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode?.Compatible,
+      });
+
+      if (!result.canceled) {
+        handleAddImages(
+          (result.assets ?? []).map((a) => ({
+            uri: a.uri,
+            width: a.width,
+            height: a.height,
+          })),
+        );
+      }
+    } catch (error) {
+      console.log("이미지 선택 실패:", error);
+    } finally {
+      setIsPickingMedia(false);
     }
-    navigation.navigate("PhotoBooth", { screen: "Camera" });
   };
+
+  const handlePressCamera = () => navigation.navigate("CreatePostCamera");
 
   const handleRemoveImage = (index) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const normalizeHashTag = (t) =>
+    (t ?? "").toString().trim().replace(/^#/, "").slice(0, 20);
+
+  const addHashTagsFromRaw = () => {
+    const next = hashTagRaw
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => normalizeHashTag(t))
+      .filter(Boolean);
+
+    if (next.length === 0) {
+      setIsHashEditing(false);
+      setHashTagRaw("");
+      return;
+    }
+
+    setHashTags((prev) => {
+      const set = new Set(prev);
+      let exceeded = false;
+      next.forEach((t) => {
+        if (set.size < 5) {
+          set.add(t);
+        } else {
+          exceeded = true;
+        }
+      });
+      if (exceeded) setIsHashLimitModalVisible(true);
+      return Array.from(set).slice(0, 5);
+    });
+    setHashTagRaw("");
+    setIsHashEditing(false);
+  };
+
+  useEffect(() => {
+    const captured = route?.params?.capturedAsset;
+    if (!captured?.uri) return;
+    setIsPickingMedia(true);
+    handleAddImages([captured]);
+    navigation.setParams({ capturedAsset: undefined });
+    setIsPickingMedia(false);
+  }, [route?.params?.capturedAsset]); //안 넘어가면 navigation, 이거 추가할 것
+
+  const guessMimeType = (uri) => {
+    const lower = (uri || "").toLowerCase();
+    if (lower.endsWith(".png")) return "image/png";
+    if (lower.endsWith(".gif")) return "image/gif";
+    if (lower.endsWith(".webp")) return "image/webp";
+    if (lower.endsWith(".heic")) return "image/jpeg";
+    if (lower.endsWith(".heif")) return "image/jpeg";
+    return "image/jpeg";
+  };
+
+  const normalizeFileUri = (uri) => {
+    if (!uri) return uri;
+    if (uri.startsWith("file://")) return uri;
+    if (uri.startsWith("/")) return `file://${uri}`;
+    return uri;
+  };
+
   const handleUpload = () => {
-    if (!isUploadEnabled) return;
+    if (!isUploadEnabled || isUploading) return;
 
-    const postData = {
-      content,
-      boardId: selectedBoardId,
-      images,
-      hashTags: hashTagRaw,
-    };
+    const formData = new FormData();
+    formData.append("content", content);
+    formData.append("channel", createPostChannel);
+    hashTags.slice(0, 5).forEach((tag) => {
+      formData.append("hashtags", tag);
+    });
 
-    console.log("업로드할 데이터:", postData);
+    images.forEach((asset, idx) => {
+      if (!asset?.uri) return;
+      const mimeType = guessMimeType(asset.uri);
+      const extMap = {
+        "image/png": "png",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/jpeg": "jpg",
+      };
+      const ext = extMap[mimeType] ?? "jpg";
 
-    navigation.navigate("UploadSuccess");
+      formData.append("images", {
+        uri: normalizeFileUri(asset.uri),
+        name: `image-${Date.now()}-${idx}.${ext}`,
+        type: mimeType,
+      });
+    });
+
+    createPostMutation.mutate(formData, {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: ["community"] });
+        navigation.navigate("UploadSuccess", {
+          createdPostId: data?.postId ?? data?.id ?? null,
+        });
+      },
+      onError: (e) => {
+        console.log("게시글 업로드 실패:", e?.response?.data ?? e);
+      },
+    });
+  };
+
+  const handlePressBack = () => {
+    if (isUploadEnabled) {
+      setIsLeaveModalVisible(true);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const spinStyle = {
+    transform: [
+      {
+        rotate: spinAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ["0deg", "360deg"],
+        }),
+      },
+    ],
   };
 
   return (
@@ -146,7 +312,7 @@ const CreatePostScreen = () => {
           left={
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => navigation.goBack()}
+              onPress={handlePressBack}
             >
               <BackIcon width={12} height={18.5} />
             </TouchableOpacity>
@@ -161,16 +327,16 @@ const CreatePostScreen = () => {
               onPress={handleUpload}
               style={[
                 styles.uploadButton,
-                isUploadEnabled
+                isUploadEnabled && !isUploading
                   ? styles.uploadButtonEnabled
                   : styles.uploadButtonDisabled,
               ]}
-              disabled={!isUploadEnabled}
+              disabled={!isUploadEnabled || isUploading}
             >
               <AppText
                 variant="caption"
                 style={
-                  isUploadEnabled
+                  isUploadEnabled && !isUploading
                     ? styles.uploadBtnTextEnabled
                     : styles.uploadBtnTextDisabled
                 }
@@ -182,6 +348,7 @@ const CreatePostScreen = () => {
         />
 
         <ScrollView
+          ref={scrollRef}
           style={styles.container}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
@@ -209,25 +376,39 @@ const CreatePostScreen = () => {
           <View style={styles.divider} />
 
           <View style={styles.profileRow}>
-            <View style={styles.avatarCircle}>
-              <AppText variant="caption" className="text-[#121212]">
-                {avatarText}
-              </AppText>
-            </View>
+            <LinearGradient
+              colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
+              locations={team?.gradient?.locations}
+              start={team?.gradient?.start}
+              end={team?.gradient?.end}
+              style={styles.avatarCircle}
+            >
+              {ProfileIcon ? (
+                <ProfileIcon width={28} height={28} />
+              ) : (
+                <AppText style={{ color: "#FFF" }}>
+                  {(author?.nickname?.trim()?.[0] ?? "U").toUpperCase()}
+                </AppText>
+              )}
+            </LinearGradient>
             <View style={styles.profileTextWrap}>
               <View style={styles.profileNameRow}>
                 <AppText variant="caption" className="text-[#E5E5E5]">
-                  {mockUser.nickname}
+                  {author?.nickname}
                 </AppText>
                 <View style={styles.teamChip}>
                   <AppText variant="smallRegular" className="text-[#FF4D6D]">
-                    {mockUser.selectedTeam}
+                    {author?.favoriteTeamName}
                   </AppText>
                 </View>
               </View>
 
-              {/* 닉네임 바로 아래에 위치하는 내용/이미지 입력 영역 */}
-              <View style={styles.inputCard}>
+              <View
+                style={styles.inputCard}
+                onLayout={(e) => {
+                  inputOffsetY.current = e.nativeEvent.layout.y;
+                }}
+              >
                 <TextInput
                   value={content}
                   onChangeText={handleChangeContent}
@@ -236,50 +417,55 @@ const CreatePostScreen = () => {
                   style={styles.contentInput}
                   multiline
                   textAlignVertical="top"
+                  scrollEnabled={false}
+                  onContentSizeChange={(e) => {
+                    const inputHeight = e.nativeEvent.contentSize.height;
+                    scrollRef.current?.scrollTo({
+                      y: inputOffsetY.current + inputHeight - 200,
+                      animated: true,
+                    });
+                  }}
                 />
-                <View style={styles.counterRow}>
-                  <AppText variant="labelSmall" className="text-[#6F6F6F]">
-                    {`${content.length}/${MAX_CONTENT_LENGTH}자`}
-                  </AppText>
-                  <AppText variant="labelSmall" className="text-[#6F6F6F]">
-                    {` | ${images.length}/${MAX_IMAGES}장`}
-                  </AppText>
-                </View>
+
+                <HashTagInput
+                  isEditing={isHashEditing}
+                  hashTagRaw={hashTagRaw}
+                  hashTags={hashTags}
+                  onChangeRaw={setHashTagRaw}
+                  onSubmit={addHashTagsFromRaw}
+                  onPressDisplay={() => {
+                    setHashTagRaw(hashTags.map((t) => `#${t}`).join(" "));
+                    setHashTags([]);
+                    setIsHashEditing(true);
+                  }}
+                />
+
+                <ImagePreviewList
+                  images={images}
+                  onRemove={handleRemoveImage}
+                />
+              </View>
+
+              <View style={styles.counterRow}>
+                <AppText
+                  variant="labelSmall"
+                  style={
+                    isContentMax ? styles.counterTextMax : styles.counterText
+                  }
+                >
+                  {`${content.length}/${MAX_CONTENT_LENGTH}자`}
+                </AppText>
+                <AppText
+                  variant="labelSmall"
+                  style={
+                    isImagesMax ? styles.counterTextMax : styles.counterText
+                  }
+                >
+                  {` | ${images.length}/${MAX_IMAGES}장`}
+                </AppText>
               </View>
             </View>
           </View>
-
-          {/* 추후 image-picker 라이브러리로 수정  */}
-          {images.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.thumbRow}
-            >
-              {images.map((uri, idx) => (
-                <View key={`${uri}-${idx}`} style={styles.thumbWrap}>
-                  {uri.startsWith("http") || uri.startsWith("file") ? (
-                    <Image source={{ uri }} style={styles.thumbImage} />
-                  ) : (
-                    <View style={styles.thumbFallback}>
-                      <AppText variant="caption" className="text-[#E5E5E5]">
-                        {idx + 1}
-                      </AppText>
-                    </View>
-                  )}
-                  <Pressable
-                    onPress={() => handleRemoveImage(idx)}
-                    style={styles.thumbRemove}
-                    hitSlop={8}
-                  >
-                    <AppText variant="caption" className="text-[#E5E5E5]">
-                      ×
-                    </AppText>
-                  </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-          )}
 
           <View style={styles.divider} />
 
@@ -296,20 +482,6 @@ const CreatePostScreen = () => {
 
             <View style={{ flex: 1 }} />
 
-            {/* {isHashEditing ? (
-              <View style={styles.hashTagChip}>
-                <AppText variant="caption" className="text-[#BDBDBD]">
-                  #
-                </AppText>
-                <TextInput
-                  value={hashTagRaw}
-                  onChangeText={setHashTagRaw}
-                  style={styles.hashTagInput}
-                  placeholderTextColor="#6F6F6F"
-                  autoFocus
-                />
-              </View>
-            ) : ( */}
             <Pressable
               style={styles.hashTagChip}
               onPress={() => setIsHashEditing(true)}
@@ -320,15 +492,6 @@ const CreatePostScreen = () => {
             </Pressable>
             {/* )} */}
           </View>
-
-          {hashTagRaw.trim().length > 0 && (
-            <View style={styles.hashTagDisplayRow}>
-              <AppText variant="caption" className="text-[#BDBDBD]">
-                {`#${hashTagRaw.split(/\s+/).filter(Boolean).join(" #")}`}
-              </AppText>
-            </View>
-          )}
-          {/* </View> */}
 
           <View style={styles.guideBox}>
             <AppText variant="semi13" className="text-[#E5E5E5]">
@@ -368,10 +531,6 @@ const CreatePostScreen = () => {
               ]}
               onPress={() => {}}
             >
-              {/* <AppText variant="displayTitle2" className="text-[#E5E5E5]">
-                {selectedBoardLabel}
-              </AppText>
-              <View style={styles.boardDivider} /> */}
               {boards.map((b, index) => (
                 <React.Fragment key={b.id}>
                   {index > 0 && <View style={[styles.boardOptionDivider]} />}
@@ -392,6 +551,7 @@ const CreatePostScreen = () => {
           </Pressable>
         </Modal>
 
+        {/* 이미지 초과 모달! */}
         <Modal
           transparent
           visible={isImageLimitModalVisible}
@@ -403,11 +563,84 @@ const CreatePostScreen = () => {
             onPress={() => setIsImageLimitModalVisible(false)}
           >
             <Pressable style={styles.limitModalCard} onPress={() => {}}>
-              <AppText variant="displayTitle2" className="text-[#E5E5E5]">
-                ⚠️ 사진은 최대 5장까지{`\n`}추가 가능합니다.
-              </AppText>
+              <View style={styles.limitModalContent}>
+                <AppText variant="middle">⚠️</AppText>
+                <AppText variant="middle" className="text-[#E5E5E5]">
+                  {"사진은 최대 5장까지\n추가 가능합니다."}
+                </AppText>
+              </View>
             </Pressable>
           </Pressable>
+        </Modal>
+
+        {/* 해시태그 초과 모달!! ui 비슷해서 컴포넌트로 뺄 방법 없는지 생각할 것 */}
+        <Modal
+          transparent
+          visible={isHashLimitModalVisible}
+          animationType="fade"
+          onRequestClose={() => setIsHashLimitModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setIsHashLimitModalVisible(false)}
+          >
+            <Pressable style={styles.limitModalCard} onPress={() => {}}>
+              <View style={styles.limitModalContent}>
+                <AppText variant="middle">⚠️</AppText>
+                <AppText variant="middle" className="text-[#E5E5E5]">
+                  {"해시태그는 최대 5개까지\n추가 가능합니다."}
+                </AppText>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* 사용자가 게시글 작성 도중 뒤로가기 버튼 누르면 뜨는 모달창! */}
+        <Modal
+          transparent
+          visible={isLeaveModalVisible}
+          animationType="fade"
+          onRequestClose={() => setIsLeaveModalVisible(false)}
+        >
+          <View style={styles.leaveModalOverlay}>
+            <View style={styles.leaveModalCard}>
+              <AppText variant="displayTitle" style={styles.leaveModalTitle}>
+                나가시겠어요?
+              </AppText>
+              <AppText variant="middle" style={styles.leaveModalDesc}>
+                {"지금 나가시면 작성 내용이 사라져요 😭"}
+              </AppText>
+
+              <TouchableOpacity
+                style={styles.leaveConfirmBtn}
+                onPress={() => {
+                  setIsLeaveModalVisible(false);
+                  navigation.goBack();
+                }}
+              >
+                <AppText variant="medium" style={styles.leaveConfirmText}>
+                  나가기
+                </AppText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.leaveCancelBtn}
+                onPress={() => setIsLeaveModalVisible(false)}
+              >
+                <AppText variant="medium" style={styles.leaveCancelText}>
+                  취소
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        {/* 이미지 첨부 + 업로드 관련 로딩 */}
+        <Modal transparent visible={isSpinning} animationType="fade">
+          <View style={styles.loadingOverlay}>
+            <Animated.View style={spinStyle}>
+              <CommunityLoadingIcon width={44} height={44} />
+            </Animated.View>
+          </View>
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -487,9 +720,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 38,
-    backgroundColor: "#E5E5E5",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   profileTextWrap: {
     flex: 1,
@@ -499,10 +732,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  subText: {
-    color: "#6F6F6F",
-    marginTop: 6,
-  },
   teamChip: {
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -510,19 +739,54 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,77,109,0.12)",
   },
   inputCard: {
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    // position: "relative",
+    paddingBottom: 18,
+    minHeight: 120,
   },
   contentInput: {
     color: "#E5E5E5",
     fontSize: 15,
     lineHeight: 21,
-    minHeight: 100,
+    minHeight: 10,
+    marginBottom: 5,
   },
   counterRow: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-end",
+    marginTop: 12,
   },
+  counterText: {
+    color: "rgba(228, 228, 228, 0.50)",
+  },
+  counterTextMax: {
+    color: "#EEEEEE",
+  },
+  hashSection: {
+    marginTop: 10,
+    gap: 8,
+  },
+  hashInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  hashInputPrefix: {
+    color: "#6F9D48",
+  },
+  hashTagInput: {
+    flex: 1,
+    color: "#E5E5E5",
+    paddingVertical: 0,
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -540,11 +804,10 @@ const styles = StyleSheet.create({
   },
   hashTagChip: {
     height: 44,
-    borderRadius: 22,
+    borderRadius: 20,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#232323",
-    backgroundColor: "#121212",
+    borderColor: "rgba(139, 196, 90, 0.11)",
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -553,40 +816,7 @@ const styles = StyleSheet.create({
   hashtagText: {
     color: "rgba(228, 228, 228, 0.50)",
   },
-  thumbRow: {
-    paddingTop: 14,
-    gap: 10,
-  },
-  thumbWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#232323",
-    backgroundColor: "#1E1E1E",
-  },
-  thumbImage: {
-    width: "100%",
-    height: "100%",
-  },
-  thumbFallback: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumbRemove: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+
   guideBox: {
     marginTop: 18,
   },
@@ -605,12 +835,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#252823",
   },
-  boardDivider: {
-    height: 1,
-    backgroundColor: "#232323",
-    marginTop: 12,
-    marginBottom: 4,
-  },
   boardOption: {
     paddingVertical: 12,
   },
@@ -624,22 +848,64 @@ const styles = StyleSheet.create({
     color: "#E5E5E5",
   },
   limitModalCard: {
-    marginTop: 180,
+    marginTop: 330,
     alignSelf: "center",
-    width: width - 64,
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: "#2B2B2B",
-    paddingVertical: 18,
-    paddingHorizontal: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 35,
     borderWidth: 1,
     borderColor: "#3A3A3A",
   },
-  hashTagInput: {
-    flex: 1,
-    color: "#E5E5E5",
-    paddingVertical: 0,
+  limitModalContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
   },
-  hashTagDisplayRow: {
-    marginTop: 8,
+
+  // 나가기 모달창
+  leaveModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  leaveModalCard: {
+    width: "100%",
+    borderRadius: 16,
+    backgroundColor: "#202325",
+    paddingTop: 28,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    alignItems: "center",
+  },
+  leaveModalTitle: {
+    color: "#E5E5E5",
+    marginBottom: 8,
+  },
+  leaveModalDesc: {
+    color: "rgba(228, 228, 228, 0.50)",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  leaveConfirmBtn: {
+    width: "100%",
+    backgroundColor: "#F9F9F9",
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  leaveConfirmText: {
+    color: "#1E1E1E",
+  },
+  leaveCancelBtn: {
+    width: "100%",
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  leaveCancelText: {
+    color: "#9B9B9B",
   },
 });

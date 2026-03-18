@@ -3,16 +3,17 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
 // 각 화면
 import HomeScreen from "@features/home/screens/Home/HomeScreen";
-import TeamCommunityScreen from "@features/community/screens/TeamCommunityScreen";
-import AllCommunityScreen from "@features/community/screens/AllCommunityScreen";
+// import TeamCommunityScreen from "@features/community/screens/TeamCommunityScreen";
+// import AllCommunityScreen from "@features/community/screens/AllCommunityScreen";
 import ProfileScreen from "@features/profile/screens/Profile/ProfileScreen";
 import PhotoBoothStack from "./PhotoBoothStack";
+import CommunityStack from "./CommunityStack";
 
 // 커스텀 탭바
 import CustomTabBar from "./components/CustomTabBar";
 
 // ✅ 로컬 SVG 아이콘 (metro.config.js + react-native-svg-transformer 설정 필요)
-import AllIcon from "./assets/all.svg";
+// import AllIcon from "./assets/all.svg";
 import TeamIcon from "./assets/team.svg";
 import PhotoBoothIcon from "./assets/photobooth.svg";
 import ProfileIcon from "./assets/mypage.svg";
@@ -35,7 +36,7 @@ const HIDDEN_ROUTES = ["Camera", "Edit"];
 export default function MainTabNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="TeamCommunity"
+      initialRouteName="Community"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
@@ -59,9 +60,9 @@ export default function MainTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="AllCommunity"
-        component={AllCommunityScreen}
+      {/* <Tab.Screen
+        name="Community"
+        component={CommunityScreen}
         options={{
           tabBarIcon: ({ color = COLORS.inactive }) => (
             <AllIcon
@@ -72,10 +73,10 @@ export default function MainTabNavigator() {
             />
           ),
         }}
-      />
+      /> */}
       <Tab.Screen
-        name="TeamCommunity"
-        component={TeamCommunityScreen}
+        name="Community"
+        component={CommunityStack}
         options={{
           tabBarIcon: ({ color = COLORS.inactive }) => (
             <TeamIcon

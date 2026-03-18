@@ -13,8 +13,14 @@ export const postKeys = {
   createPost: () => [...postKeys.posts(), "create"],
 
   // 게시글 수정
-  updatePost: (postId) => [...postKeys.posts(), "update", { postId }],
+  updatePost: (postId) =>
+    postId
+      ? [...postKeys.posts(), "update", { postId }]
+      : [...postKeys.posts(), "update"],
 
   // 게시글 삭제
-  deletePost: (postId) => [...postKeys.posts(), "delete", { postId }],
+  deletePost: (postId) =>
+    postId
+      ? [...postKeys.posts(), "delete", { postId }]
+      : [...postKeys.posts(), "delete"],
 };
