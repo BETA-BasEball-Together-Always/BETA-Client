@@ -1,40 +1,34 @@
-import { useState, useEffect } from "react";
-// import { fetchPosts } from "../api/communityApi";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { fetchPostsApi } from "../services/communityService";
+import communityKeys from "../services/communityKeys";
 
 export default function useCommunityPosts({ channel, sort }) {
-  const [posts, setPosts] = useState([]);
-  const [cursor, setCursor] = useState(null);
-  const [offset, setOffset] = useState(0);
-  const [hasNext, setHasNext] = useState(true);
+  const query = useInfiniteQuery({
+    queryKey: communityKeys.postList({ channel, sort }),
 
-  useEffect(() => {
-    loadPosts(true);
-  }, [channel, sort]);
+    queryFn: async ({ pageParam }) => {
+      return fetchPostsApi({
+        channel,
+        sort,
+        cursor: sort === "latest" ? pageParam : null,
+        offset: sort === "popular" ? pageParam : null,
+      });
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasNext) return undefined;
 
-  async function loadPosts(reset = false) {
-    const res = await fetchPosts({
-      channel,
-      sort,
-      cursor: sort === "latest" ? cursor : null,
-      offset: sort === "popular" ? offset : null,
-    });
+      if (sort === "popular") {
+        return allPages.reduce((acc, page) => acc + page.posts.length, 0);
+      }
+    },
+  });
 
-    if (reset) {
-      setPosts(res.posts);
-    } else {
-      setPosts((prev) => [...prev, ...res.posts]);
-    }
+  const posts = query.data?.pages.flatMap((page) => page.posts) ?? [];
 
-    setHasNext(res.hasNext);
-    setCursor(res.nextCursor);
-    setOffset((prev) => prev + res.posts.length);
-  }
-
-  function loadMore() {
-    if (hasNext) {
-      loadPosts();
-    }
-  }
-
-  return { posts, loadMore };
+  return {
+    posts,
+    loadMore: query.fetchNextPage,
+    refetch: query.refetch,
+    isLoading: query.isLoading,
+  };
 }

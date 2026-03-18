@@ -27,7 +27,7 @@ const COLORS = {
   // (필요 시 다른 토큰 추가 가능)
 };
 
-const ICON_SIZE = 32;
+const ICON_SIZE = 40;
 
 // ✅ 실제 라우트명에 맞게 지정
 const HIDDEN_ROUTES = ["Camera", "Edit"];

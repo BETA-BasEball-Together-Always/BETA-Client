@@ -1,30 +1,49 @@
 import React, { useState } from "react";
-import { View, StyleSheet, SafeAreaView } from "react-native";
+import { View, StyleSheet, SafeAreaView, Dimensions } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
-import QuestionCard from "../component/communityMain/QuestionCard";
-import SortTabs from "../component/communityMain/SortTabs";
 import PostList from "../component/communityMain/PostList";
+import useCommunityPosts from "../hooks/useCommunityPosts";
 
-import { mockPosts } from "../mock/mockPosts";
+import { useUserStore } from "../../../shared/store/userStore";
+import { TEAM_DATA } from "../../../shared/constants/teams";
+import CommunityTopBar from "../component/communityMain/CommunityTapBar";
+
+const { width } = Dimensions.get("window");
 
 const TeamCommunityScreen = () => {
   const [sort, setSort] = useState("latest");
+  const user = useUserStore((state) => state.user);
+  if (!user) return null;
 
-  const posts = mockPosts;
-  const loadMore = () => {
-    console.log("load more posts");
-  }; //나중에 페이지네이션 할 것
+  const { favoriteTeamName, favoriteTeamCode } = user;
+  const MainIcon = TEAM_DATA[favoriteTeamCode]?.MainIcon;
+
+  const { posts, loadMore, isLoading } = useCommunityPosts({
+    channel: undefined,
+    sort,
+  });
+
+  console.log("posts: ", posts);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <AppText variant="displayTitle" style={{ color: "#FFF" }}>
-          팀 게시판
-        </AppText>
-        <SortTabs sort={sort} onChange={setSort} />
-        <QuestionCard posts={posts} />
-        <PostList posts={posts} onEndReached={loadMore} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      {MainIcon && (
+        <View style={styles.bgLogoContainer} pointerEvents="none">
+          <MainIcon width={307} height={307} />
+          <View style={styles.bgLogoOverlay} />
+        </View>
+      )}
+
+      <CommunityTopBar isTeam={true} teamName={favoriteTeamName} />
+
+      <PostList
+        posts={posts}
+        onEndReached={loadMore}
+        isLoading={isLoading}
+        sort={sort}
+        onSortChange={setSort}
+        user={user}
+      />
     </SafeAreaView>
   );
 };
@@ -35,6 +54,16 @@ const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: "#020408",
     flex: 1,
+  },
+  bgLogoContainer: {
+    position: "absolute",
+    alignSelf: "center",
+    top: "50%",
+    transform: [{ translateY: -50 }],
+  },
+  bgLogoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(2, 4, 8, 0.9)",
   },
   container: {
     justifyContent: "center",

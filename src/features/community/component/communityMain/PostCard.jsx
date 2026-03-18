@@ -1,14 +1,44 @@
 import React from "react";
 import { StyleSheet, View, Image } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
-import UserInfo from "../../../../shared/component/UserInfo";
+import { LinearGradient } from "expo-linear-gradient";
+import { TEAM_DATA } from "../../../../shared/constants/teams";
+import TeamLabel from "./TeamLabel";
 
-import PostReactions from "../PostReactions";
+// import PostReactions from "../PostReactions";
 
-const PostCard = ({ post }) => {
+const PostCard = ({ post, showTeam = false }) => {
+  const { author } = post;
+  const team = TEAM_DATA[author?.teamCode];
+  const ProfileIcon = team?.ProfileIcon;
+
   return (
-    <>
-      <UserInfo user={post.author} channel={post.channel} />
+    <View style={styles.container}>
+      {/* 프로필 */}
+      <View style={styles.authorRow}>
+        <LinearGradient
+          colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
+          locations={team?.gradient?.locations}
+          start={team?.gradient?.start}
+          end={team?.gradient?.end}
+          style={styles.avatarCircle}
+        >
+          {ProfileIcon ? (
+            <ProfileIcon width={28} height={28} />
+          ) : (
+            <AppText style={{ color: "#FFF" }}>{author?.nickname?.[0]}</AppText>
+          )}
+        </LinearGradient>
+
+        <AppText variant="caption" style={styles.nickname}>
+          {author?.nickname}
+        </AppText>
+
+        {showTeam && author?.teamCode && (
+          <TeamLabel teamCode={author.teamCode} />
+        )}
+      </View>
+
       <View style={styles.contentSection}>
         <AppText variant="caption" style={{ color: "#F9F9F9" }}>
           {post.content}
@@ -18,17 +48,26 @@ const PostCard = ({ post }) => {
         )}
       </View>
 
-      <PostReactions emotions={post.emotions} />
-    </>
+      {/* <PostReactions emotions={post.emotions} /> */}
+    </View>
   );
 };
 
 export default PostCard;
 
 const styles = StyleSheet.create({
+  container: {
+    flexDirection: "column",
+  },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   nickname: {
     color: "#fff",
     fontWeight: "700",
+    marginRight: 6,
   },
   image: {
     width: "100%",
@@ -37,7 +76,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   contentSection: {
-    paddingVertical: 5,
+    paddingVertical: 2,
     paddingHorizontal: 5,
+  },
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    marginRight: 10,
   },
 });

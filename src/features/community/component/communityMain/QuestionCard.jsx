@@ -1,21 +1,37 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
+import { TEAM_DATA } from "../../../../shared/constants/teams";
 
-const QuestionCard = ({ posts }) => {
-  const user = posts?.[0]?.author;
+import { LinearGradient } from "expo-linear-gradient";
+
+const QuestionCard = ({ user }) => {
+  if (!user) return null;
+
+  const { nickname, favoriteTeamCode } = user;
+
+  const team = TEAM_DATA[favoriteTeamCode];
+  const ProfileIcon = team?.ProfileIcon;
 
   return (
     <View style={styles.questionCard}>
-      <View style={styles.avatarCircle}>
-        <AppText variant="semi13" style={{ color: "#FFF" }}>
-          {user?.nickname?.[0] ?? "?"}
-        </AppText>
-      </View>
+      <LinearGradient
+        colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
+        locations={team?.gradient?.locations}
+        start={team.gradient.start}
+        end={team.gradient.end}
+        style={styles.avatarCircle}
+      >
+        {ProfileIcon ? (
+          <ProfileIcon width={28} height={28} />
+        ) : (
+          <AppText style={{ color: "#FFF" }}>{nickname?.[0]}</AppText>
+        )}
+      </LinearGradient>
 
       <View style={{ marginLeft: 12 }}>
         <AppText variant="semi13" style={{ color: "#FFF" }}>
-          {user?.nickname ?? "사용자"}
+          {nickname}
         </AppText>
 
         <AppText variant="caption" style={styles.questionSubtitle}>
@@ -39,14 +55,20 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     paddingVertical: 17,
     paddingHorizontal: 13,
+
+    shadowColor: "#2E2E2E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   avatarCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#3A3D44",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
   questionSubtitle: {
     color: "#9CA3AF",

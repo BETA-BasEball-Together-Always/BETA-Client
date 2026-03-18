@@ -37,8 +37,8 @@ export default SortTabs;
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    marginBottom: 10,
-    // paddingHorizontal: 20,
+    // marginBottom: 10,
+    marginVertical: 10,
   },
   button: {
     paddingHorizontal: 20,
