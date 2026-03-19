@@ -26,14 +26,21 @@ const reactions = [
 ];
 
 const PostReactions = ({ post, onSelectReaction }) => {
+<<<<<<< HEAD
   if (!post) return null;
+=======
+>>>>>>> origin/feat/18-post-detail-screen
   const [actionY, setActionY] = useState(0);
 
   const [selectedReaction, setSelectedReaction] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   const [reactionCounts, setReactionCounts] = useState(
+<<<<<<< HEAD
     post?.reactionCounts || {
+=======
+    post.reactionCounts || {
+>>>>>>> origin/feat/18-post-detail-screen
       EMO_JOY: 0,
       EMO_SAD: 0,
       EMO_FUN: 0,
