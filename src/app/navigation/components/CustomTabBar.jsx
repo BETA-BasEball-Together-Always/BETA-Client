@@ -4,10 +4,6 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 import TabBarItem from "./TabBarItem";
 import { getDeepActiveRouteName } from "../utils/navigationHelper";
 
@@ -15,8 +11,6 @@ const CustomTabBar = memo(function CustomTabBar({
   state,
   descriptors,
   navigation,
-  colors, // { active, inactive }
-  hiddenRoutes, // ["CameraScreen", "EditScreen"]
   colors, // { active, inactive }
   hiddenRoutes, // ["CameraScreen", "EditScreen"]
 }) {

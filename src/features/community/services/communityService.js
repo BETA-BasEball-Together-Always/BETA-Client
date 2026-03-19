@@ -21,10 +21,6 @@ export const createPostApi = async (data) => {
 };
 
 export const deletePostApi = async (postId) => {
-<<<<<<< HEAD
-  return await api.delete(`/api/v1/posts/${postId}`);
-=======
   const res = await api.delete(`/api/v1/community/posts/${postId}`);
   return res.data;
->>>>>>> origin/feat/15-create-post-screen
 };

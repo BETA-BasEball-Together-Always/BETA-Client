@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, FlatList, View, TouchableOpacity } from "react-native";
 import PostCard from "./PostCard";
 import { AppText } from "../../../../shared/theme/components/AppText";
-// import { useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import PlusIcon from "../../assets/svg/plusIcon.svg";
 import SortTabs from "./SortTabs";
 import QuestionCard from "./QuestionCard";
@@ -16,7 +16,7 @@ const PostList = ({
   onSortChange,
   user,
 }) => {
-  //   const navigation = useNavigation();
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
@@ -44,7 +44,7 @@ const PostList = ({
 
       <TouchableOpacity
         style={styles.fabButton}
-        // onPress={() => navigation.navigate("CreatePost")}
+        onPress={() => navigation.navigate("CreatePost")}
       >
         <PlusIcon width={16} height={16} />
       </TouchableOpacity>
