@@ -1,8 +1,8 @@
 // TeamCard.jsx
-import React, { useEffect } from 'react';
-import { Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, Image } from "react-native";
 
-const CARD_BG = '#1A1A1A';
+const CARD_BG = "#1A1A1A";
 
 const TeamCard = ({ item, isSelected, onPress }) => {
   const Logo = item.Icon; // ← SVG 컴포넌트(있을 때)
@@ -12,20 +12,23 @@ const TeamCard = ({ item, isSelected, onPress }) => {
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => onPress(item)}
-        style={[
-          styles.teamCard,
-          isSelected && { backgroundColor: '#fff' },
-        ]}
+        style={[styles.teamCard, isSelected && { backgroundColor: "#fff" }]}
       >
         {Logo ? (
           // SVG 컴포넌트 렌더
           <Logo width={100} height={100} />
         ) : (
           // PNG fallback
-          <Image source={item.logo} style={styles.teamLogo} resizeMode="contain" />
+          <Image
+            source={item.logo}
+            style={styles.teamLogo}
+            resizeMode="contain"
+          />
         )}
       </TouchableOpacity>
-      <Text style={styles.itemLabel} numberOfLines={1}>{item.name}</Text>
+      <Text style={styles.itemLabel} numberOfLines={1}>
+        {item.name}
+      </Text>
     </View>
   );
 };
@@ -34,7 +37,7 @@ export default TeamCard;
 
 const styles = StyleSheet.create({
   itemWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 12,
   },
   teamCard: {
@@ -42,16 +45,15 @@ const styles = StyleSheet.create({
     height: 128,
     borderRadius: 16,
     backgroundColor: CARD_BG,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   teamLogo: { width: 100, height: 100 },
   itemLabel: {
     marginTop: 6,
     fontSize: 12,
-    color: '#fff',
+    color: "#fff",
     maxWidth: 96,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
-

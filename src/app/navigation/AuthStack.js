@@ -6,6 +6,7 @@ import SignupGenderAgeScreen from "../../features/auth/screens/SignupGenderAge/S
 import SignupNicknameScreen from "../../features/auth/screens/SignupNickname/SignupNicknameScreen";
 import SocialSignupScreen from "../../features/auth/screens/SignupCredentials/SocialSignupScreen";
 import TermsDetailScreen from "../../features/auth/screens/TermsDetail/TermsDetailScreen";
+import SignupCompleteScreen from "../../features/auth/screens/SignupComplete/SignupCompleteScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ const AuthStack = () => {
         component={SignupFavoriteTeamScreen}
       />
       <Stack.Screen name="SignupGenderAge" component={SignupGenderAgeScreen} />
+      <Stack.Screen name="SignupComplete" component={SignupCompleteScreen} />
     </Stack.Navigator>
   );
 };
