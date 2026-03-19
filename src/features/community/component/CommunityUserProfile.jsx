@@ -4,8 +4,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { AppText } from "../../../shared/theme/components/AppText";
 import { TEAM_DATA } from "../../../shared/constants/teams";
 import { getRelativeTime } from "../screens/PostDetail/utils/relativeTime";
+import TeamLabel from "./communityMain/TeamLabel";
 
-const CommunityUserProfile = ({ nickname, teamCode, createdAt, size = 38 }) => {
+const CommunityUserProfile = ({
+  nickname,
+  teamCode,
+  createdAt,
+  size = 38,
+  showTeam = false,
+}) => {
   const team = teamCode ? TEAM_DATA[teamCode] : null;
   const ProfileIcon = team?.ProfileIcon;
   const timeLabel = createdAt ? getRelativeTime(createdAt) : "";
@@ -32,9 +39,13 @@ const CommunityUserProfile = ({ nickname, teamCode, createdAt, size = 38 }) => {
       </LinearGradient>
 
       <View style={styles.textColumn}>
-        <AppText variant="caption" style={styles.nickname}>
-          {nickname}
-        </AppText>
+        <View style={styles.nameRow}>
+          <AppText variant="caption" style={styles.nickname}>
+            {nickname}
+          </AppText>
+          {showTeam && team?.name && <TeamLabel teamCode={teamCode} />}
+        </View>
+
         {!!timeLabel && (
           <AppText variant="numMediumRegular" style={styles.timeText}>
             {timeLabel}
@@ -68,7 +79,6 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
   },
   timeText: {
-    marginTop: 2,
     color: "rgba(228, 228, 228, 0.50)",
   },
 });

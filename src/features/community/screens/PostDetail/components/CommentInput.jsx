@@ -77,9 +77,9 @@ export default function CommentInput({ onSubmit, replyTarget, cancelReply }) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
+    paddingBottom: 43,
     backgroundColor: "#121212",
   },
   wrapperWithBorder: {
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#2A2A2A",
-    borderRadius: 20,
+    borderRadius: 10,
     paddingRight: 8,
     paddingVertical: 6,
     paddingLeft: 12,

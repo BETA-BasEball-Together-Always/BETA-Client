@@ -9,8 +9,8 @@ import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
 import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
 
 const PostActionBar = ({
-  selected, // 내가 감정표현을 했는지 여부
-  reactionCount, // 전체 감정 카운트 합
+  selected, //내가 감정표현을 했는지 여부
+  reactionCount, //전체 감정 카운트 합
   commentMode,
   commentCount,
   linkPressed,

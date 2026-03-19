@@ -203,6 +203,7 @@ const PostDetailScreen = ({ route, navigation }) => {
                 nickname={detail?.author?.nickname ?? post?.author?.nickname}
                 teamCode={detail?.author?.teamCode ?? post?.author?.teamCode}
                 createdAt={detail?.createdAt}
+                showTeam={post.channel === "ALL"}
               />
             </View>
 

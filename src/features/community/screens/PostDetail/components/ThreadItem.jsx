@@ -17,7 +17,7 @@ const HEART_SIZE = 20;
 
 export default function ThreadItem({
   item,
-  variant = "comment", // "comment" | "reply"
+  variant = "comment",
   isAuthor = false,
   isAllChannel = false,
   onToggleLike,
