@@ -1,12 +1,12 @@
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
-import React, { useEffect } from 'react';
+import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
+import React, { useEffect } from "react";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withDelay,
-} from 'react-native-reanimated';
-import BetaLogo from '@shared/assets/svg/logos/BetaLogo.svg';
+} from "react-native-reanimated";
+import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 
 const SplashScreen = () => {
   /** Shared Values */
@@ -60,7 +60,7 @@ const SplashScreen = () => {
         style={[
           styles.ellipseShape,
           styles.primaryEllipse,
-          { backgroundColor: '#7284DB', left: '-15%', top: '8%' },
+          { backgroundColor: "#7284DB", left: "-15%", top: "8%" },
           blueStyle,
         ]}
       />
@@ -70,7 +70,7 @@ const SplashScreen = () => {
         style={[
           styles.ellipseShape,
           styles.secondaryEllipse,
-          { backgroundColor: '#443D4D', right: '-25%', top: '0%' },
+          { backgroundColor: "#443D4D", right: "-25%", top: "0%" },
           purpleStyle,
         ]}
       />
@@ -80,7 +80,11 @@ const SplashScreen = () => {
         style={[
           styles.ellipseShape,
           styles.secondaryEllipse,
-          { backgroundColor: 'rgba(235, 0, 41, 0.44)', left: '-36%', top: '35%' },
+          {
+            backgroundColor: "rgba(235, 0, 41, 0.44)",
+            left: "-36%",
+            top: "35%",
+          },
           redStyle,
         ]}
       />
@@ -90,7 +94,7 @@ const SplashScreen = () => {
         style={[
           styles.ellipseShape,
           styles.secondaryEllipse,
-          { backgroundColor: '#943C23', right: '-35%', top: '66%' },
+          { backgroundColor: "#943C23", right: "-35%", top: "66%" },
           brownStyle,
         ]}
       />
@@ -110,33 +114,33 @@ export default SplashScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'black',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "black",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  ellipseShape:{
-    width: '70%',
+  ellipseShape: {
+    width: "70%",
     aspectRatio: 1,
-    borderRadius: '70%',
-    position: 'absolute',
+    borderRadius: "70%",
+    position: "absolute",
   },
   primaryEllipse: {
-    filter: 'blur(150px)',
+    filter: "blur(150px)",
   },
   secondaryEllipse: {
-    filter: 'blur(110px)',
-  },  
+    filter: "blur(110px)",
+  },
   button: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 60,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 12,
     opacity: 0.7,
   },
   buttonText: {
-    color: 'black',
-    fontWeight: '600',
+    color: "black",
+    fontWeight: "600",
   },
 });
