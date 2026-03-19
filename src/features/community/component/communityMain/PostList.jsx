@@ -44,7 +44,9 @@ const PostList = ({
 
       <TouchableOpacity
         style={styles.fabButton}
-        onPress={() => navigation.navigate("CreatePost")}
+        onPress={() =>
+          navigation.navigate("Community", { screen: "CreatePost" })
+        }
       >
         <PlusIcon width={16} height={16} />
       </TouchableOpacity>

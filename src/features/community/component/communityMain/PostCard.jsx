@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, View, Image } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,6 +11,16 @@ const PostCard = ({ post, showTeam = false }) => {
   const { author } = post;
   const team = TEAM_DATA[author?.teamCode];
   const ProfileIcon = team?.ProfileIcon;
+
+  const contentWithoutHashtags = useMemo(() => {
+    const raw = post?.content ?? "";
+    // 본문에서 "#태그" 토큰 제거 (공백 기준), 남은 텍스트만 표시
+    const removed = raw.replace(/(^|\s)#[^\s#]+/g, " ");
+    return removed.replace(/\s+/g, " ").trim();
+  }, [post?.content]);
+
+  const primaryImageUri =
+    post?.images?.[0]?.imageUrl || post?.images?.[0]?.url || null;
 
   return (
     <View style={styles.container}>
@@ -40,11 +50,20 @@ const PostCard = ({ post, showTeam = false }) => {
       </View>
 
       <View style={styles.contentSection}>
-        <AppText variant="caption" style={{ color: "#F9F9F9" }}>
-          {post.content}
+        <AppText variant="caption" style={styles.contentText}>
+          {contentWithoutHashtags}
         </AppText>
-        {post.images?.length > 0 && (
-          <Image source={{ uri: post.images[0].url }} style={styles.image} />
+
+        {post.hashtags?.length > 0 && (
+          <View style={styles.hashRow}>
+            <AppText variant="caption" style={styles.hashText}>
+              {post.hashtags.map((tag) => `#${tag}`).join(" ")}
+            </AppText>
+          </View>
+        )}
+
+        {primaryImageUri && (
+          <Image source={{ uri: primaryImageUri }} style={styles.image} />
         )}
       </View>
 
@@ -78,6 +97,15 @@ const styles = StyleSheet.create({
   contentSection: {
     paddingVertical: 2,
     paddingHorizontal: 5,
+  },
+  contentText: {
+    color: "#F9F9F9",
+  },
+  hashRow: {
+    marginTop: 6,
+  },
+  hashText: {
+    color: "#6F9D48",
   },
   avatarCircle: {
     width: 40,

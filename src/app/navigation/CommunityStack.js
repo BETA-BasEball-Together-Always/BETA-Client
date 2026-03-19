@@ -2,11 +2,11 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 // import PostDetailScreen from "@features/community/screens/PostDetail/PostDetailScreen";
-import CreatePostScreen from "../../features/community/screens/CreatePost/CreatePostScreen";
 import TeamCommunityScreen from "../../features/community/screens/TeamCommunityScreen";
 import AllCommunityScreen from "../../features/community/screens/AllCommunityScreen";
 import CreatePostCameraScreen from "../../features/community/screens/CreatePost/CreatePostCameraScreen";
 import UploadSuccessScreen from "../../features/community/screens/CreatePost/UploadSuccessScreen";
+import CreatePostScreen from "../../features/community/screens/CreatePost/CreatePostScreen";
 
 const Stack = createNativeStackNavigator();
 

@@ -26,18 +26,25 @@ import DropDownIcon from "../../assets/svg/CommunityPost/dropDown.svg";
 import { useUserStore } from "../../../../shared/store/userStore";
 import { TEAM_DATA } from "../../../../shared/constants/teams";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system";
 import { useCreatePostMutation } from "../../services/post/createPostMutation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoading.svg";
 
 import ImagePreviewList from "../../component/createPost/ImagePreviewList";
-import HashTagInput from "../../component/createPost/HashTagInput";
 
 const { width } = Dimensions.get("window");
 
 const MAX_CONTENT_LENGTH = 2000;
 const MAX_IMAGES = 5;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB (단일 이미지 상한)
+const MAX_TOTAL_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB (요청 전체 이미지 합산 상한, nginx 한도 대비)
+const MAX_UPLOAD_WIDTH = 1280; // 업로드 시 리사이즈 기준 폭
+const MAX_HASHTAGS = 5;
+const MAX_HASHTAG_LEN = 20;
+const DUPLICATE_POST_WINDOW_MS = 30 * 1000; // 30초
 
 const CreatePostScreen = () => {
   const scrollRef = useRef(null);
@@ -53,12 +60,9 @@ const CreatePostScreen = () => {
   const [selectedBoardId, setSelectedBoardId] = useState("TEAM");
   const [isBoardModalVisible, setIsBoardModalVisible] = useState(false);
   const [images, setImages] = useState([]);
-  const [isImageLimitModalVisible, setIsImageLimitModalVisible] =
-    useState(false);
-  const [isHashEditing, setIsHashEditing] = useState(false);
-  const [hashTagRaw, setHashTagRaw] = useState("");
-  const [hashTags, setHashTags] = useState([]);
-  const [isHashLimitModalVisible, setIsHashLimitModalVisible] = useState(false);
+  const [limitModalMessage, setLimitModalMessage] = useState("");
+  const [isLimitModalVisible, setIsLimitModalVisible] = useState(false);
+  // 해시태그는 본문에서 "#태그" 형태로 자동 추출됩니다.
 
   const [isPickingMedia, setIsPickingMedia] = useState(false);
 
@@ -72,6 +76,12 @@ const CreatePostScreen = () => {
   const isSpinning = isPickingMedia || isUploading;
 
   const spinAnim = React.useRef(new Animated.Value(0)).current;
+  const lastUploadRef = useRef({ content: "", at: 0 });
+
+  const openLimitModal = (message) => {
+    setLimitModalMessage(message);
+    setIsLimitModalVisible(true);
+  };
 
   useEffect(() => {
     if (!isSpinning) {
@@ -125,13 +135,150 @@ const CreatePostScreen = () => {
     setContent(next);
   };
 
-  // const isContentEmpty = content.length === 0;
+  const compressIfNeeded = async (asset) => {
+    // 아주 큰 이미지일 경우 가로 1280 기준으로 리사이즈 + jpeg 압축
+    try {
+      const actions = [];
+      if (asset.width && asset.width > MAX_UPLOAD_WIDTH) {
+        const ratio = MAX_UPLOAD_WIDTH / asset.width;
+        actions.push({
+          resize: {
+            width: MAX_UPLOAD_WIDTH,
+            height: Math.round(asset.height * ratio),
+          },
+        });
+      }
+
+      if (actions.length === 0) {
+        return asset;
+      }
+
+      const result = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        actions,
+        {
+          compress: 0.7,
+          format: ImageManipulator.SaveFormat.JPEG,
+        },
+      );
+
+      return {
+        uri: result.uri,
+        width: result.width,
+        height: result.height,
+      };
+    } catch {
+      return asset;
+    }
+  };
+
+  const validateAndNormalizeAssets = async (assets) => {
+    const allowed = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ]);
+    const next = [];
+    let totalBytes = 0;
+
+    for (const original of assets ?? []) {
+      if (!original?.uri) continue;
+
+      // 먼저 필요하다면 리사이즈/압축
+      const a = await compressIfNeeded(original);
+
+      const mimeType = guessMimeType(a.uri);
+      if (!allowed.has(mimeType)) {
+        openLimitModal("이미지는 JPG/PNG/GIF/WEBP만 업로드할 수 있습니다.");
+        continue;
+      }
+
+      try {
+        const info = await FileSystem.getInfoAsync(a.uri, { size: true });
+        if (typeof info?.size === "number") {
+          if (info.size > MAX_IMAGE_BYTES) {
+            openLimitModal("이미지는 장당 최대 10MB까지 업로드할 수 있습니다.");
+            continue;
+          }
+          if (totalBytes + info.size > MAX_TOTAL_IMAGE_BYTES) {
+            openLimitModal(
+              "이미지 전체 용량은 최대 10MB까지 업로드할 수 있습니다.",
+            );
+            continue;
+          }
+          totalBytes += info.size;
+        }
+      } catch {
+        // size 조회 실패 시에는 단일 용량/총 용량 체크를 스킵 (서버에서 최종 검증)
+      }
+
+      next.push(a);
+    }
+
+    return next;
+  };
+
+  const extractedHashTags = useMemo(() => {
+    // 본문에서 "#해시태그" 형태를 추출
+    // - 공백/줄바꿈으로 구분된 토큰만 인식
+    // - 각 20자 이하, 중복 제거
+    const set = new Set();
+    const regex = new RegExp(`(?:^|\\s)#([^\\s#]{1,${MAX_HASHTAG_LEN}})`, "g");
+    let match;
+    // eslint-disable-next-line no-cond-assign
+    while ((match = regex.exec(content)) !== null) {
+      const tag = (match[1] ?? "").trim();
+      if (!tag) continue;
+      set.add(tag);
+    }
+    return Array.from(set);
+  }, [content]);
+
+  const acceptedHashTags = useMemo(
+    () => extractedHashTags.slice(0, MAX_HASHTAGS),
+    [extractedHashTags],
+  );
+
+  const hasHashTagOverflow = extractedHashTags.length > MAX_HASHTAGS;
+
+  useEffect(() => {
+    if (!hasHashTagOverflow) return;
+    openLimitModal("해시태그는 최대 5개만 추가 가능합니다.");
+  }, [hasHashTagOverflow]);
+
+  const renderHighlightedContent = useMemo(() => {
+    // "#태그" 토큰만 초록색으로 하이라이트 (공백/줄바꿈 기준)
+    // 공백 자체도 그대로 렌더링해야 줄바꿈/간격이 맞습니다.
+    const parts = content.split(/(\s+)/);
+    return parts.map((part, idx) => {
+      const isSpace = /^\s+$/.test(part);
+      const isHash =
+        !isSpace &&
+        part.startsWith("#") &&
+        part.length > 1 &&
+        !part.startsWith("##");
+      return (
+        <AppText
+          // eslint-disable-next-line react/no-array-index-key
+          key={`${idx}-${part}`}
+          variant="other"
+          style={[
+            styles.richTextBase,
+            isHash ? styles.richTextHash : styles.richTextNormal,
+          ]}
+        >
+          {part}
+        </AppText>
+      );
+    });
+  }, [content]);
 
   const handleAddImages = (newAssets) => {
     setImages((prev) => {
       const merged = [...prev, ...newAssets];
       if (merged.length <= MAX_IMAGES) return merged;
-      setIsImageLimitModalVisible(true);
+      openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
       return merged.slice(0, MAX_IMAGES);
     });
   };
@@ -141,7 +288,7 @@ const CreatePostScreen = () => {
       setIsPickingMedia(true);
       const remaining = MAX_IMAGES - images.length;
       if (remaining <= 0) {
-        setIsImageLimitModalVisible(true);
+        openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
         return;
       }
 
@@ -152,7 +299,8 @@ const CreatePostScreen = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: remaining,
-        quality: 0.9,
+        // 품질을 낮춰 전송 용량을 줄입니다 (0~1)
+        quality: 0.7,
         exif: false,
         base64: false,
         // ios 이미지는 heic이므로 jpeg 자동 변환 요청!!
@@ -161,13 +309,13 @@ const CreatePostScreen = () => {
       });
 
       if (!result.canceled) {
-        handleAddImages(
-          (result.assets ?? []).map((a) => ({
-            uri: a.uri,
-            width: a.width,
-            height: a.height,
-          })),
-        );
+        const mapped = (result.assets ?? []).map((a) => ({
+          uri: a.uri,
+          width: a.width,
+          height: a.height,
+        }));
+        const validated = await validateAndNormalizeAssets(mapped);
+        handleAddImages(validated);
       }
     } catch (error) {
       console.log("이미지 선택 실패:", error);
@@ -182,47 +330,16 @@ const CreatePostScreen = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const normalizeHashTag = (t) =>
-    (t ?? "").toString().trim().replace(/^#/, "").slice(0, 20);
-
-  const addHashTagsFromRaw = () => {
-    const next = hashTagRaw
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean)
-      .map((t) => normalizeHashTag(t))
-      .filter(Boolean);
-
-    if (next.length === 0) {
-      setIsHashEditing(false);
-      setHashTagRaw("");
-      return;
-    }
-
-    setHashTags((prev) => {
-      const set = new Set(prev);
-      let exceeded = false;
-      next.forEach((t) => {
-        if (set.size < 5) {
-          set.add(t);
-        } else {
-          exceeded = true;
-        }
-      });
-      if (exceeded) setIsHashLimitModalVisible(true);
-      return Array.from(set).slice(0, 5);
-    });
-    setHashTagRaw("");
-    setIsHashEditing(false);
-  };
-
   useEffect(() => {
     const captured = route?.params?.capturedAsset;
     if (!captured?.uri) return;
-    setIsPickingMedia(true);
-    handleAddImages([captured]);
-    navigation.setParams({ capturedAsset: undefined });
-    setIsPickingMedia(false);
+    (async () => {
+      setIsPickingMedia(true);
+      const validated = await validateAndNormalizeAssets([captured]);
+      handleAddImages(validated);
+      navigation.setParams({ capturedAsset: undefined });
+      setIsPickingMedia(false);
+    })();
   }, [route?.params?.capturedAsset]); //안 넘어가면 navigation, 이거 추가할 것
 
   const guessMimeType = (uri) => {
@@ -245,10 +362,26 @@ const CreatePostScreen = () => {
   const handleUpload = () => {
     if (!isUploadEnabled || isUploading) return;
 
+    if (hasHashTagOverflow) {
+      openLimitModal("해시태그는 최대 5개만 추가 가능합니다.");
+      return;
+    }
+
+    const now = Date.now();
+    const normalizedContent = content.trim();
+    if (
+      normalizedContent &&
+      normalizedContent === lastUploadRef.current.content &&
+      now - lastUploadRef.current.at < DUPLICATE_POST_WINDOW_MS
+    ) {
+      openLimitModal("30초 내 동일 내용 게시글은 등록할 수 없습니다.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("content", content);
     formData.append("channel", createPostChannel);
-    hashTags.slice(0, 5).forEach((tag) => {
+    acceptedHashTags.forEach((tag) => {
       formData.append("hashtags", tag);
     });
 
@@ -272,12 +405,19 @@ const CreatePostScreen = () => {
 
     createPostMutation.mutate(formData, {
       onSuccess: (data) => {
+        lastUploadRef.current = { content: normalizedContent, at: now };
         queryClient.invalidateQueries({ queryKey: ["community"] });
         navigation.navigate("UploadSuccess", {
           createdPostId: data?.postId ?? data?.id ?? null,
         });
       },
       onError: (e) => {
+        const status = e?.response?.status;
+        if (status === 413) {
+          openLimitModal(
+            "게시글 용량이 너무 큽니다.\n이미지 크기나 개수를 줄여 다시 시도해 주세요.",
+          );
+        }
         console.log("게시글 업로드 실패:", e?.response?.data ?? e);
       },
     });
@@ -409,36 +549,44 @@ const CreatePostScreen = () => {
                   inputOffsetY.current = e.nativeEvent.layout.y;
                 }}
               >
-                <TextInput
-                  value={content}
-                  onChangeText={handleChangeContent}
-                  placeholder="오늘의 팬심을 한 줄로 남겨보세요."
-                  placeholderTextColor="#6F6F6F"
-                  style={styles.contentInput}
-                  multiline
-                  textAlignVertical="top"
-                  scrollEnabled={false}
-                  onContentSizeChange={(e) => {
-                    const inputHeight = e.nativeEvent.contentSize.height;
-                    scrollRef.current?.scrollTo({
-                      y: inputOffsetY.current + inputHeight - 200,
-                      animated: true,
-                    });
-                  }}
-                />
+                <View style={styles.richInputWrap}>
+                  <View pointerEvents="none" style={styles.richTextLayer}>
+                    {content.length === 0 ? (
+                      <AppText
+                        variant="other"
+                        style={styles.richTextPlaceholder}
+                      >
+                        오늘의 팬심을 한 줄로 남겨보세요.
+                      </AppText>
+                    ) : (
+                      <AppText
+                        variant="other"
+                        style={styles.richTextContainer}
+                        suppressHighlighting
+                      >
+                        {renderHighlightedContent}
+                      </AppText>
+                    )}
+                  </View>
 
-                <HashTagInput
-                  isEditing={isHashEditing}
-                  hashTagRaw={hashTagRaw}
-                  hashTags={hashTags}
-                  onChangeRaw={setHashTagRaw}
-                  onSubmit={addHashTagsFromRaw}
-                  onPressDisplay={() => {
-                    setHashTagRaw(hashTags.map((t) => `#${t}`).join(" "));
-                    setHashTags([]);
-                    setIsHashEditing(true);
-                  }}
-                />
+                  <TextInput
+                    value={content}
+                    onChangeText={handleChangeContent}
+                    style={styles.richInput}
+                    multiline
+                    textAlignVertical="top"
+                    scrollEnabled={false}
+                    selectionColor="rgba(255,255,255,0.25)"
+                    cursorColor="#E5E5E5"
+                    onContentSizeChange={(e) => {
+                      const inputHeight = e.nativeEvent.contentSize.height;
+                      scrollRef.current?.scrollTo({
+                        y: inputOffsetY.current + inputHeight - 200,
+                        animated: true,
+                      });
+                    }}
+                  />
+                </View>
 
                 <ImagePreviewList
                   images={images}
@@ -482,14 +630,11 @@ const CreatePostScreen = () => {
 
             <View style={{ flex: 1 }} />
 
-            <Pressable
-              style={styles.hashTagChip}
-              onPress={() => setIsHashEditing(true)}
-            >
+            <View style={styles.hashTagHintChip}>
               <AppText variant="labelSmall" style={styles.hashtagText}>
                 #입력으로 해시태그 추가
               </AppText>
-            </Pressable>
+            </View>
             {/* )} */}
           </View>
 
@@ -551,44 +696,22 @@ const CreatePostScreen = () => {
           </Pressable>
         </Modal>
 
-        {/* 이미지 초과 모달! */}
+        {/* 제한 모달 (이미지/해시태그/중복등록 등 공통) */}
         <Modal
           transparent
-          visible={isImageLimitModalVisible}
+          visible={isLimitModalVisible}
           animationType="fade"
-          onRequestClose={() => setIsImageLimitModalVisible(false)}
+          onRequestClose={() => setIsLimitModalVisible(false)}
         >
           <Pressable
             style={styles.modalOverlay}
-            onPress={() => setIsImageLimitModalVisible(false)}
+            onPress={() => setIsLimitModalVisible(false)}
           >
             <Pressable style={styles.limitModalCard} onPress={() => {}}>
               <View style={styles.limitModalContent}>
                 <AppText variant="middle">⚠️</AppText>
                 <AppText variant="middle" className="text-[#E5E5E5]">
-                  {"사진은 최대 5장까지\n추가 가능합니다."}
-                </AppText>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Modal>
-
-        {/* 해시태그 초과 모달!! ui 비슷해서 컴포넌트로 뺄 방법 없는지 생각할 것 */}
-        <Modal
-          transparent
-          visible={isHashLimitModalVisible}
-          animationType="fade"
-          onRequestClose={() => setIsHashLimitModalVisible(false)}
-        >
-          <Pressable
-            style={styles.modalOverlay}
-            onPress={() => setIsHashLimitModalVisible(false)}
-          >
-            <Pressable style={styles.limitModalCard} onPress={() => {}}>
-              <View style={styles.limitModalContent}>
-                <AppText variant="middle">⚠️</AppText>
-                <AppText variant="middle" className="text-[#E5E5E5]">
-                  {"해시태그는 최대 5개까지\n추가 가능합니다."}
+                  {limitModalMessage || ""}
                 </AppText>
               </View>
             </Pressable>
@@ -740,16 +863,40 @@ const styles = StyleSheet.create({
   },
   inputCard: {
     justifyContent: "flex-start",
-    // position: "relative",
     paddingBottom: 18,
-    minHeight: 120,
   },
-  contentInput: {
-    color: "#E5E5E5",
+  richInputWrap: {
+    marginBottom: 12,
+  },
+  richTextLayer: {
+    minHeight: 10,
+  },
+  richTextContainer: {
     fontSize: 15,
     lineHeight: 21,
-    minHeight: 10,
-    marginBottom: 5,
+    color: "#E5E5E5",
+  },
+  richTextBase: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  richTextNormal: {
+    color: "#E5E5E5",
+  },
+  richTextHash: {
+    color: "#6F9D48",
+  },
+  richTextPlaceholder: {
+    fontSize: 15,
+    lineHeight: 21,
+    color: "#6F6F6F",
+  },
+  richInput: {
+    ...StyleSheet.absoluteFillObject,
+    color: "transparent",
+    fontSize: 15,
+    lineHeight: 21,
+    padding: 0,
   },
   counterRow: {
     flexDirection: "row",
@@ -762,23 +909,6 @@ const styles = StyleSheet.create({
   },
   counterTextMax: {
     color: "#EEEEEE",
-  },
-  hashSection: {
-    marginTop: 10,
-    gap: 8,
-  },
-  hashInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  hashInputPrefix: {
-    color: "#6F9D48",
-  },
-  hashTagInput: {
-    flex: 1,
-    color: "#E5E5E5",
-    paddingVertical: 0,
   },
   loadingOverlay: {
     flex: 1,
@@ -802,7 +932,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
   },
-  hashTagChip: {
+  hashTagHintChip: {
     height: 44,
     borderRadius: 20,
     paddingHorizontal: 14,

@@ -3,6 +3,7 @@ import AuthStack from "./AuthStack";
 import MainTabNavigator from "./MainTabNavigator";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "@app/SplashScreen";
+import CommunityStack from "./CommunityStack";
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +22,7 @@ const RootNavigator = () => {
       {/* ) : ( */}
       <Stack.Screen name="Auth" component={AuthStack} />
       {/* )} */}
+      <Stack.Screen name="Community" component={CommunityStack} />
     </Stack.Navigator>
   );
 };
