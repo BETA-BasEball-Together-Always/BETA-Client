@@ -12,11 +12,7 @@ const ReactionSummary = ({
     <View style={styles.reactionSummary}>
       <View style={styles.reactionIconRow}>
         {reactions.map((reaction) =>
-<<<<<<< HEAD
-          reactionCounts?.[reaction.id] > 0 ? (
-=======
           reactionCounts[reaction.id] > 0 ? (
->>>>>>> origin/feat/18-post-detail-screen
             <View
               key={reaction.id}
               style={[

@@ -1,16 +1,27 @@
-import React, { useMemo } from "react";
-import { StyleSheet, View, Image } from "react-native";
+import React, { useMemo, useState } from "react";
+import { StyleSheet, View, Image, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { LinearGradient } from "expo-linear-gradient";
 import { TEAM_DATA } from "../../../../shared/constants/teams";
 import TeamLabel from "./TeamLabel";
 
-// import PostReactions from "../PostReactions";
+import PostReactions from "../PostReactions";
+import { useTogglePostEmotionMutation } from "../../services/emotionMutations";
 
 const PostCard = ({ post, showTeam = false }) => {
+  const navigation = useNavigation();
   const { author } = post;
   const team = TEAM_DATA[author?.teamCode];
   const ProfileIcon = team?.ProfileIcon;
+
+  const [selectedEmotionType, setSelectedEmotionType] = useState(null);
+
+  const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId, {
+    onSuccess: (data) => {
+      setSelectedEmotionType(data.toggled ? data.emotionType : null);
+    },
+  });
 
   const contentWithoutHashtags = useMemo(() => {
     const raw = post?.content ?? "";
@@ -22,8 +33,54 @@ const PostCard = ({ post, showTeam = false }) => {
   const primaryImageUri =
     post?.images?.[0]?.imageUrl || post?.images?.[0]?.url || null;
 
+  const reactionCounts = useMemo(() => {
+    const emotions = post.emotions ?? {};
+    return {
+      LIKE: emotions.likeCount ?? 0,
+      SAD: emotions.sadCount ?? 0,
+      FUN: emotions.funCount ?? 0,
+      HYPE: emotions.hypeCount ?? 0,
+    };
+  }, [post.emotions]);
+
+  const totalReactions = useMemo(
+    () => Object.values(reactionCounts).reduce((sum, v) => sum + v, 0),
+    [reactionCounts],
+  );
+
+  const handlePressCard = () => {
+    navigation.navigate("Community", {
+      screen: "PostDetail",
+      params: { post },
+    });
+  };
+
+  const reactionPost = useMemo(
+    () => ({
+      ...post,
+      id: post.postId,
+      comments: post.commentCount,
+      reactionCounts: {
+        EMO_JOY: post.emotions?.likeCount ?? 0,
+        EMO_SAD: post.emotions?.sadCount ?? 0,
+        EMO_FUN: post.emotions?.funCount ?? 0,
+        EMO_HYPE: post.emotions?.hypeCount ?? 0,
+      },
+    }),
+    [post],
+  );
+
+  const handleSelectReaction = (_postId, reaction) => {
+    const emotionType = reaction ? reaction.id : null;
+    toggleEmotionMutation.mutate({ emotionType });
+  };
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity
+      style={styles.container}
+      activeOpacity={0.8}
+      onPress={handlePressCard}
+    >
       {/* 프로필 */}
       <View style={styles.authorRow}>
         <LinearGradient
@@ -67,8 +124,14 @@ const PostCard = ({ post, showTeam = false }) => {
         )}
       </View>
 
-      {/* <PostReactions emotions={post.emotions} /> */}
-    </View>
+      <PostReactions
+        post={reactionPost}
+        selectedEmotionType={selectedEmotionType}
+        onSelectReaction={handleSelectReaction}
+        onCommentPress={handlePressCard}
+        onCardPress={handlePressCard}
+      />
+    </TouchableOpacity>
   );
 };
 

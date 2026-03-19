@@ -1,12 +1,12 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-// import PostDetailScreen from "@features/community/screens/PostDetail/PostDetailScreen";
 import TeamCommunityScreen from "../../features/community/screens/TeamCommunityScreen";
 import AllCommunityScreen from "../../features/community/screens/AllCommunityScreen";
 import CreatePostCameraScreen from "../../features/community/screens/CreatePost/CreatePostCameraScreen";
 import UploadSuccessScreen from "../../features/community/screens/CreatePost/UploadSuccessScreen";
 import CreatePostScreen from "../../features/community/screens/CreatePost/CreatePostScreen";
+import PostDetailScreen from "../../features/community/screens/PostDetail/PostDetailScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,7 +18,7 @@ const CommunityStack = () => {
     >
       <Stack.Screen name="TeamCommunity" component={TeamCommunityScreen} />
       <Stack.Screen name="AllCommunity" component={AllCommunityScreen} />
-      {/* <Stack.Screen name="PostDetail" component={PostDetailScreen} /> */}
+      <Stack.Screen name="PostDetail" component={PostDetailScreen} />
       <Stack.Screen name="CreatePost" component={CreatePostScreen} />
       <Stack.Screen
         name="CreatePostCamera"

@@ -3,11 +3,13 @@ import { Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { AppText } from "../../../../../shared/theme/components/AppText";
 import { getRelativeTime } from "../utils/relativeTime";
-
 import HeartIcon from "../../../assets/svg/CommunityPost/heartIcon.svg";
 import HeartFilledIcon from "../../../assets/svg/CommunityPost/heartFilledIcon.svg";
 import HeartOnPressIcon from "../../../assets/svg/CommunityPost/heartOnPressIcon.svg";
 import ReplyIcon from "../../../assets/svg/CommunityPost/replyIcon.svg";
+import TeamLabel from "../../../component/communityMain/TeamLabel";
+import { TEAM_DATA } from "../../../../../shared/constants/teams";
+import { LinearGradient } from "expo-linear-gradient";
 
 const HEART_SIZE = 20;
 
@@ -17,6 +19,7 @@ export default function ThreadItem({
   item,
   variant = "comment", // "comment" | "reply"
   isAuthor = false,
+  isAllChannel = false,
   onToggleLike,
   onLongPress,
   showReplyActions = false,
@@ -28,8 +31,18 @@ export default function ThreadItem({
   repliesContent = null,
 }) {
   const [heartPressed, setHeartPressed] = useState(false);
-
-  const nicknameFirstChar = item?.author?.nickName?.[0] ?? "유";
+  const author = item?.author ?? {};
+  const displayNickname =
+    author.nickName ??
+    author.nickname ??
+    item?.nickname ??
+    item?.authorNickname ??
+    "";
+  const nicknameFirstChar = displayNickname?.[0] ?? "유";
+  const teamCode = author.teamCode ?? item.teamCode;
+  const team = teamCode ? TEAM_DATA[teamCode] : null;
+  const ProfileIcon = team?.ProfileIcon;
+  const avatarSize = variant === "reply" ? 32 : 38;
 
   return (
     <View
@@ -44,18 +57,40 @@ export default function ThreadItem({
         delayLongPress={400}
         style={styles.row}
       >
-        <View style={styles.avatarCircle}>
-          <AppText variant="middle" className="text-white">
-            {nicknameFirstChar}
-          </AppText>
-        </View>
+        <LinearGradient
+          colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
+          locations={team?.gradient?.locations}
+          start={team?.gradient?.start}
+          end={team?.gradient?.end}
+          style={[
+            styles.avatarCircle,
+            {
+              width: avatarSize,
+              height: avatarSize,
+              borderRadius: avatarSize,
+            },
+          ]}
+        >
+          {ProfileIcon ? (
+            <ProfileIcon width={avatarSize * 0.74} height={avatarSize * 0.74} />
+          ) : (
+            <AppText style={styles.avatarInitial}>
+              {nicknameFirstChar.toUpperCase()}
+            </AppText>
+          )}
+        </LinearGradient>
 
         <View style={styles.rightSection}>
           <View style={styles.topRow}>
             <View style={styles.nameRow}>
               <AppText variant="bodyMedium" style={styles.nickname}>
-                {item.author.nickName}
+                {displayNickname}
               </AppText>
+              {isAllChannel && !!author.teamCode && (
+                <View style={styles.teamLabelWrap}>
+                  <TeamLabel teamCode={author.teamCode} />
+                </View>
+              )}
               {isAuthor && (
                 <AppText variant="labelSmall" style={styles.authorTag}>
                   · 작성자
@@ -119,7 +154,7 @@ export default function ThreadItem({
                   onPress={() => onShowReplies?.(true)}
                   style={styles.replyMoreButton}
                 >
-                  <AppText variant="spaced" style={styles.replyText}>
+                  <AppText variant="spaced" style={styles.moreReplyText}>
                     ─ {replyCount}개 답글 더보기
                   </AppText>
                 </TouchableOpacity>
@@ -132,7 +167,7 @@ export default function ThreadItem({
                   onPress={() => onShowReplies?.(false)}
                   style={styles.replyHiddenButton}
                 >
-                  <AppText variant="spaced" style={styles.replyText}>
+                  <AppText variant="spaced" style={styles.hiddenReplyText}>
                     ─ 답글 숨기기
                   </AppText>
                 </TouchableOpacity>
@@ -163,12 +198,12 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 38,
-    backgroundColor: "#27272A",
     justifyContent: "center",
     alignItems: "center",
+    marginRight: 8,
+  },
+  avatarInitial: {
+    color: "#F9F9F9",
   },
   rightSection: {
     flex: 1,
@@ -184,15 +219,18 @@ const styles = StyleSheet.create({
   },
   nickname: {
     color: "#D4D4D4",
-    marginLeft: 10,
+  },
+  teamLabelWrap: {
+    marginLeft: 6,
   },
   authorTag: {
     color: "#666666",
     marginLeft: 4,
+    lineHeight: 13.6,
   },
   timeText: {
     color: "rgba(228, 228, 228, 0.50)",
-    marginLeft: 8,
+    // marginLeft: 8,
   },
   contentRow: {
     flexDirection: "row",
@@ -206,7 +244,6 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#F9F9F9",
     marginRight: 12,
-    marginLeft: 10,
     lineHeight: 17,
   },
   likeButton: {
@@ -219,14 +256,13 @@ const styles = StyleSheet.create({
   likeCount: {
     marginTop: 2,
     color: "#666",
-    fontWeight: 600,
   },
   replyButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 11,
-    paddingLeft: 15,
-    marginBottom: 15,
+    marginTop: 7,
+    paddingLeft: 3,
+    marginBottom: 16,
   },
   replyIconWrap: {
     marginRight: 6,
@@ -235,13 +271,19 @@ const styles = StyleSheet.create({
     color: "rgba(228, 228, 228, 0.50)",
   },
   replyMoreButton: {
-    marginHorizontal: 10,
-    paddingLeft: 8,
-    marginTop: -7,
+    marginHorizontal: 5,
+    // marginTop: -7,
+  },
+  moreReplyText: {
+    color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 17.7,
   },
   replyHiddenButton: {
-    marginHorizontal: 10,
-    paddingLeft: 8,
-    marginTop: 17,
+    marginHorizontal: 5,
+    // marginTop: 20,
+  },
+  hiddenReplyText: {
+    color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 15,
   },
 });

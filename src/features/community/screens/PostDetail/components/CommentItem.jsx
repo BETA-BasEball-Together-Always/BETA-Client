@@ -11,32 +11,20 @@ export default function CommentItem({
   onLongPressThread,
   currentUserId,
   pressedThread,
+  onToggleLike,
+  isAllChannel = false,
 }) {
   const [showReplies, setShowReplies] = useState(false);
 
   const isAuthor = comment.author?.nickName === postAuthorNickname;
   const isMine = comment.author?.userId === currentUserId;
 
-  const toggleLike = () => {
-    setCommentData((prev) => ({
-      ...prev,
-      comments: prev.comments.map((c) =>
-        c.commentId === comment.commentId
-          ? {
-              ...c,
-              isLiked: !c.isLiked,
-              likeCount: c.isLiked ? c.likeCount - 1 : c.likeCount + 1,
-            }
-          : c,
-      ),
-    }));
-  };
-
   return (
     <ThreadItem
       item={comment}
       variant="comment"
       isAuthor={isAuthor}
+      isAllChannel={isAllChannel}
       isPressed={
         pressedThread?.targetType === "comment" &&
         pressedThread?.targetId === comment.commentId
@@ -51,7 +39,9 @@ export default function CommentItem({
               })
           : undefined
       }
-      onToggleLike={toggleLike}
+      onToggleLike={
+        onToggleLike ? () => onToggleLike(comment.commentId) : undefined
+      }
       showReplyActions
       onReplyPress={() => onReplyPress(comment.commentId)}
       replyCount={comment.replies.length}

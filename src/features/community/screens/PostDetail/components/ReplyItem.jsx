@@ -9,32 +9,17 @@ export default function ReplyItem({
   currentUserId,
   onLongPressThread,
   pressedThread,
+  onToggleLike,
+  isAllChannel = false,
 }) {
   const isAuthor = reply.author?.nickName === postAuthorNickname;
   const isMine = reply.author?.userId === currentUserId;
-  const toggleLike = () => {
-    setCommentData((prev) => ({
-      ...prev,
-      comments: prev.comments.map((c) => ({
-        ...c,
-        replies: c.replies.map((r) =>
-          r.commentId === reply.commentId
-            ? {
-                ...r,
-                isLiked: !r.isLiked,
-                likeCount: r.isLiked ? r.likeCount - 1 : r.likeCount + 1,
-              }
-            : r,
-        ),
-      })),
-    }));
-  };
-
   return (
     <ThreadItem
       item={reply}
       variant="reply"
       isAuthor={isAuthor}
+      isAllChannel={isAllChannel}
       isPressed={
         pressedThread?.targetType === "reply" &&
         pressedThread?.targetId === reply.commentId
@@ -49,7 +34,9 @@ export default function ReplyItem({
               })
           : undefined
       }
-      onToggleLike={toggleLike}
+      onToggleLike={
+        onToggleLike ? () => onToggleLike(reply.commentId) : undefined
+      }
     />
   );
 }

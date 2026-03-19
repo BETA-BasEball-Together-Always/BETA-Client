@@ -10,6 +10,8 @@ export default function CommentList({
   onLongPressThread,
   currentUserId,
   pressedThread,
+  onToggleCommentLike,
+  isAllChannel = false,
 }) {
   return (
     <View style={styles.container}>
@@ -23,6 +25,8 @@ export default function CommentList({
           postAuthorNickname={postAuthorNickname}
           currentUserId={currentUserId}
           pressedThread={pressedThread}
+          onToggleLike={onToggleCommentLike}
+          isAllChannel={isAllChannel}
         />
       ))}
     </View>

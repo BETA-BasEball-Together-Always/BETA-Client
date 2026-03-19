@@ -18,56 +18,47 @@ import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import MenuIcon from "../../assets/svg/TopBar/menuIcon.svg";
 
 import PostReactions from "../../component/PostReactions";
+import CommunityUserProfile from "../../component/CommunityUserProfile";
 import CommentList from "./components/CommentList";
 import CommentInput from "./components/CommentInput";
+import { useUserStore } from "../../../../shared/store/userStore";
+import {
+  useBlockUserMutation,
+  useCreateCommentMutation,
+  useDeleteCommentMutation,
+  usePostDetailQuery,
+  useToggleCommentLikeMutation,
+  useTogglePostEmotionMutation,
+  useUpdateCommentMutation,
+} from "../../services/postDetail/postDetailService";
 
 const { width } = Dimensions.get("window");
 
-const currentUser = {
-  userId: 10,
-  nickName: "왕밤빵",
-  teamCode: "LG",
-};
-const initialComments = {
-  comments: [
-    {
-      commentId: 1,
-      content: "진짜 7회 말 소름 😭",
-      likeCount: 3,
-      isLiked: false,
-      createdAt: "2025-11-25T10:35:00",
-      author: {
-        userId: 2,
-        nickName: "엘지사랑해",
-        teamCode: "LG",
-      },
-      replies: [
-        {
-          commentId: 2,
-          content: "그쵸ㅠㅠ 직관 최고",
-          likeCount: 1,
-          isLiked: false,
-          createdAt: "2025-11-25T10:40:00",
-          author: {
-            userId: 10,
-            nickName: "siswe",
-            teamCode: "LG",
-          },
-        },
-      ],
-    },
-  ],
-  hasNext: false,
-  nextCursorId: null,
-};
-
 const PostDetailScreen = ({ route, navigation }) => {
-  const { post, onSelectReaction } = route.params; // PostDetailScreen으로 navigation할 때 post 데이터를 전달받는다고 가정
-  const imageList = post.images ?? (post.image ? [post.image] : []);
+  const { post: initialPostParam } = route.params ?? {};
+  const currentUser = useUserStore((s) => s.user);
+
+  const postId = initialPostParam?.postId;
+  const { data: detail, isLoading: isPostLoading } = usePostDetailQuery(
+    postId,
+    {
+      initialData: initialPostParam
+        ? {
+            ...initialPostParam,
+            comments: [],
+            hasNextComments: false,
+            nextCommentCursor: null,
+          }
+        : undefined,
+    },
+  );
+
+  const imageList =
+    detail?.images?.map((img) => img.imageUrl || img.url) ??
+    (detail?.image ? [detail.image] : []);
 
   const scrollRef = useRef(null);
 
-  const [commentData, setCommentData] = useState(initialComments);
   const [replyTarget, setReplyTarget] = useState(null);
   const [postMoreVisible, setPostMoreVisible] = useState(false);
   const [threadActionModal, setThreadActionModal] = useState({
@@ -82,9 +73,20 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetId: null,
   });
 
-  useEffect(() => {
-    console.log("처음 진입 시 post:", post);
-  }, []);
+  const [selectedEmotionType, setSelectedEmotionType] = useState(null);
+
+  const createCommentMutation = useCreateCommentMutation(postId, {
+    currentUser,
+  });
+  const updateCommentMutation = useUpdateCommentMutation(postId);
+  const deleteCommentMutation = useDeleteCommentMutation(postId);
+  const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
+  const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
+    onSuccess: (data) => {
+      setSelectedEmotionType(data.toggled ? data.emotionType : null);
+    },
+  });
+  const blockUserMutation = useBlockUserMutation();
 
   const handleMorePress = () => {
     setPostMoreVisible(true);
@@ -145,18 +147,10 @@ const PostDetailScreen = ({ route, navigation }) => {
     closeThreadActionModal();
   };
 
+  const post = detail ?? initialPostParam ?? {};
+
   const handleCreateComment = (content) => {
     if (!content.trim()) return;
-
-    const newComment = {
-      commentId: Date.now(),
-      content,
-      likeCount: 0,
-      isLiked: false,
-      createdAt: new Date().toISOString(),
-      author: currentUser,
-      replies: [],
-    };
 
     const scrollToBottom = () => {
       requestAnimationFrame(() => {
@@ -166,24 +160,15 @@ const PostDetailScreen = ({ route, navigation }) => {
       });
     };
 
-    if (replyTarget) {
-      setCommentData((prev) => ({
-        ...prev,
-        comments: prev.comments.map((c) =>
-          c.commentId === replyTarget
-            ? { ...c, replies: [...c.replies, newComment] }
-            : c,
-        ),
-      }));
-      setReplyTarget(null);
-      scrollToBottom();
-    } else {
-      setCommentData((prev) => ({
-        ...prev,
-        comments: [...prev.comments, newComment],
-      }));
-      scrollToBottom();
-    }
+    createCommentMutation.mutate(
+      { content, parentId: replyTarget ?? null },
+      {
+        onSuccess: () => {
+          setReplyTarget(null);
+          scrollToBottom();
+        },
+      },
+    );
   };
 
   return (
@@ -213,24 +198,21 @@ const PostDetailScreen = ({ route, navigation }) => {
 
         <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
           <View style={styles.containerSection}>
-            {/* 유저 프로필!! 기찬 오빠 코드에서 따왔습니다! 이 부분은 수정 예정*/}
             <View style={styles.header}>
-              <View style={styles.avatarCircle}>
-                <AppText variant="middle" className="text-white">
-                  {post.nickname?.[0] ?? "유"}
-                </AppText>
-              </View>
-
-              <View style={styles.headerText}>
-                <AppText variant="semi14" style={styles.nickname}>
-                  {post.nickname}
-                </AppText>
-                <AppText variant="numMediumRegular" className="text-gray-500">
-                  {post.timeAgo}
-                </AppText>
-              </View>
+              <CommunityUserProfile
+                nickname={detail?.author?.nickname ?? post?.author?.nickname}
+                teamCode={detail?.author?.teamCode ?? post?.author?.teamCode}
+                createdAt={detail?.createdAt}
+              />
             </View>
 
+            {detail?.content && (
+              <View style={styles.textWrapper}>
+                <AppText variant="middle" style={styles.content}>
+                  {detail.content}
+                </AppText>
+              </View>
+            )}
             {imageList.length > 0 && (
               <ScrollView
                 horizontal
@@ -249,14 +231,13 @@ const PostDetailScreen = ({ route, navigation }) => {
                 ))}
               </ScrollView>
             )}
-            {post.content && (
-              <View style={styles.textWrapper}>
-                <AppText variant="middle" style={styles.content}>
-                  {post.content}
-                </AppText>
-              </View>
-            )}
-            <PostReactions post={post} onSelectReaction={onSelectReaction} />
+            <PostReactions
+              post={detail ?? initialPost}
+              selectedEmotionType={selectedEmotionType}
+              onToggleEmotion={(emotionType) =>
+                toggleEmotionMutation.mutate({ emotionType })
+              }
+            />
           </View>
 
           <View style={styles.divider} />
@@ -266,12 +247,18 @@ const PostDetailScreen = ({ route, navigation }) => {
               댓글
             </AppText>
             <CommentList
-              comments={commentData.comments}
+              comments={detail?.comments ?? []}
               onReplyPress={(commentId) => setReplyTarget(commentId)}
-              setCommentData={setCommentData}
-              postAuthorNickname={post.nickname}
+              setCommentData={() => {}}
+              postAuthorNickname={
+                detail?.author?.nickname ?? initialPost?.author?.nickname
+              }
               onLongPressThread={openThreadActionModal}
-              currentUserId={currentUser.userId}
+              currentUserId={currentUser?.id}
+              onToggleCommentLike={(commentId) =>
+                toggleCommentLikeMutation.mutate({ commentId })
+              }
+              isAllChannel={post.channel === "ALL"}
             />
           </View>
         </ScrollView>

@@ -25,22 +25,20 @@ const reactions = [
   { id: "EMO_HYPE", emoji: "🔥", bgColor: "#FF9F76" },
 ];
 
-const PostReactions = ({ post, onSelectReaction }) => {
-<<<<<<< HEAD
-  if (!post) return null;
-=======
->>>>>>> origin/feat/18-post-detail-screen
+const PostReactions = ({
+  post,
+  selectedEmotionType,
+  onSelectReaction,
+  onToggleEmotion,
+  onCommentPress,
+}) => {
   const [actionY, setActionY] = useState(0);
 
   const [selectedReaction, setSelectedReaction] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   const [reactionCounts, setReactionCounts] = useState(
-<<<<<<< HEAD
-    post?.reactionCounts || {
-=======
     post.reactionCounts || {
->>>>>>> origin/feat/18-post-detail-screen
       EMO_JOY: 0,
       EMO_SAD: 0,
       EMO_FUN: 0,
@@ -61,49 +59,61 @@ const PostReactions = ({ post, onSelectReaction }) => {
     setShowReactionPicker((prev) => !prev);
   };
 
+  // const handleReactionSelect = (reaction) => {
+  //   const prevReaction = selectedReaction;
+
+  //   // 같은 리액션을 다시 누르면 제거
+  //   if (prevReaction?.id === reaction.id) {
+  //     setReactionCounts((prevCounts) => ({
+  //       ...prevCounts,
+  //       [reaction.id]: Math.max(prevCounts[reaction.id] - 1, 0),
+  //     }));
+
+  //     setSelectedReaction(null);
+  //     setShowReactionPicker(false);
+
+  //     if (onSelectReaction) {
+  //       onSelectReaction(post.id, null);
+  //     }
+
+  //     return;
+  //   }
+
+  //   // 다른 리액션에서 변경되는 경우, 이전 리액션 카운트 감소
+  //   if (prevReaction) {
+  //     setReactionCounts((prevCounts) => ({
+  //       ...prevCounts,
+  //       [prevReaction.id]: Math.max(prevCounts[prevReaction.id] - 1, 0),
+  //     }));
+  //   }
+
+  //   // 새 리액션 카운트 증가
+  //   setReactionCounts((prevCounts) => ({
+  //     ...prevCounts,
+  //     [reaction.id]: prevCounts[reaction.id] + 1,
+  //   }));
+
+  //   setSelectedReaction(reaction);
+  //   setShowReactionPicker(false);
+
+  //   if (onSelectReaction) {
+  //     onSelectReaction(post.id, reaction);
+  //   }
+  // };
   const handleReactionSelect = (reaction) => {
-    const prevReaction = selectedReaction;
-
-    // 같은 리액션을 다시 누르면 제거
-    if (prevReaction?.id === reaction.id) {
-      setReactionCounts((prevCounts) => ({
-        ...prevCounts,
-        [reaction.id]: Math.max(prevCounts[reaction.id] - 1, 0),
-      }));
-
-      setSelectedReaction(null);
-      setShowReactionPicker(false);
-
-      if (onSelectReaction) {
-        onSelectReaction(post.id, null);
-      }
-
-      return;
-    }
-
-    // 다른 리액션에서 변경되는 경우, 이전 리액션 카운트 감소
-    if (prevReaction) {
-      setReactionCounts((prevCounts) => ({
-        ...prevCounts,
-        [prevReaction.id]: Math.max(prevCounts[prevReaction.id] - 1, 0),
-      }));
-    }
-
-    // 새 리액션 카운트 증가
-    setReactionCounts((prevCounts) => ({
-      ...prevCounts,
-      [reaction.id]: prevCounts[reaction.id] + 1,
-    }));
-
-    setSelectedReaction(reaction);
     setShowReactionPicker(false);
-
-    if (onSelectReaction) {
-      onSelectReaction(post.id, reaction);
+    if (onToggleEmotion) {
+      onToggleEmotion(reaction.id); //상세에서 쓰는 경우
+    } else if (onSelectReaction) {
+      onSelectReaction(post.id, reaction); //리스트에서 쓰는 경우
     }
   };
 
   const handleCommentPress = () => {
+    if (onCommentPress) {
+      onCommentPress();
+      return;
+    }
     setCommentMode((prev) => !prev);
   };
 
@@ -119,6 +129,7 @@ const PostReactions = ({ post, onSelectReaction }) => {
     }, 1500);
   };
 
+  const commentCount = post.commentCount ?? post.comments ?? 0;
   const hasReactions = totalReactions > 0;
 
   return (
@@ -154,7 +165,7 @@ const PostReactions = ({ post, onSelectReaction }) => {
             className="text-gray-400"
             style={!hasReactions && styles.commentOnly}
           >
-            댓글 {post.comments ?? 0}
+            댓글 {post.commentCount ?? post.comments?.length ?? 0}
           </AppText>
         </View>
 
