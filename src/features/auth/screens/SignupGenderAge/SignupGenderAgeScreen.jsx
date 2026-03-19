@@ -1,8 +1,7 @@
 // src/features/auth/screens/SignupGenderAge/SignupGenderAgeScreen.jsx
-import React, {useState, useMemo, useEffect} from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
@@ -13,23 +12,24 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
-import {useSignupSecretStore} from "../../stores/useSignupSecretStore";
+import { useSignupCompleteMutation } from "../../services/signupCompleteMutation";
+import { useStepBack } from "../../hooks/useStepBack";
 
-const {height} = Dimensions.get("window");
+import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
+import { AppText } from "../../../../shared/theme/components/AppText";
 
-const SignupGenderAgeScreen = ({navigation, route}) => {
+const { height } = Dimensions.get("window");
+
+const SignupGenderAgeScreen = ({ navigation, route }) => {
   const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
   const [age, setAge] = useState("");
+  const [signupData, setSignupData] = useState({});
 
-  // ✅ 누적된 회원가입 정보
-  const signup = route?.params?.signup ?? {};
-
-  // ✅ password는 params가 아니라 zustand 메모리에서
-  const {password, clearSecrets} = useSignupSecretStore();
+  const handleBack = useStepBack("SignupFavoriteTeam");
 
   const isNextEnabled = useMemo(() => {
     return !!age && Number(age) > 0;
@@ -39,37 +39,54 @@ const SignupGenderAgeScreen = ({navigation, route}) => {
     console.log("gender", gender);
   }, [gender]);
 
-  // ✅ 마지막 제출 로직
-  const submitSignup = async ({genderValue, ageValue}) => {
-    // password가 없으면(새로고침/앱종료 등) 안전하게 되돌리기
-    if (signup.signupType === "NATIVE" && !password) {
-      // UX는 프로젝트 스타일에 맞게 토스트/알럿 처리 추천
-      navigation.replace("Login");
-      return;
-    }
+  const signupCompleteMutation = useSignupCompleteMutation();
 
-    // ✅ 최종 payload 조립 (필요 필드만 백엔드 명세대로 맞춰)
-    const payload = {
-      social: signup.signupType ?? null,
-      email: signup.email,
-      password, // ✅ 여기서만 사용
-      agreeMarketing: signup.agreeMarketing,
-      personalInfoRequired: signup.personalInfoRequired,
-      nickName: signup.nickname,
-      favoriteTeam: signup.favoriteTeam,
-      gender: genderValue ?? null, // 선택사항
-      age: ageValue ?? null, // 선택사항
+  // 재진입 시 route.params.signup + AsyncStorage에서 데이터 복구!!
+  useEffect(() => {
+    const restoreSignupData = async () => {
+      const routeSignup = route?.params?.signup ?? {};
+      let storedSignup = {};
+
+      try {
+        const stored = await AsyncStorage.getItem("@signupData");
+        if (stored) storedSignup = JSON.parse(stored);
+      } catch (e) {
+        console.log("async storage 불러오기 실패: ", e);
+        console.log("async storage 불러오기 실패 에러 데이터: ", e.data);
+        console.log("async storage 불러오기 실패 에러 리스폰스: ", e.response);
+      }
+
+      setSignupData({
+        ...storedSignup,
+        ...routeSignup,
+      });
     };
-    console.log("최종 회원가입 payload:", payload);
+    restoreSignupData();
+  }, [route]);
 
-    // ✅ API 호출 (엔드포인트는 너희 명세로 수정)
-    // await api.post("/api/auth/signup", payload);
-
-    // ✅ 성공 시 비밀번호 즉시 제거
-    // clearSecrets();
-
-    // ✅ 완료 후 이동 (완료 화면/로그인/메인 등 너희 플로우로)
-    // navigation.replace("Login"); // 예시
+  // 호출 시 signupData 포함하도록 수정
+  const submitSignup = ({ genderValue, ageValue }) => {
+    signupCompleteMutation.mutate(
+      {
+        ...(signupData || {}),
+        gender: genderValue ?? undefined,
+        age: typeof ageValue === "number" ? ageValue : undefined,
+      },
+      {
+        onSuccess: () => {
+          navigation.replace("SignupComplete", {
+            signup: {
+              ...(signupData || {}),
+              // favoriteTeamCode: genderValue ?? undefined,
+              favoriteTeamCode: route?.params?.favoriteTeamLabel,
+            },
+          });
+        },
+        onError: (err) => {
+          console.log("회원가입 완료 mutation 에러: ", err);
+        },
+      },
+    );
   };
 
   const handleNext = async () => {
@@ -89,140 +106,151 @@ const SignupGenderAgeScreen = ({navigation, route}) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <AuthBackground />
-
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
+    <View style={styles.root}>
+      <AuthBackground />
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <View style={styles.inner}>
-              {/* 헤더 */}
-              <View style={styles.headerRow}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={() => navigation.goBack()}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.backButtonText}>{"<"}</Text>
-                </TouchableOpacity>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.inner}>
+                {/* 헤더 */}
+                <View style={styles.headerRow}>
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={handleBack}
+                    activeOpacity={0.8}
+                  >
+                    <BackIcon />
+                  </TouchableOpacity>
 
-                <View style={styles.stepWrapper}>
-                  <SignupStepIndicator currentStep={3} />
+                  <View style={styles.stepWrapper}>
+                    <SignupStepIndicator currentStep={3} />
+                  </View>
+
+                  <View style={styles.rightPlaceholder} />
                 </View>
 
-                <View style={styles.rightPlaceholder} />
-              </View>
+                {/* 성별 */}
+                <View style={styles.textWrap}>
+                  <AppText variant="displayTitle" style={styles.title}>
+                    성별을 선택해주세요
+                  </AppText>
+                  <AppText variant="labelSmall" style={styles.optional}>
+                    * 선택사항
+                  </AppText>
+                </View>
 
-              {/* 성별 */}
-              <Text style={styles.title}>
-                성별을 선택해주세요
-                <Text style={styles.optional}> * 선택사항</Text>
-              </Text>
-
-              <View style={styles.genderRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.genderButton,
-                    gender === "F" && styles.genderFemaleSelected,
-                  ]}
-                  onPress={() => setGender("F")}
-                  activeOpacity={0.85}
-                >
-                  <Text
+                <View style={styles.genderRow}>
+                  <TouchableOpacity
                     style={[
-                      styles.genderText,
-                      gender === "F" && styles.genderFemaleTextSelected,
+                      styles.genderButton,
+                      gender === "F" && styles.genderSelected,
                     ]}
+                    onPress={() => setGender("F")}
+                    activeOpacity={0.85}
                   >
-                    여성
-                  </Text>
-                </TouchableOpacity>
+                    <AppText
+                      variant="semi18"
+                      style={[
+                        styles.genderText,
+                        gender === "F" && styles.genderTextSelected,
+                      ]}
+                    >
+                      여성
+                    </AppText>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.genderButton,
-                    gender === "M" && styles.genderMaleSelected,
-                  ]}
-                  onPress={() => setGender("M")}
-                  activeOpacity={0.85}
-                >
-                  <Text
+                  <TouchableOpacity
                     style={[
-                      styles.genderText,
-                      gender === "M" && styles.genderMaleTextSelected,
+                      styles.genderButton,
+                      gender === "M" && styles.genderSelected,
                     ]}
+                    onPress={() => setGender("M")}
+                    activeOpacity={0.85}
                   >
-                    남성
-                  </Text>
+                    <AppText
+                      variant="semi18"
+                      style={[
+                        styles.genderText,
+                        gender === "M" && styles.genderTextSelected,
+                      ]}
+                    >
+                      남성
+                    </AppText>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 나이 */}
+                <View style={styles.textWrap}>
+                  <AppText variant="displayTitle" style={styles.title}>
+                    나이를 입력해주세요
+                  </AppText>
+                  <AppText variant="labelSmall" style={styles.optional}>
+                    * 선택사항
+                  </AppText>
+                </View>
+
+                <View style={styles.ageInputWrapper}>
+                  <TextInput
+                    style={styles.ageInput}
+                    value={age}
+                    onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ""))}
+                    keyboardType="number-pad"
+                    placeholder=""
+                    placeholderTextColor="#B8B8C4"
+                    maxLength={3}
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* 하단 버튼 */}
+            <View style={styles.floatingBottomArea}>
+              {isNextEnabled && (
+                <TouchableOpacity
+                  style={styles.nextButton}
+                  activeOpacity={0.85}
+                  onPress={handleNext}
+                >
+                  <AppText variant="heading" className="text-[#111111]">
+                    다음
+                  </AppText>
                 </TouchableOpacity>
-              </View>
+              )}
 
-              {/* 나이 */}
-              <Text style={[styles.title, {marginTop: 48, marginBottom: 8}]}>
-                나이를 입력해주세요
-                <Text style={styles.optional}> * 선택사항</Text>
-              </Text>
-
-              <View style={styles.ageInputWrapper}>
-                <TextInput
-                  style={styles.ageInput}
-                  value={age}
-                  onChangeText={(text) => setAge(text.replace(/[^0-9]/g, ""))}
-                  keyboardType="number-pad"
-                  placeholder=""
-                  placeholderTextColor="#B8B8C4"
-                  maxLength={3}
-                />
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* 하단 버튼 */}
-          <View style={styles.floatingBottomArea}>
-            {isNextEnabled && (
               <TouchableOpacity
-                style={styles.nextButton}
-                activeOpacity={0.85}
-                onPress={handleNext}
+                style={styles.skipButton}
+                activeOpacity={0.8}
+                onPress={handleSkip}
               >
-                <Text style={styles.nextButtonText}>다음</Text>
+                <AppText variant="heading" className="text-[#FFFFFF]">
+                  건너뛰기
+                </AppText>
               </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.skipButton}
-              activeOpacity={0.8}
-              onPress={handleSkip}
-            >
-              <Text style={styles.skipButtonText}>건너뛰기</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-    </SafeAreaView>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default SignupGenderAgeScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
+  root: { flex: 1, backgroundColor: "#000000" },
+  safeArea: { flex: 1, backgroundColor: "transparent" },
   container: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: height * 0.02,
-    paddingBottom: height * 0.25,
     paddingHorizontal: 20,
   },
   inner: {
@@ -244,8 +272,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   backButtonText: {
-    fontSize: 30,
-    lineHeight: 15,
     color: "#FFFFFF",
   },
   stepWrapper: {
@@ -257,68 +283,62 @@ const styles = StyleSheet.create({
   },
 
   /* Title */
+  textWrap: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
   title: {
-    fontSize: 22,
-    // fontWeight: "700",
     fontFamily: "NotoSansKR_SemiBold",
-    lineHeight: 33,
     color: "#FFFFFF",
-    marginBottom: 16,
-    // borderWidth: 1,
   },
   optional: {
-    fontSize: 13,
-    fontWeight: "400",
     color: "rgba(255,255,255,0.6)",
+    alignSelf: "flex-end",
+    paddingBlock: 7,
   },
 
   /* Gender */
   genderRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
+    marginTop: 20,
+    paddingHorizontal: 5,
+    marginBottom: 50,
   },
   genderButton: {
     flex: 1,
-    height: 48,
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.12)",
     justifyContent: "center",
     alignItems: "center",
+    paddingVertical: 16,
   },
   genderText: {
-    fontSize: 18,
     color: "rgba(255,255,255,0.6)",
-    fontWeight: "600",
   },
 
-  genderFemaleSelected: {
+  genderSelected: {
     borderWidth: 1,
-    borderColor: "#FF4D8D",
-    backgroundColor: "rgba(255,116,176,0.15)",
+    borderColor: "#8BC45A",
+    backgroundColor: "rgba(139, 196, 90, 0.15)",
   },
-  genderFemaleTextSelected: {
-    color: "#FF4D8D",
-  },
-
-  genderMaleSelected: {
-    borderWidth: 1,
-    borderColor: "#4D7CFF",
-    backgroundColor: "rgba(116,141,255,0.15)",
-  },
-  genderMaleTextSelected: {
-    color: "#4D7CFF",
+  genderTextSelected: {
+    color: "#8BC45A",
   },
 
   /* Age */
   ageInputWrapper: {
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.5)",
-    // paddingVertical: 6,
-    // borderWidth: 1,
+    marginTop: 10,
+    paddingHorizontal: 5,
   },
   ageInput: {
-    fontSize: 18,
     color: "#FFFFFF",
+    marginVertical: 12,
   },
 
   /* Bottom */
@@ -338,21 +358,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111111",
-  },
   skipButton: {
     height: 52,
     borderRadius: 12,
     backgroundColor: "#232323",
     justifyContent: "center",
     alignItems: "center",
-  },
-  skipButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
   },
 });
