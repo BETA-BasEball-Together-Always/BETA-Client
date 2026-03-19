@@ -13,12 +13,7 @@ const AuthBackground = () => {
         style={StyleSheet.absoluteFillObject}
       />
       <BlurView
-        intensity={40}
-        tint="dark"
-        style={StyleSheet.absoluteFillObject}
-      />
-      <BlurView
-        intensity={55}
+        intensity={20}
         tint="default"
         style={StyleSheet.absoluteFillObject}
       />

@@ -20,6 +20,7 @@ import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 
 import * as SecureStore from "expo-secure-store";
 import { getDeviceId } from "../../libs/Login/deviceUtils";
+import { useUserStore } from "../../../../shared/store/userStore";
 
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
@@ -32,6 +33,8 @@ const LoginScreen = ({ navigation }) => {
   const socialLoginMutation = useSocialLoginMutation();
   const [providerConflict, setProviderConflict] = useState(null); // 'KAKAO' | 'NAVER' | 'APPLE' | null
   const signupStatusMutation = useSignupStatusMutation();
+  const setTokens = useUserStore((state) => state.setTokens);
+  const setUser = useUserStore((state) => state.setUser);
 
   const conflictColors = useMemo(
     () => ({
@@ -71,7 +74,12 @@ const LoginScreen = ({ navigation }) => {
     api.defaults.headers.Authorization = `Bearer ${userResponse.accessToken}`;
 
     if (!isNewUser) {
-      // 기존 회원 → 바로 메인으로
+      // 기존 회원 → 유저 정보 전역 저장 후 메인으로
+      if (userResponse?.user) {
+        setUser(userResponse.user);
+      } else if (userResponse) {
+        setUser(userResponse);
+      }
       navigation.replace("Main");
       return;
     }
@@ -164,17 +172,13 @@ const LoginScreen = ({ navigation }) => {
             console.log("refreshToken: ", userResponse?.refreshToken);
             console.log("서버 device id: ", userResponse?.deviceId);
 
-            // 로그인 이후 자동 로그인 위해 필요함!!
-            await SecureStore.setItemAsync(
-              "accessToken",
-              userResponse.accessToken,
-            );
-            await SecureStore.setItemAsync(
-              "refreshToken",
-              userResponse.refreshToken,
-            );
+            // 토큰은 전역 store + SecureStore에 동시 저장
+            await setTokens({
+              accessToken: userResponse.accessToken,
+              refreshToken: userResponse.refreshToken,
+            });
 
-            console.log("토큰 SecureStore 저장 완료!");
+            console.log("토큰 저장 완료 (store + SecureStore)!");
             handleSocialLoginResult("APPLE", response);
           },
           onError: (error) => {
@@ -226,24 +230,11 @@ const LoginScreen = ({ navigation }) => {
           onSuccess: async (response) => {
             const userResponse = response.data.userResponse;
 
-            // 토큰 SecureStore 저장
-            await SecureStore.setItemAsync(
-              "accessToken",
-              userResponse.accessToken,
-            );
-            await SecureStore.setItemAsync(
-              "refreshToken",
-              userResponse.refreshToken,
-            );
+            await setTokens({
+              accessToken: userResponse.accessToken,
+              refreshToken: userResponse.refreshToken,
+            });
 
-            await SecureStore.setItemAsync(
-              "accessToken",
-              response.data.userResponse.accessToken,
-            );
-            await SecureStore.setItemAsync(
-              "refreshToken",
-              response.data.userResponse.refreshToken,
-            );
             handleSocialLoginResult("KAKAO", response);
           },
           onError: (error) => {
@@ -297,14 +288,10 @@ const LoginScreen = ({ navigation }) => {
           onSuccess: async (response) => {
             const userResponse = response.data.userResponse;
 
-            await SecureStore.setItemAsync(
-              "accessToken",
-              userResponse.accessToken,
-            );
-            await SecureStore.setItemAsync(
-              "refreshToken",
-              userResponse.refreshToken,
-            );
+            await setTokens({
+              accessToken: userResponse.accessToken,
+              refreshToken: userResponse.refreshToken,
+            });
 
             handleSocialLoginResult("NAVER", response);
           },
@@ -335,20 +322,6 @@ const LoginScreen = ({ navigation }) => {
       setIsSocialLoading(false);
     }
   };
-
-  // const hardResetKakao = async () => {
-  //   try {
-  //     // 1) 먼저 로그인해서 토큰 확보 (자동 로그인으로 바로 될 수도 있음)
-  //     const token = await login();
-  //     console.log("현재 카카오 토큰:", token);
-
-  //     // 2) 그 토큰을 가진 상태에서 unlink → 카카오 계정 ↔ 앱 연결 끊기
-  //     await unlink();
-  //     console.log("카카오 앱 연결 해제 완료 (동의 초기화)");
-  //   } catch (e) {
-  //     console.log("hardResetKakao 실패:", e);
-  //   }
-  // };
 
   return (
     <View style={styles.root}>
