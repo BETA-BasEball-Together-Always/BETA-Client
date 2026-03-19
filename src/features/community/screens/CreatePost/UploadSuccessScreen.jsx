@@ -4,8 +4,19 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 import { useNavigation } from "@react-navigation/native";
 import BaseballCharacterIcon from "../../assets/svg/CommunityPost/baseballChar.svg";
 
-const UploadSuccessScreen = () => {
+const UploadSuccessScreen = ({ route }) => {
   const navigation = useNavigation();
+  const { createdPostId } = route.params ?? {};
+
+  const handleCompletePost = () => {
+    navigation.replace("Community", {
+      screen: "PostDetail",
+      params: {
+        postId: createdPostId,
+        from: "upload",
+      },
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -16,8 +27,10 @@ const UploadSuccessScreen = () => {
         </AppText>
       </View>
 
-      <TouchableOpacity style={styles.buttonContainer}>
-        {/* 나중에 navigation 붙이기!! */}
+      <TouchableOpacity
+        style={styles.buttonContainer}
+        onPress={handleCompletePost}
+      >
         <AppText variant="semi18" className="text-[#1E1E1E]">
           게시글 보러 가기
         </AppText>

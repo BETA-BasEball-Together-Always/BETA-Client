@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   previewRow: {
     marginTop: 8,
     paddingBottom: 4,
-    gap: 10,
+    gap: 18.4,
   },
   previewWrap: {
     position: "relative",

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -19,6 +19,10 @@ import MenuIcon from "../../assets/svg/TopBar/menuIcon.svg";
 
 import PostReactions from "../../component/PostReactions";
 import CommunityUserProfile from "../../component/CommunityUserProfile";
+// import { LinearGradient } from "expo-linear-gradient";
+// import { TEAM_DATA } from "../../../../shared/constants/teams";
+// import TeamLabel from "../../component/communityMain/TeamLabel";
+
 import CommentList from "./components/CommentList";
 import CommentInput from "./components/CommentInput";
 import { useUserStore } from "../../../../shared/store/userStore";
@@ -31,31 +35,31 @@ import {
   useTogglePostEmotionMutation,
   useUpdateCommentMutation,
 } from "../../services/postDetail/postDetailService";
+import { useQueryClient } from "@tanstack/react-query";
 
 const { width } = Dimensions.get("window");
 
 const PostDetailScreen = ({ route, navigation }) => {
-  const { post: initialPostParam } = route.params ?? {};
+  const {
+    post: initialPostParam,
+    postId: paramPostId,
+    from,
+  } = route.params ?? {};
+  const postId = paramPostId ?? initialPostParam?.postId;
+  const queryClient = useQueryClient();
+
   const currentUser = useUserStore((s) => s.user);
 
-  const postId = initialPostParam?.postId;
-  const { data: detail, isLoading: isPostLoading } = usePostDetailQuery(
-    postId,
-    {
-      initialData: initialPostParam
-        ? {
-            ...initialPostParam,
-            comments: [],
-            hasNextComments: false,
-            nextCommentCursor: null,
-          }
-        : undefined,
-    },
-  );
+  const { data: detail, isLoading: isPostLoading } = usePostDetailQuery(postId);
+  const post = detail ?? initialPostParam ?? {};
 
-  const imageList =
-    detail?.images?.map((img) => img.imageUrl || img.url) ??
-    (detail?.image ? [detail.image] : []);
+  const isAllChannel = post.channel === "ALL";
+
+  const author = detail?.author ?? post?.author ?? {};
+
+  const contentWithoutHashtags =
+    detail?.content?.replace(/(^|\s)#[^\s#]+/g, " ") ?? "";
+  const hashtags = detail?.hashtags ?? [];
 
   const scrollRef = useRef(null);
 
@@ -63,10 +67,11 @@ const PostDetailScreen = ({ route, navigation }) => {
   const [postMoreVisible, setPostMoreVisible] = useState(false);
   const [threadActionModal, setThreadActionModal] = useState({
     visible: false,
-    isMine: false,
     targetType: null,
     targetId: null,
   });
+
+  const isMine = currentUser?.id === post?.author?.userId;
 
   const [pressedThread, setPressedThread] = useState({
     targetType: null,
@@ -87,6 +92,20 @@ const PostDetailScreen = ({ route, navigation }) => {
     },
   });
   const blockUserMutation = useBlockUserMutation();
+
+  const imageList = useMemo(() => {
+    const source = detail ?? initialPostParam;
+
+    if (source?.images?.length > 0) {
+      return source.images.map((img) =>
+        typeof img === "string" ? img : img.imageUrl || img.url,
+      );
+    }
+
+    if (source?.image) return [source.image];
+
+    return [];
+  }, [detail, initialPostParam]);
 
   const handleMorePress = () => {
     setPostMoreVisible(true);
@@ -135,7 +154,30 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const handleDeleteThread = () => {
     console.log("delete thread", threadActionModal);
-    closeThreadActionModal();
+    const targetId = threadActionModal.targetId;
+
+    deleteCommentMutation.mutate(
+      { commentId: targetId },
+      {
+        onSuccess: () => {
+          queryClient.setQueryData(postDetailKeys.detail(postId), (old) => {
+            if (!old) return old;
+
+            return {
+              ...old,
+              comments: old.comments
+                .filter((c) => c.commentId !== targetId)
+                .map((c) => ({
+                  ...c,
+                  replies: c.replies.filter((r) => r.commentId !== targetId),
+                })),
+            };
+          });
+
+          closeThreadActionModal();
+        },
+      },
+    );
   };
 
   const handleReportThread = () => {
@@ -147,42 +189,69 @@ const PostDetailScreen = ({ route, navigation }) => {
     closeThreadActionModal();
   };
 
-  const post = detail ?? initialPostParam ?? {};
-
   const handleCreateComment = (content) => {
     if (!content.trim()) return;
-
-    const scrollToBottom = () => {
-      requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollToEnd({ animated: true });
-        }
-      });
-    };
 
     createCommentMutation.mutate(
       { content, parentId: replyTarget ?? null },
       {
-        onSuccess: () => {
+        onSuccess: (newComment) => {
+          queryClient.setQueryData(postDetailKeys.detail(postId), (old) => {
+            if (!old) return old;
+
+            if (!replyTarget) {
+              return {
+                ...old,
+                comments: [...old.comments, newComment],
+              };
+            }
+
+            return {
+              ...old,
+              comments: old.comments.map((c) =>
+                c.commentId === replyTarget
+                  ? {
+                      ...c,
+                      replies: [...c.replies, newComment],
+                    }
+                  : c,
+              ),
+            };
+          });
+
           setReplyTarget(null);
-          scrollToBottom();
         },
       },
     );
   };
 
+  const handleBack = () => {
+    if (from === "upload") {
+      if (post.channel === "ALL") {
+        navigation.replace("AllCommunity");
+      } else {
+        navigation.replace("TeamCommunity", {
+          teamCode: post.author?.teamCode,
+        });
+      }
+    } else {
+      navigation.goBack();
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={10}
       >
         <AppHeader
           left={
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <BackIcon width={12} height={18.5} />
               <AppText variant="bodyRegular" style={styles.backLabel}>
                 뒤로가기
@@ -200,20 +269,13 @@ const PostDetailScreen = ({ route, navigation }) => {
           <View style={styles.containerSection}>
             <View style={styles.header}>
               <CommunityUserProfile
-                nickname={detail?.author?.nickname ?? post?.author?.nickname}
-                teamCode={detail?.author?.teamCode ?? post?.author?.teamCode}
-                createdAt={detail?.createdAt}
-                showTeam={post.channel === "ALL"}
+                nickname={author.nickname}
+                teamCode={author.teamCode}
+                createdAt={post.createdAt}
+                showTeam={isAllChannel}
               />
             </View>
 
-            {detail?.content && (
-              <View style={styles.textWrapper}>
-                <AppText variant="middle" style={styles.content}>
-                  {detail.content}
-                </AppText>
-              </View>
-            )}
             {imageList.length > 0 && (
               <ScrollView
                 horizontal
@@ -221,19 +283,45 @@ const PostDetailScreen = ({ route, navigation }) => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.imageScroll}
               >
-                {imageList.map((img, index) => (
-                  <View key={index} style={styles.imageWrapper}>
-                    <Image
-                      source={{ uri: img }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ))}
+                {imageList.map((img, index) => {
+                  const isSingle = imageList.length === 1;
+
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.imageWrapper,
+                        {
+                          width: isSingle ? width - 32 : width * 0.7,
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: img }}
+                        style={styles.postImage}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  );
+                })}
               </ScrollView>
             )}
+            {detail?.content && (
+              <View style={styles.textWrapper}>
+                <AppText variant="middle" style={styles.content}>
+                  {contentWithoutHashtags}
+                </AppText>
+
+                {hashtags.length > 0 && (
+                  <AppText style={styles.hashText}>
+                    {hashtags.map((tag) => `#${tag}`).join(" ")}
+                  </AppText>
+                )}
+              </View>
+            )}
+
             <PostReactions
-              post={detail ?? initialPost}
+              post={post}
               selectedEmotionType={selectedEmotionType}
               onToggleEmotion={(emotionType) =>
                 toggleEmotionMutation.mutate({ emotionType })
@@ -251,9 +339,7 @@ const PostDetailScreen = ({ route, navigation }) => {
               comments={detail?.comments ?? []}
               onReplyPress={(commentId) => setReplyTarget(commentId)}
               setCommentData={() => {}}
-              postAuthorNickname={
-                detail?.author?.nickname ?? initialPost?.author?.nickname
-              }
+              postAuthorNickname={post?.author?.nickname}
               onLongPressThread={openThreadActionModal}
               currentUserId={currentUser?.id}
               onToggleCommentLike={(commentId) =>
@@ -277,7 +363,7 @@ const PostDetailScreen = ({ route, navigation }) => {
               onPress={closePostMore}
             />
             <View style={styles.postMoreMenu}>
-              {post.isMine ? (
+              {isMine ? (
                 <>
                   <TouchableOpacity
                     style={styles.postMoreButton}
@@ -404,9 +490,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 13,
+    marginBottom: 4,
   },
-
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   avatarCircle: {
     width: 39.38,
     height: 38,
@@ -414,6 +504,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#27272A",
     justifyContent: "center",
     alignItems: "center",
+    marginRight: 10,
   },
 
   headerText: {
@@ -423,7 +514,7 @@ const styles = StyleSheet.create({
 
   nickname: {
     color: "#D4D4D4",
-    marginBottom: 2,
+    marginRight: 3,
   },
 
   timeAgo: {
@@ -437,21 +528,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   imageWrapper: {
-    width: width - 32, // 화면 너비에서 양쪽 패딩(16 + 16)을 뺀 값
-    aspectRatio: 3 / 2,
+    width: width * 0.7, // 화면 너비에서 양쪽 패딩(16 + 16)을 뺀 값
     borderRadius: 10,
     overflow: "hidden",
-    marginRight: 12,
+    marginRight: 11,
   },
   postImage: {
     width: "100%",
-    height: "100%",
+    height: 199,
   },
 
   /* 텍스트 */
   textWrapper: {
     marginBottom: 16,
     paddingHorizontal: 2,
+  },
+  hashText: {
+    color: "#6F9D48",
   },
   content: {
     color: "#F9F9F9",

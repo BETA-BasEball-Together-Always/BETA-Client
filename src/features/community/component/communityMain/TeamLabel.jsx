@@ -20,7 +20,7 @@ const TeamLabel = ({ teamCode }) => {
       ]}
     >
       <AppText
-        variant="caption"
+        variant="smallRegular"
         style={[styles.text, { color: labelStyle?.color ?? "#CCC" }]}
       >
         {label}
@@ -35,11 +35,10 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 5,
   },
   text: {
-    fontSize: 11,
-    fontWeight: "500",
+    lineHeight: 13.6,
   },
   shadowIOS: {
     shadowColor: "#000",

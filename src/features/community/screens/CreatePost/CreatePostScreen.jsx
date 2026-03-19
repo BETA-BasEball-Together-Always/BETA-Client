@@ -864,6 +864,7 @@ const styles = StyleSheet.create({
   inputCard: {
     justifyContent: "flex-start",
     paddingBottom: 18,
+    marginTop: 3,
   },
   richInputWrap: {
     marginBottom: 12,

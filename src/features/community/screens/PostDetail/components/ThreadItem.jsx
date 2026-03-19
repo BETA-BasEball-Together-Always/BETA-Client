@@ -86,13 +86,13 @@ export default function ThreadItem({
               <AppText variant="bodyMedium" style={styles.nickname}>
                 {displayNickname}
               </AppText>
-              {isAllChannel && !!author.teamCode && (
+              {isAllChannel && !!teamCode && (
                 <View style={styles.teamLabelWrap}>
-                  <TeamLabel teamCode={author.teamCode} />
+                  <TeamLabel teamCode={teamCode} />
                 </View>
               )}
               {isAuthor && (
-                <AppText variant="labelSmall" style={styles.authorTag}>
+                <AppText variant="smallRegular" style={styles.authorTag}>
                   · 작성자
                 </AppText>
               )}
@@ -226,7 +226,6 @@ const styles = StyleSheet.create({
   authorTag: {
     color: "#666666",
     marginLeft: 4,
-    lineHeight: 13.6,
   },
   timeText: {
     color: "rgba(228, 228, 228, 0.50)",

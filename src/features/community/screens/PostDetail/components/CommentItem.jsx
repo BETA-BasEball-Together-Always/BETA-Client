@@ -16,8 +16,8 @@ export default function CommentItem({
 }) {
   const [showReplies, setShowReplies] = useState(false);
 
-  const isAuthor = comment.author?.nickName === postAuthorNickname;
-  const isMine = comment.author?.userId === currentUserId;
+  const isAuthor = comment.nickname === postAuthorNickname;
+  const isMine = comment.userId === currentUserId;
 
   return (
     <ThreadItem

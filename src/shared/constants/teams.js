@@ -87,7 +87,7 @@ export const TEAM_DATA = {
     },
   },
   HANWHA: {
-    label: "한회이글스",
+    label: "한화이글스",
     MainIcon: HANWHA,
     ProfileIcon: HANWHA,
     gradient: {

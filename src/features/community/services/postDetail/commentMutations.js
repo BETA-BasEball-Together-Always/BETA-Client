@@ -56,6 +56,10 @@ export const useCreateCommentMutation = (postId, { currentUser } = {}) => {
         };
       });
 
+      queryClient.invalidateQueries({
+        queryKey: postDetailKeys.detail(postId),
+      });
+
       // 리스트 캐시의 commentCount도 +1
       queryClient.setQueriesData(
         { queryKey: communityKeys.posts() },
@@ -103,6 +107,9 @@ export const useUpdateCommentMutation = (postId) => {
           comments: updateInList(prev.comments ?? []),
         };
       });
+      queryClient.invalidateQueries({
+        queryKey: postDetailKeys.detail(postId),
+      });
     },
   });
 };
@@ -146,6 +153,9 @@ export const useDeleteCommentMutation = (postId) => {
           comments: removeOrMarkDeleted(prev.comments ?? [], true),
           commentCount: Math.max((prev.commentCount ?? 1) - 1, 0),
         };
+      });
+      queryClient.invalidateQueries({
+        queryKey: postDetailKeys.detail(postId),
       });
     },
   });
