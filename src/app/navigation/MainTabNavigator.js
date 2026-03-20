@@ -35,7 +35,7 @@ const HIDDEN_ROUTES = ["Camera", "Edit"];
 export default function MainTabNavigator() {
   return (
     <Tab.Navigator
-      initialRouteName="AllCommunity"
+      initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,

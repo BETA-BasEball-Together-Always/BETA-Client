@@ -7,8 +7,9 @@ import { useUserStore } from "../../../shared/store/userStore";
 import AllCommunityBackground from "../assets/svg/AllCommunityBackground/all_background.svg";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 
-const AllCommunityScreen = () => {
-  const [sort, setSort] = useState("latest");
+const AllCommunityScreen = ({ route }) => {
+  const initialSort = route?.params?.initialSort || "latest";
+  const [sort, setSort] = useState(initialSort);
   const user = useUserStore((state) => state.user);
   if (!user) return null;
 
