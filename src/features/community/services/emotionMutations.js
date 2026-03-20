@@ -12,14 +12,14 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
   const { onSuccess: userOnSuccess, ...restOptions } = options;
 
   return useMutation({
-    // 연속 탭 시 이전 요청 완료 후 다음 요청 — 레이스로 카운트/하트 UI 깨짐 방지
-    mutationFn: ({ emotionType }) => {
+    mutationFn: ({ emotionType, isCancel }) => {
       const apiEmotionType = toApiEmotionType(emotionType);
 
       const run = () =>
         togglePostEmotionApi({
           postId,
           emotionType: apiEmotionType,
+          ...(isCancel ? { cancel: true } : {}),
         });
 
       const next = chainRef.current.catch(() => {}).then(run);
@@ -45,18 +45,23 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         };
       });
 
-      queryClient.setQueriesData({ queryKey: communityKeys.posts() }, (prev) => {
-        if (!prev?.pages) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page) => ({
-            ...page,
-            posts: page.posts.map((p) =>
-              p.postId === postId ? { ...p, emotions: data?.emotions ?? p.emotions } : p,
-            ),
-          })),
-        };
-      });
+      queryClient.setQueriesData(
+        { queryKey: communityKeys.posts() },
+        (prev) => {
+          if (!prev?.pages) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              posts: page.posts.map((p) =>
+                p.postId === postId
+                  ? { ...p, emotions: data?.emotions ?? p.emotions }
+                  : p,
+              ),
+            })),
+          };
+        },
+      );
 
       setUserEmotionSelection(
         postId,

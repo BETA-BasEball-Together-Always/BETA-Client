@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -54,8 +60,11 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const currentUser = useUserStore((s) => s.user);
 
-  const { data: detail, isLoading: isPostLoading, refetch } =
-    usePostDetailQuery(postId);
+  const {
+    data: detail,
+    isLoading: isPostLoading,
+    refetch,
+  } = usePostDetailQuery(postId);
   const post = detail ?? initialPostParam ?? {};
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
@@ -154,20 +163,15 @@ const PostDetailScreen = ({ route, navigation }) => {
             useCommentRemovalStore.getState().isHidden(pid, commentId),
         },
       ),
-    [
-      detail?.comments,
-      initialPostParam?.comments,
-      postId,
-      hiddenCommentKeys,
-    ],
+    [detail?.comments, initialPostParam?.comments, postId, hiddenCommentKeys],
   );
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
-  useEffect(() => {
-    setSelectedEmotionType(
-      toUiEmotionType(route.params?.initialSelectedEmotionType),
-    );
-  }, [postId, route.params?.initialSelectedEmotionType]);
+  // useEffect(() => {
+  //   setSelectedEmotionType(
+  //     toUiEmotionType(route.params?.initialSelectedEmotionType),
+  //   );
+  // }, [postId, route.params?.initialSelectedEmotionType]);
 
   const handleMorePress = () => {
     setPostMoreVisible(true);
@@ -426,8 +430,12 @@ const PostDetailScreen = ({ route, navigation }) => {
               selectedEmotionType={selectedEmotionType}
               isEmotionPending={toggleEmotionMutation.isPending}
               onSelectReaction={(_postId, reaction) => {
-                const emotionType = reaction ? reaction.id : null;
-                toggleEmotionMutation.mutate({ emotionType });
+                if (!reaction) return;
+
+                toggleEmotionMutation.mutate({
+                  emotionType: reaction.id,
+                  isCancel: reaction.isCancel,
+                });
               }}
             />
           </View>

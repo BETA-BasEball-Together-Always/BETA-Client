@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, StyleSheet, Modal, Pressable } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
-import { toUiEmotionType } from "../utils/emotionTypeMap";
 import { COMMUNITY_REACTIONS } from "../constants/communityReactions";
 import ReactionSummary from "./ReactionSummary";
 import ReactionPicker from "./ReactionPicker";
@@ -49,11 +48,8 @@ const PostReactions = ({
     () => Object.values(reactionCounts).reduce((sum, val) => sum + val, 0),
     [reactionCounts],
   );
-  // 현재 “내가 고른 감정”은 부모(selectedEmotionType)가 유일한 source of truth
   const currentEmotionUiId = useMemo(() => {
-    const ui =
-      toUiEmotionType(selectedEmotionType) ?? selectedEmotionType ?? null;
-    if (!ui) return null;
+    const ui = selectedEmotionType ?? null;
     return COMMUNITY_REACTIONS.some((r) => r.id === ui) ? ui : null;
   }, [selectedEmotionType]);
 
@@ -85,10 +81,13 @@ const PostReactions = ({
       parentSelectedEmotionUiId: selectedEmotionType,
     });
 
+    const isSame = selectedEmotionType === reaction.id;
+
     if (typeof onSelectReaction === "function") {
-      onSelectReaction(post.id, reaction);
-    } else if (typeof onToggleEmotion === "function") {
-      onToggleEmotion(reaction.id);
+      onSelectReaction(post.postId, {
+        ...reaction,
+        isCancel: isSame,
+      });
     }
   };
 
@@ -109,14 +108,6 @@ const PostReactions = ({
 
   const commentCount = post.commentCount ?? post.comments?.length ?? 0;
 
-  // ReactionPicker 위치 조정 포인트:
-  // anchorBottom이 클수록 피커가 더 “위로” 뜹니다(덜 가려짐).
-  // 더 아래로 원하면 비율을 낮추거나 -offset을 적용하세요.
-  // 위치 조정: anchorBottom이 클수록 피커가 더 위로 뜹니다.
-  // 사용자가 버튼(하트/댓글) 위 영역을 가린 채로 피커가 뜨길 원하므로 약간 더 아래로 내림.
-  // 피커 위치는 반드시 고정(요청한 UI와 동일한 위치)
-  // anchorBottom은 ReactionPicker에서 style.bottom으로 직접 쓰이므로,
-  // 기본값(52px)에서 흔들리면 터치 타겟이 어긋날 수 있습니다.
   const anchorBottom = DEFAULT_ACTION_BAR_H;
 
   return (

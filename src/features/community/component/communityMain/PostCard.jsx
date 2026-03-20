@@ -84,7 +84,9 @@ const PostCard = ({ post, showTeam = false }) => {
   );
 
   const handleSelectReaction = (_postId, reaction) => {
-    const emotionType = reaction ? reaction.id : null;
+    if (!reaction) return;
+    const emotionType = reaction.id;
+
     toggleEmotionMutation.mutate({ emotionType });
   };
 
