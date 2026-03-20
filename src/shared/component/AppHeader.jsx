@@ -28,7 +28,11 @@ const AppHeader = ({ pageName, showBack = false, backLabel }) => {
 
       {pageName && (
         <View style={styles.pageNameContainer}>
-          <AppText variant="displayTitle2" className="text-white">
+          <AppText
+            variant="displayTitle2"
+            className="text-white"
+            style={{ lineHeight: 28.6 }}
+          >
             {pageName}
           </AppText>
         </View>

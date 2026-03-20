@@ -11,35 +11,63 @@ const ProfileSettingScreen = () => {
       <AppHeader pageName="설정" showBack />
 
       <View style={styles.section}>
-        <AppText variant="semi18" className="text-white">
+        <AppText
+          variant="semi18"
+          className="text-white"
+          style={{ lineHeight: 24.5 }}
+        >
           계정
         </AppText>
         {/* 여기에 각각 페이지 추가!! */}
         {/* 아래의 텍스트들은 스타일 조정 위해 잠시 추가해 둔 값입니다아 */}
-        <AppText variant="bodyMedium" className="text-gray-400">
+        <AppText
+          variant="bodyMedium"
+          className="text-gray-400"
+          style={{ lineHeight: 21.8 }}
+        >
           프로필 수정
         </AppText>
-        <AppText variant="bodyMedium" className="text-gray-400">
+        <AppText
+          variant="bodyMedium"
+          className="text-gray-400"
+          style={{ lineHeight: 21.8 }}
+        >
           비밀번호 변경
         </AppText>
-        <AppText variant="bodyMedium" className="text-gray-400">
+        <AppText
+          variant="bodyMedium"
+          className="text-gray-400"
+          style={{ lineHeight: 21.8 }}
+        >
           로그아웃
         </AppText>
-        <AppText variant="bodyMedium" className="text-gray-400">
+        <AppText
+          variant="bodyMedium"
+          className="text-gray-400"
+          style={{ lineHeight: 21.8 }}
+        >
           계정 탈퇴
         </AppText>
       </View>
 
       <View style={styles.section}>
-        <AppText variant="semi18" className="text-white">
+        <AppText
+          variant="semi18"
+          className="text-white"
+          style={{ lineHeight: 24.5 }}
+        >
           안내
         </AppText>
         {/* 여기에 각각 페이지 추가!! */}
       </View>
 
       <View style={styles.section}>
-        <AppText variant="semi18" className="text-white">
-          안내
+        <AppText
+          variant="semi18"
+          className="text-white"
+          style={{ lineHeight: 24.5 }}
+        >
+          서비스 정보
         </AppText>
         {/* 여기에 각각 페이지 추가!! */}
       </View>

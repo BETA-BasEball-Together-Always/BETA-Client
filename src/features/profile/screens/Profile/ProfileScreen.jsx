@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import SettingsIcon from "../../assets/svg/Settings.svg";
 import FeedTabContent from "./components/FeedTabContent";
+import EmptyState from "./components/EmptyState";
 
 const mockUser = {
   nickname: "김야구",
@@ -12,16 +13,53 @@ const mockUser = {
   teamLogo: require("../../assets/png/ProfileLG.png"),
 };
 
+const mockData = {
+  feed: [],
+  like: [],
+  comment: [],
+};
+
 const ProfileScreen = ({ navigation }) => {
   const handlePressSetting = () => {
     navigation.navigate("ProfileSetting");
   };
   const [activeTab, setActiveTab] = useState("feed");
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "feed":
+        return mockData.feed.length > 0 ? (
+          <FeedTabContent posts={mockData.feed} />
+        ) : (
+          <EmptyState message="작성된 게시물이 없습니다" />
+        );
+      case "like":
+        return mockData.like.length > 0 ? (
+          <FeedTabContent posts={mockData.like} />
+        ) : (
+          <EmptyState message="좋아요를 남긴 게시물이 없습니다" />
+        );
+
+      case "comment":
+        return mockData.comment.length > 0 ? (
+          <FeedTabContent posts={mockData.comment} />
+        ) : (
+          <EmptyState message="댓글을 남긴 게시물이 없습니다" />
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <AppText variant="displayTitle2" className="text-white">
+        <AppText
+          variant="displayTitle2"
+          className="text-white"
+          style={{ lineHeight: 29 }}
+        >
           마이스타디움
         </AppText>
         <TouchableOpacity onPress={handlePressSetting} activeOpacity={0.7}>
@@ -36,18 +74,13 @@ const ProfileScreen = ({ navigation }) => {
       <View style={styles.userProfile}>
         <Image source={mockUser.teamLogo} style={styles.teamImage} />
         <View style={styles.userInfoContainer}>
-          <View style={styles.userNameContainer}>
-            <AppText variant="heading" className="text-white">
-              {mockUser.nickname}
-            </AppText>
-            <AppText
-              variant="bodyRegular"
-              className="text-white"
-              style={{ color: mockUser.teamColor }}
-            >
-              {mockUser.teamName} 팬
-            </AppText>
-          </View>
+          <AppText
+            variant="heading"
+            className="text-white"
+            style={{ lineHeight: 24.5 }}
+          >
+            {mockUser.nickname}
+          </AppText>
           <AppText
             variant="middle"
             className="text-white"
@@ -57,8 +90,6 @@ const ProfileScreen = ({ navigation }) => {
           </AppText>
         </View>
       </View>
-
-      <View style={styles.tabDivider} />
 
       <View style={styles.tabContainer}>
         {[
@@ -75,7 +106,11 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => setActiveTab(tab.key)}
               activeOpacity={0.7}
             >
-              <AppText variant="semi14" className="text-white">
+              <AppText
+                variant="semi14"
+                className="text-white"
+                style={{ lineHeight: 19 }}
+              >
                 {tab.label}
               </AppText>
 
@@ -84,16 +119,7 @@ const ProfileScreen = ({ navigation }) => {
           );
         })}
       </View>
-      <View style={styles.contentContainer}>
-        {/* 나중에 실제 컴포넌트들로 교체하기 */}
-        {activeTab === "feed" && <FeedTabContent />}
-        {activeTab === "like" && (
-          <AppText className="text-white">내 좋아요 목록</AppText>
-        )}
-        {activeTab === "comment" && (
-          <AppText className="text-white">내 댓글 목록</AppText>
-        )}
-      </View>
+      <View style={styles.contentContainer}>{renderTabContent()}</View>
     </SafeAreaView>
   );
 };
@@ -134,22 +160,15 @@ const styles = StyleSheet.create({
   },
   bioText: {
     color: "#E4E4E480",
-    marginTop: 8,
-  },
-  tabDivider: {
-    height: 1,
-    backgroundColor: "#383838",
-    marginTop: 50,
+    marginTop: 7,
+    lineHeight: 17.7,
   },
   tabContainer: {
     flexDirection: "row",
-    // justifyContent: "flex-start",
     gap: 45,
     alignItems: "center",
     marginVertical: 13,
     marginHorizontal: 45,
-    width: 398,
-    height: 41,
   },
   tabItem: {
     alignItems: "center",
@@ -168,8 +187,5 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: "#1E1E1E",
-    marginTop: -16,
-    zIndex: -1,
   },
 });
