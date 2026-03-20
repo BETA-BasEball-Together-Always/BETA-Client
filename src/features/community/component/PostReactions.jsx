@@ -32,6 +32,7 @@ const PostReactions = ({
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   const pickerOpen = showReactionPicker && !isEmotionPending;
+  const longPressJustTriggeredRef = useRef(false);
 
   const reactionCounts = useMemo(
     () => getReactionCountsFromPost(post),
@@ -66,13 +67,31 @@ const PostReactions = ({
 
   const handleLikePress = () => {
     if (isEmotionPending) return;
-    setShowReactionPicker((prev) => !prev);
+    // long-press 직후 RN이 onPress를 함께 호출하는 케이스를 방어
+    if (longPressJustTriggeredRef.current) return;
+
+    const uiEmotionToToggle = currentEmotionUiId ?? "EMO_JOY";
+    setShowReactionPicker(false);
+    longPressJustTriggeredRef.current = false;
+
+    onToggleEmotion?.(post?.postId, uiEmotionToToggle);
+  };
+
+  const handleLongLikePress = () => {
+    if (isEmotionPending) return;
+    longPressJustTriggeredRef.current = true;
+    setShowReactionPicker(true);
+    setTimeout(() => {
+      longPressJustTriggeredRef.current = false;
+    }, 250);
   };
 
   const handleReactionSelect = (reaction) => {
     if (isEmotionPending) return;
 
     setShowReactionPicker(false);
+    // picker에서 선택하면 long-press 디바운스 플래그를 즉시 해제
+    longPressJustTriggeredRef.current = false;
 
     console.log("[emotion picker] select", {
       postId: post?.postId,
@@ -81,12 +100,14 @@ const PostReactions = ({
       parentSelectedEmotionUiId: selectedEmotionType,
     });
 
-    const isSame = selectedEmotionType === reaction.id;
-
     if (typeof onSelectReaction === "function") {
-      onSelectReaction(post.postId, {
-        ...reaction,
-        isCancel: isSame,
+      const prevEmotionUiId = currentEmotionUiId;
+      onSelectReaction(post?.postId, reaction, {
+        prevEmotionType: prevEmotionUiId,
+        // "교체"가 서버에서 제대로 일어나지 않는 케이스 보정용 스냅샷
+        prevEmotionCountBefore: prevEmotionUiId
+          ? reactionCounts?.[prevEmotionUiId] ?? 0
+          : 0,
       });
     }
   };
@@ -151,9 +172,7 @@ const PostReactions = ({
             commentMode={commentMode}
             linkPressed={linkPressed}
             onLikePress={handleLikePress}
-            onLongLikePress={() => {
-              if (!isEmotionPending) setShowReactionPicker(true);
-            }}
+            onLongLikePress={handleLongLikePress}
             onCommentPress={handleCommentPress}
             onCopyPress={handleCopyLink}
             likeDisabled={isEmotionPending}

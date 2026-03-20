@@ -7,8 +7,8 @@ import { AppText } from "../../../shared/theme/components/AppText";
  */
 const ReactionSummary = ({
   reactions,
-  reactionCounts,
-  totalReactions,
+  reactionCounts = {},
+  totalReactions = 0,
   commentCount,
   style,
   hideReactionStrip = false,
@@ -20,7 +20,7 @@ const ReactionSummary = ({
       {showStrip ? (
         <View style={styles.reactionIconRow}>
           {reactions.map((reaction) =>
-            reactionCounts[reaction.id] > 0 ? (
+            (reactionCounts?.[reaction.id] ?? 0) > 0 ? (
               <View
                 key={reaction.id}
                 style={[

@@ -429,12 +429,19 @@ const PostDetailScreen = ({ route, navigation }) => {
               post={post}
               selectedEmotionType={selectedEmotionType}
               isEmotionPending={toggleEmotionMutation.isPending}
-              onSelectReaction={(_postId, reaction) => {
+              onToggleEmotion={(_postId, emotionType) => {
+                if (!emotionType) return;
+                toggleEmotionMutation.mutate({ emotionType });
+              }}
+              onSelectReaction={(_postId, reaction, meta) => {
                 if (!reaction) return;
+                const { prevEmotionType = null, prevEmotionCountBefore = 0 } =
+                  meta ?? {};
 
                 toggleEmotionMutation.mutate({
                   emotionType: reaction.id,
-                  isCancel: reaction.isCancel,
+                  prevEmotionType,
+                  prevEmotionCountBefore,
                 });
               }}
             />

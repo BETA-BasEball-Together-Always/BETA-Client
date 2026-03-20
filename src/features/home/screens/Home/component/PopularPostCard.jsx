@@ -94,9 +94,20 @@ const PopularPostCard = ({ post }) => {
         post={reactionPost}
         selectedEmotionType={selectedEmotionType}
         isEmotionPending={toggleEmotionMutation.isPending}
-        onSelectReaction={(_, reaction) => {
+        onToggleEmotion={(_postId, emotionType) => {
+          if (!emotionType) return;
+          toggleEmotionMutation.mutate({ emotionType });
+        }}
+        onSelectReaction={(_, reaction, meta) => {
           if (!reaction) return;
-          toggleEmotionMutation.mutate({ emotionType: reaction.id });
+          const { prevEmotionType = null, prevEmotionCountBefore = 0 } =
+            meta ?? {};
+
+          toggleEmotionMutation.mutate({
+            emotionType: reaction.id,
+            prevEmotionType,
+            prevEmotionCountBefore,
+          });
         }}
       />
     </TouchableOpacity>

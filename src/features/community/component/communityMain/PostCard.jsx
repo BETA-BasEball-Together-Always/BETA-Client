@@ -83,11 +83,16 @@ const PostCard = ({ post, showTeam = false }) => {
     [post],
   );
 
-  const handleSelectReaction = (_postId, reaction) => {
+  const handleSelectReaction = (_postId, reaction, meta) => {
     if (!reaction) return;
-    const emotionType = reaction.id;
+    const { prevEmotionType = null, prevEmotionCountBefore = 0 } =
+      meta ?? {};
 
-    toggleEmotionMutation.mutate({ emotionType });
+    toggleEmotionMutation.mutate({
+      emotionType: reaction.id,
+      prevEmotionType,
+      prevEmotionCountBefore,
+    });
   };
 
   return (
@@ -143,6 +148,10 @@ const PostCard = ({ post, showTeam = false }) => {
         post={reactionPost}
         selectedEmotionType={selectedEmotionType}
         isEmotionPending={toggleEmotionMutation.isPending}
+        onToggleEmotion={(_postId, emotionType) => {
+          if (!emotionType) return;
+          toggleEmotionMutation.mutate({ emotionType });
+        }}
         onSelectReaction={handleSelectReaction}
         onCommentPress={handlePressCard}
       />
