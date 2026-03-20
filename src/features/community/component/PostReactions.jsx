@@ -13,10 +13,10 @@ const getReactionCountsFromPost = (post) => {
 
   const emotions = post?.emotions ?? {};
   return {
-    EMO_JOY: emotions.likeCount ?? 0,
-    EMO_SAD: emotions.sadCount ?? 0,
-    EMO_FUN: emotions.funCount ?? 0,
-    EMO_HYPE: emotions.hypeCount ?? 0,
+    LIKE: emotions.likeCount ?? 0,
+    SAD: emotions.sadCount ?? 0,
+    FUN: emotions.funCount ?? 0,
+    HYPE: emotions.hypeCount ?? 0,
   };
 };
 
@@ -70,7 +70,7 @@ const PostReactions = ({
     // long-press 직후 RN이 onPress를 함께 호출하는 케이스를 방어
     if (longPressJustTriggeredRef.current) return;
 
-    const uiEmotionToToggle = currentEmotionUiId ?? "EMO_JOY";
+    const uiEmotionToToggle = currentEmotionUiId ?? COMMUNITY_REACTIONS[0]?.id;
     setShowReactionPicker(false);
     longPressJustTriggeredRef.current = false;
 
@@ -95,20 +95,13 @@ const PostReactions = ({
 
     console.log("[emotion picker] select", {
       postId: post?.postId,
-      reactionUiId: reaction.id,
-      requestEmotionType: reaction.id, // emotionMutations.js에서 toApiEmotionType으로 매핑됨
-      parentSelectedEmotionUiId: selectedEmotionType,
+      reactionEmotionType: reaction.id,
+      requestEmotionType: reaction.id,
+      parentSelectedEmotionType: selectedEmotionType,
     });
 
     if (typeof onSelectReaction === "function") {
-      const prevEmotionUiId = currentEmotionUiId;
-      onSelectReaction(post?.postId, reaction, {
-        prevEmotionType: prevEmotionUiId,
-        // "교체"가 서버에서 제대로 일어나지 않는 케이스 보정용 스냅샷
-        prevEmotionCountBefore: prevEmotionUiId
-          ? reactionCounts?.[prevEmotionUiId] ?? 0
-          : 0,
-      });
+      onSelectReaction(post?.postId, reaction);
     }
   };
 

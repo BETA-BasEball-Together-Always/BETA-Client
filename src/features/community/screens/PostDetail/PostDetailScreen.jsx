@@ -42,7 +42,6 @@ import {
   useUpdateCommentMutation,
 } from "../../services/postDetail/postDetailService";
 import { useQueryClient } from "@tanstack/react-query";
-import { toUiEmotionType } from "../../utils/emotionTypeMap";
 import { normalizeCommentsForDisplay } from "../../utils/communityComments";
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
 
@@ -119,8 +118,11 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetId: null,
   });
 
+  const normalizeEmotionType = (t) =>
+    ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
+
   const [selectedEmotionType, setSelectedEmotionType] = useState(() =>
-    toUiEmotionType(initialSelectedEmotionType),
+    normalizeEmotionType(initialSelectedEmotionType),
   );
   const [editTarget, setEditTarget] = useState(null); // { commentId, content }
 
@@ -133,7 +135,7 @@ const PostDetailScreen = ({ route, navigation }) => {
   const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
     onSuccess: (data) => {
       setSelectedEmotionType(
-        data.toggled ? toUiEmotionType(data.emotionType) : null,
+        data.toggled ? data.emotionType : null,
       );
     },
   });
@@ -167,11 +169,6 @@ const PostDetailScreen = ({ route, navigation }) => {
   );
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
-  // useEffect(() => {
-  //   setSelectedEmotionType(
-  //     toUiEmotionType(route.params?.initialSelectedEmotionType),
-  //   );
-  // }, [postId, route.params?.initialSelectedEmotionType]);
 
   const handleMorePress = () => {
     setPostMoreVisible(true);
@@ -433,15 +430,10 @@ const PostDetailScreen = ({ route, navigation }) => {
                 if (!emotionType) return;
                 toggleEmotionMutation.mutate({ emotionType });
               }}
-              onSelectReaction={(_postId, reaction, meta) => {
+              onSelectReaction={(_postId, reaction) => {
                 if (!reaction) return;
-                const { prevEmotionType = null, prevEmotionCountBefore = 0 } =
-                  meta ?? {};
-
                 toggleEmotionMutation.mutate({
                   emotionType: reaction.id,
-                  prevEmotionType,
-                  prevEmotionCountBefore,
                 });
               }}
             />

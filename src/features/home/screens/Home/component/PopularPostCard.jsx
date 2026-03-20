@@ -5,7 +5,6 @@ import { AppText } from "../../../../../shared/theme/components/AppText";
 import CommunityUserProfile from "../../../../community/component/CommunityUserProfile";
 
 import { useTogglePostEmotionMutation } from "../../../../community/services/emotionMutations";
-import { toUiEmotionType } from "../../../../community/utils/emotionTypeMap";
 import { getUserEmotionSelection } from "../../../../community/store/userEmotionSelectionStore";
 
 import PostReactions from "../../../../community/component/PostReactions";
@@ -21,14 +20,17 @@ const PopularPostCard = ({ post }) => {
   const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId, {
     onSuccess: (data) => {
       setSelectedEmotionType(
-        data.toggled ? toUiEmotionType(data.emotionType) : null,
+        data.toggled ? data.emotionType : null,
       );
     },
   });
 
+  const normalizeEmotionType = (t) =>
+    ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
+
   useEffect(() => {
     const stored = getUserEmotionSelection(post.postId);
-    if (stored !== undefined) setSelectedEmotionType(stored);
+    if (stored !== undefined) setSelectedEmotionType(normalizeEmotionType(stored));
   }, [post.postId]);
 
   const reactionPost = useMemo(
@@ -37,10 +39,10 @@ const PopularPostCard = ({ post }) => {
       id: post.postId,
       comments: post.commentCount,
       reactionCounts: {
-        EMO_JOY: post.emotions?.likeCount ?? 0,
-        EMO_SAD: post.emotions?.sadCount ?? 0,
-        EMO_FUN: post.emotions?.funCount ?? 0,
-        EMO_HYPE: post.emotions?.hypeCount ?? 0,
+        LIKE: post.emotions?.likeCount ?? 0,
+        SAD: post.emotions?.sadCount ?? 0,
+        FUN: post.emotions?.funCount ?? 0,
+        HYPE: post.emotions?.hypeCount ?? 0,
       },
     }),
     [post],
@@ -98,15 +100,10 @@ const PopularPostCard = ({ post }) => {
           if (!emotionType) return;
           toggleEmotionMutation.mutate({ emotionType });
         }}
-        onSelectReaction={(_, reaction, meta) => {
+        onSelectReaction={(_, reaction) => {
           if (!reaction) return;
-          const { prevEmotionType = null, prevEmotionCountBefore = 0 } =
-            meta ?? {};
-
           toggleEmotionMutation.mutate({
             emotionType: reaction.id,
-            prevEmotionType,
-            prevEmotionCountBefore,
           });
         }}
       />

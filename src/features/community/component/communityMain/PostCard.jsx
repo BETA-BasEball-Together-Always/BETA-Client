@@ -8,7 +8,6 @@ import TeamLabel from "./TeamLabel";
 
 import PostReactions from "../PostReactions";
 import { useTogglePostEmotionMutation } from "../../services/emotionMutations";
-import { toUiEmotionType } from "../../utils/emotionTypeMap";
 import { getUserEmotionSelection } from "../../store/userEmotionSelectionStore";
 
 const PostCard = ({ post, showTeam = false }) => {
@@ -19,20 +18,21 @@ const PostCard = ({ post, showTeam = false }) => {
 
   const [selectedEmotionType, setSelectedEmotionType] = useState(null);
 
+  const normalizeEmotionType = (t) =>
+    ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
+
   // 상세 화면 등에서 토글 후 돌아왔을 때 하트(선택 감정) 복원
   useEffect(() => {
     if (post?.postId == null) return;
     const stored = getUserEmotionSelection(post.postId);
     if (stored !== undefined) {
-      setSelectedEmotionType(stored);
+      setSelectedEmotionType(normalizeEmotionType(stored));
     }
   }, [post.postId, post.emotions]);
 
   const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId, {
     onSuccess: (data) => {
-      setSelectedEmotionType(
-        data.toggled ? toUiEmotionType(data.emotionType) : null,
-      );
+      setSelectedEmotionType(data.toggled ? data.emotionType : null);
     },
   });
 
@@ -74,24 +74,20 @@ const PostCard = ({ post, showTeam = false }) => {
       id: post.postId,
       comments: post.commentCount,
       reactionCounts: {
-        EMO_JOY: post.emotions?.likeCount ?? 0,
-        EMO_SAD: post.emotions?.sadCount ?? 0,
-        EMO_FUN: post.emotions?.funCount ?? 0,
-        EMO_HYPE: post.emotions?.hypeCount ?? 0,
+        LIKE: post.emotions?.likeCount ?? 0,
+        SAD: post.emotions?.sadCount ?? 0,
+        FUN: post.emotions?.funCount ?? 0,
+        HYPE: post.emotions?.hypeCount ?? 0,
       },
     }),
     [post],
   );
 
-  const handleSelectReaction = (_postId, reaction, meta) => {
+  const handleSelectReaction = (_postId, reaction) => {
     if (!reaction) return;
-    const { prevEmotionType = null, prevEmotionCountBefore = 0 } =
-      meta ?? {};
 
     toggleEmotionMutation.mutate({
       emotionType: reaction.id,
-      prevEmotionType,
-      prevEmotionCountBefore,
     });
   };
 
