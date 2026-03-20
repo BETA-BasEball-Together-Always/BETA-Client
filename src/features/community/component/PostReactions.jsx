@@ -9,15 +9,23 @@ import PostActionBar from "./PostActionBar";
 const DEFAULT_ACTION_BAR_H = 52;
 
 const getReactionCountsFromPost = (post) => {
+  // mutation cache는 `emotions`만 갱신하는데,
+  // `reactionCounts`가 남아있으면 UI가 stale 값으로 렌더될 수 있어
+  // 항상 우선순위를 `post.emotions`에 둔다.
+  const emotions = post?.emotions;
+  if (emotions) {
+    return {
+      LIKE: emotions.likeCount ?? 0,
+      SAD: emotions.sadCount ?? 0,
+      FUN: emotions.funCount ?? 0,
+      HYPE: emotions.hypeCount ?? 0,
+    };
+  }
+
+  // 혹시 서버 응답에 emotions이 없을 때만 fallback
   if (post?.reactionCounts) return { ...post.reactionCounts };
 
-  const emotions = post?.emotions ?? {};
-  return {
-    LIKE: emotions.likeCount ?? 0,
-    SAD: emotions.sadCount ?? 0,
-    FUN: emotions.funCount ?? 0,
-    HYPE: emotions.hypeCount ?? 0,
-  };
+  return { LIKE: 0, SAD: 0, FUN: 0, HYPE: 0 };
 };
 
 const PostReactions = ({
