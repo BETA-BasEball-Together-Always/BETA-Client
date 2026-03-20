@@ -1,5 +1,5 @@
 import { StyleSheet, View, TouchableOpacity } from "react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import SettingsIcon from "../../assets/svg/Settings.svg";
@@ -19,17 +19,16 @@ import {
 } from "../../hooks/useMypagePosts";
 import TeamLabel from "../../../community/component/communityMain/TeamLabel";
 
+const BIO_PLACEHOLDER = "한 줄 소개를 작성해 보세요 :)";
+
 const ProfileScreen = ({ navigation, route }) => {
-  const { user } = useUserStore();
-  if (!user) return null;
-  const { favoriteTeamCode, nickname } = user;
+  const user = useUserStore((s) => s.user);
+  const favoriteTeamCode = user?.favoriteTeamCode;
+  const nickname = user?.nickname;
 
   const viewedUserId = route?.params?.userId ?? null;
   const isSelf =
     viewedUserId == null || String(viewedUserId) === String(user?.id);
-
-  const team = TEAM_DATA[favoriteTeamCode];
-  const ProfileIcon = team?.ProfileIcon;
 
   const handlePressSetting = () => {
     navigation.navigate("ProfileSetting");
@@ -127,6 +126,10 @@ const ProfileScreen = ({ navigation, route }) => {
     }
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       {isSelf && (
@@ -156,7 +159,7 @@ const ProfileScreen = ({ navigation, route }) => {
           const displayTeam = TEAM_DATA[displayTeamCode];
           const DisplayProfileIcon = displayTeam?.ProfileIcon;
           const displayNickname = isSelf ? nickname : userFromQuery?.nickname;
-          const displayBio = userFromQuery?.bio;
+          const otherBio = userFromQuery?.bio;
           return (
             <>
               <LinearGradient
@@ -187,13 +190,32 @@ const ProfileScreen = ({ navigation, route }) => {
                     <TeamLabel teamCode={displayTeamCode} />
                   )}
                 </View>
-                <AppText
-                  variant="middle"
-                  className="text-white"
-                  style={styles.bioText}
-                >
-                  {displayBio ?? "한 줄 소개를 작성해 보세요 :)"}{" "}
-                </AppText>
+                {isSelf ? (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("EditBio")}
+                    activeOpacity={0.75}
+                    style={styles.bioTouchable}
+                  >
+                    <AppText
+                      variant="middle"
+                      style={[
+                        styles.bioText,
+                        !(user?.bio && String(user.bio).trim()) &&
+                          styles.bioPlaceholder,
+                      ]}
+                    >
+                      {user?.bio?.trim() ? user.bio : BIO_PLACEHOLDER}
+                    </AppText>
+                  </TouchableOpacity>
+                ) : (
+                  <AppText
+                    variant="middle"
+                    className="text-white"
+                    style={styles.bioText}
+                  >
+                    {otherBio?.trim() ? otherBio : ""}
+                  </AppText>
+                )}
               </View>
             </>
           );
@@ -254,7 +276,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 35,
-    height: 89,
+    paddingVertical: 8,
+    minHeight: 89,
   },
   avatarCircle: {
     width: 70,
@@ -267,16 +290,24 @@ const styles = StyleSheet.create({
   userInfoContainer: {
     marginLeft: 16,
     justifyContent: "center",
+    flex: 1,
+    minWidth: 0,
   },
   userNameContainer: {
     flexDirection: "row",
     gap: 10,
     alignItems: "center",
   },
-  bioText: {
-    color: "#E4E4E480",
+  bioTouchable: {
     marginTop: 7,
+    alignSelf: "stretch",
+  },
+  bioText: {
+    color: "rgba(228, 228, 228, 0.88)",
     lineHeight: 17.7,
+  },
+  bioPlaceholder: {
+    color: "rgba(228, 228, 228, 0.45)",
   },
   tabContainer: {
     flexDirection: "row",

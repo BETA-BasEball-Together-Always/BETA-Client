@@ -15,7 +15,8 @@ const TeamCommunityScreen = ({ route }) => {
   const initialSort = route?.params?.initialSort || "latest";
   const [sort, setSort] = useState(initialSort);
   const user = useUserStore((state) => state.user);
-  if (!user) return null;
+  const favoriteTeamCode = user?.favoriteTeamCode;
+  const favoriteTeamName = user?.favoriteTeamName;
 
   // heart fill 복원을 위해, 유저가 감정을 남긴(=liked) 게시물 목록을 서버에서 hydrate
   useMyLikedPostsInfiniteQuery({
@@ -23,13 +24,15 @@ const TeamCommunityScreen = ({ route }) => {
     hydrateSelection: true,
   });
 
-  const { favoriteTeamName, favoriteTeamCode } = user;
   const MainIcon = TEAM_DATA[favoriteTeamCode]?.MainIcon;
 
+  /** 게시판 구분은 API에서 TEAM / ALL 고정 (팀 코드 아님) */
   const { posts, loadMore, isLoading } = useCommunityPosts({
     channel: "TEAM",
     sort,
   });
+
+  if (!user) return null;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>

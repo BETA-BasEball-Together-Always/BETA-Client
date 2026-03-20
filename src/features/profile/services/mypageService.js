@@ -31,3 +31,11 @@ export const fetchUserPostsApi = async ({ userId, cursor } = {}) => {
   return res.data;
 };
 
+/** PATCH /api/v1/users/me/bio — 빈 문자열·null이면 bio 삭제, 최대 50자 */
+export const updateMyBioApi = async ({ bio }) => {
+  const res = await api.patch("/api/v1/users/me/bio", {
+    bio: bio === null || bio === undefined ? null : bio,
+  });
+  return res.data;
+};
+

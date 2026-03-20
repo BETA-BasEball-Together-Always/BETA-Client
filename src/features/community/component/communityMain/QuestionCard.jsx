@@ -10,7 +10,7 @@ const QuestionCard = ({ user }) => {
 
   const { nickname, favoriteTeamCode } = user;
 
-  const team = TEAM_DATA[favoriteTeamCode];
+  const team = favoriteTeamCode ? TEAM_DATA[favoriteTeamCode] : null;
   const ProfileIcon = team?.ProfileIcon;
 
   return (
@@ -18,8 +18,8 @@ const QuestionCard = ({ user }) => {
       <LinearGradient
         colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
         locations={team?.gradient?.locations}
-        start={team.gradient.start}
-        end={team.gradient.end}
+        start={team?.gradient?.start}
+        end={team?.gradient?.end}
         style={styles.avatarCircle}
       >
         {ProfileIcon ? (

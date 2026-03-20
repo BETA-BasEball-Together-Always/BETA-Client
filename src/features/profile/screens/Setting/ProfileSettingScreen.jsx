@@ -21,6 +21,7 @@ import {
   logoutApi,
   withdrawAccountApi,
 } from "../../../auth/services/authSessionService";
+import { getDeviceId } from "../../../auth/libs/Login/deviceUtils";
 import { getRootNavigation } from "../../utils/navigation/getRootNavigation";
 import {
   getApiErrorUserMessage,
@@ -64,7 +65,10 @@ const ProfileSettingScreen = () => {
   }, [clearAuth, navigation, queryClient]);
 
   const logoutMutation = useMutation({
-    mutationFn: logoutApi,
+    mutationFn: async () => {
+      const deviceId = await getDeviceId();
+      return logoutApi({ deviceId });
+    },
     onSuccess: async () => {
       setLogoutModalVisible(false);
       await resetAppSession();

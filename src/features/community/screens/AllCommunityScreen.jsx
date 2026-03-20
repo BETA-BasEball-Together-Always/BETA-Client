@@ -12,7 +12,6 @@ const AllCommunityScreen = ({ route }) => {
   const initialSort = route?.params?.initialSort || "latest";
   const [sort, setSort] = useState(initialSort);
   const user = useUserStore((state) => state.user);
-  if (!user) return null;
 
   // heart fill 복원을 위해, 유저가 감정을 남긴(=liked) 게시물 목록을 서버에서 hydrate
   useMyLikedPostsInfiniteQuery({
@@ -25,6 +24,8 @@ const AllCommunityScreen = ({ route }) => {
     channel: "ALL",
     sort,
   });
+
+  if (!user) return null;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>

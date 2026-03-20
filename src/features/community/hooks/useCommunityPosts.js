@@ -2,7 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchPostsApi } from "../services/communityService";
 import communityKeys from "../services/communityKeys";
 
-export default function useCommunityPosts({ channel, sort }) {
+export default function useCommunityPosts({ channel, sort, enabled = true }) {
   const query = useInfiniteQuery({
     queryKey: communityKeys.postList({ channel, sort }),
 
@@ -14,6 +14,7 @@ export default function useCommunityPosts({ channel, sort }) {
         offset: sort === "popular" ? pageParam : null,
       });
     },
+    enabled,
     /** v5 infiniteQuery 필수 — 최신글 다음 페이지 커서 */
     initialPageParam: sort === "popular" ? 0 : null,
     getNextPageParam: (lastPage, allPages) => {

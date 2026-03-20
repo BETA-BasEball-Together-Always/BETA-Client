@@ -105,6 +105,17 @@ const CreatePostScreen = () => {
     };
   }, [editPost?.postId]);
 
+  /** 수정 모드: 서버 channel(ALL / TEAM)에 맞춰 게시판 선택 UI 동기화 */
+  useEffect(() => {
+    if (!editPost?.postId) return;
+    const ch = editPost.channel;
+    if (ch === "ALL") {
+      setSelectedBoardId("ALL");
+    } else {
+      setSelectedBoardId("TEAM");
+    }
+  }, [editPost?.postId, editPost?.channel]);
+
   const totalImageCount = isEditMode
     ? keptExistingImages.length + pendingNewImages.length
     : images.length;
@@ -189,7 +200,11 @@ const CreatePostScreen = () => {
     return boards.find((b) => b.id === selectedBoardId)?.label ?? "";
   }, [boards, selectedBoardId]);
 
-  const createPostChannel = selectedBoardId;
+  /** 백엔드 channel: 게시판 구분은 항상 "ALL" | "TEAM" (팀 코드 아님) */
+  const createPostChannel = useMemo(() => {
+    if (selectedBoardId === "ALL") return "ALL";
+    return "TEAM";
+  }, [selectedBoardId]);
 
   const handleChangeContent = (text) => {
     const next = text.slice(0, MAX_CONTENT_LENGTH);
