@@ -8,11 +8,21 @@ const GradientBlob = ({ colors, style }) => {
     <View style={[styles.container, style]}>
       <LinearGradient
         colors={colors}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[StyleSheet.absoluteFillObject, { opacity: 1 }]}
+      />
+      <BlurView
+        intensity={60}
+        tint="dark"
         style={StyleSheet.absoluteFillObject}
       />
-      <BlurView intensity={200} tint="light" style={styles.blur} />
+
+      <BlurView
+        intensity={40}
+        tint="light"
+        style={StyleSheet.absoluteFillObject}
+      />
     </View>
   );
 };
@@ -22,11 +32,6 @@ export default GradientBlob;
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    overflow: "hidden",
-    // borderRadius: 999,
-  },
-  blur: {
-    ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
   },
 });

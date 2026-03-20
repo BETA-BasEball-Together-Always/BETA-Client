@@ -9,6 +9,7 @@ import {
   Keyboard,
   Platform,
   Dimensions,
+  ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -118,101 +119,105 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
+      <ImageBackground
+        source={require("./assets/selectedFavortieTeamBack.png")}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView
+              style={styles.container}
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
-              {/* <SelectTeamBackground /> */}
+              <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.inner}>
+                  {/* 헤더 */}
+                  <View style={styles.headerRow}>
+                    <TouchableOpacity
+                      onPress={handleBack}
+                      style={styles.backButton}
+                    >
+                      <BackIcon />
+                    </TouchableOpacity>
+                    <View style={styles.stepWrapper}>
+                      <SignupStepIndicator currentStep={2} />
+                    </View>
 
-              <View style={styles.inner}>
-                {/* 헤더 */}
-                <View style={styles.headerRow}>
-                  <TouchableOpacity
-                    onPress={handleBack}
-                    style={styles.backButton}
-                  >
-                    <BackIcon />
-                  </TouchableOpacity>
-                  <View style={styles.stepWrapper}>
-                    <SignupStepIndicator currentStep={2} />
+                    <View style={styles.rightPlaceholder} />
                   </View>
 
-                  <View style={styles.rightPlaceholder} />
-                </View>
+                  {/* 타이틀 */}
+                  <AppText variant="displayTitle" style={styles.title}>
+                    회원님의 팬심을 보여줄 구단을 선택해주세요!
+                  </AppText>
 
-                {/* 타이틀 */}
-                <AppText variant="displayTitle" style={styles.title}>
-                  회원님의 팬심을 보여줄 구단을 선택해주세요!
-                </AppText>
+                  {/* 팀 선택 */}
+                  <View style={styles.grid}>
+                    {teams.map(({ key, label, Icon }) => {
+                      const selected = selectedTeam === key;
 
-                {/* 팀 선택 */}
-                <View style={styles.grid}>
-                  {teams.map(({ key, label, Icon }) => {
-                    const selected = selectedTeam === key;
-
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={styles.item}
-                        activeOpacity={0.85}
-                        onPress={() => setSelectedTeam(key)}
-                      >
-                        <View
-                          style={[
-                            styles.iconBox,
-                            selected && styles.iconBoxSelected,
-                          ]}
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          style={styles.item}
+                          activeOpacity={0.85}
+                          onPress={() => setSelectedTeam(key)}
                         >
-                          <Icon width={100} height={100} />
-                        </View>
+                          <View
+                            style={[
+                              styles.iconBox,
+                              selected && styles.iconBoxSelected,
+                            ]}
+                          >
+                            <Icon width={100} height={100} />
+                          </View>
 
-                        <AppText
-                          variant="bodyMedium"
-                          style={[
-                            styles.teamLabel,
-                            selected && styles.teamLabelSelected,
-                          ]}
-                        >
-                          {label}
-                        </AppText>
-                      </TouchableOpacity>
-                    );
-                  })}
+                          <AppText
+                            variant="bodyMedium"
+                            style={[
+                              styles.teamLabel,
+                              selected && styles.teamLabelSelected,
+                            ]}
+                          >
+                            {label}
+                          </AppText>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
-            </ScrollView>
+              </ScrollView>
 
-            {/* 하단 버튼 */}
-            <View style={styles.floatingBottomArea}>
-              <TouchableOpacity
-                style={[
-                  styles.completeButton,
-                  !selectedTeam && styles.completeButtonDisabled,
-                ]}
-                disabled={!selectedTeam}
-                activeOpacity={selectedTeam ? 0.85 : 1}
-                onPress={handleNext}
-              >
-                <AppText
-                  variant="heading"
+              {/* 하단 버튼 */}
+              <View style={styles.floatingBottomArea}>
+                <TouchableOpacity
                   style={[
-                    styles.completeButtonText,
-                    !selectedTeam && styles.completeButtonTextDisabled,
+                    styles.completeButton,
+                    !selectedTeam && styles.completeButtonDisabled,
                   ]}
+                  disabled={!selectedTeam}
+                  activeOpacity={selectedTeam ? 0.85 : 1}
+                  onPress={handleNext}
                 >
-                  선택완료
-                </AppText>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
-      </SafeAreaView>
+                  <AppText
+                    variant="heading"
+                    style={[
+                      styles.completeButtonText,
+                      !selectedTeam && styles.completeButtonTextDisabled,
+                    ]}
+                  >
+                    선택완료
+                  </AppText>
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
+        </SafeAreaView>
+      </ImageBackground>
     </View>
   );
 };
@@ -220,19 +225,27 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 export default SignupFavoriteTeamScreen;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000000" },
-  safeArea: { flex: 1, backgroundColor: "transparent" },
+  root: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
   container: {
     flex: 1,
   },
+
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingBottom: 120,
   },
   inner: {
     maxWidth: 390,
     width: "100%",
     alignSelf: "center",
+    paddingHorizontal: 20,
   },
 
   headerRow: {
@@ -267,13 +280,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     color: "#FFFFFF",
     marginBottom: 24,
-  },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 12,
   },
   grid: {
     flexDirection: "row",
