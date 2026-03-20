@@ -7,7 +7,7 @@ export {
   useToggleCommentLikeMutation,
 } from "../postDetail/commentMutations";
 
-export { useTogglePostEmotionMutation } from "./emotionMutations";
+export { useTogglePostEmotionMutation } from "../emotionMutations";
 
 export {
   useBlockUserMutation,

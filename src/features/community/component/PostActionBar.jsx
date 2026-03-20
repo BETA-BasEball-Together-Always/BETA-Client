@@ -1,6 +1,5 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
-import { AppText } from "../../../shared/theme/components/AppText";
 import HeartIcon from "../assets/svg/CommunityPost/heartIcon.svg";
 import HeartFilledIcon from "../assets/svg/CommunityPost/heartFilledIcon.svg";
 import CommentIcon from "../assets/svg/CommunityPost/commentIcon.svg";
@@ -8,33 +7,32 @@ import CommentOnPressIcon from "../assets/svg/CommunityPost/commentOnPressIcon.s
 import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
 import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
 
+/** 아이콘 옆 count 없음 — ReactionSummary에서만 집계 표시 */
 const PostActionBar = ({
-  selected, //내가 감정표현을 했는지 여부
-  reactionCount, //전체 감정 카운트 합
+  selected,
   commentMode,
-  commentCount,
   linkPressed,
   onLikePress,
   onLongLikePress,
   onCommentPress,
   onCopyPress,
   onLayout,
+  likeDisabled = false,
 }) => {
   return (
     <View style={styles.actionRow} onLayout={onLayout}>
       <View style={styles.leftActions}>
-        <TouchableOpacity onPress={onLikePress} onLongPress={onLongLikePress}>
+        <TouchableOpacity
+          onPress={onLikePress}
+          onLongPress={onLongLikePress}
+          disabled={likeDisabled}
+        >
           {selected ? (
             <HeartFilledIcon width={31.3} height={27} />
           ) : (
             <HeartIcon width={31.3} height={27} />
           )}
         </TouchableOpacity>
-        {typeof reactionCount === "number" && (
-          <AppText variant="numMediumRegular" style={styles.countText}>
-            {reactionCount}
-          </AppText>
-        )}
 
         <TouchableOpacity onPress={onCommentPress}>
           {commentMode ? (
@@ -43,11 +41,6 @@ const PostActionBar = ({
             <CommentIcon width={25} height={25} />
           )}
         </TouchableOpacity>
-        {typeof commentCount === "number" && (
-          <AppText variant="numMediumRegular" style={styles.countText}>
-            {commentCount}
-          </AppText>
-        )}
       </View>
 
       <TouchableOpacity onPress={onCopyPress}>
@@ -74,9 +67,6 @@ const styles = StyleSheet.create({
   leftActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  countText: {
-    color: "rgba(228,228,228,0.7)",
+    gap: 25,
   },
 });

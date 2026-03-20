@@ -7,6 +7,7 @@ import {
   deleteCommentApi,
   toggleCommentLikeApi,
 } from "./postDetailApi";
+import { useCommentRemovalStore } from "../../store/commentRemovalStore";
 
 export const useCreateCommentMutation = (postId, { currentUser } = {}) => {
   const queryClient = useQueryClient();
@@ -56,10 +57,6 @@ export const useCreateCommentMutation = (postId, { currentUser } = {}) => {
         };
       });
 
-      queryClient.invalidateQueries({
-        queryKey: postDetailKeys.detail(postId),
-      });
-
       // 리스트 캐시의 commentCount도 +1
       queryClient.setQueriesData(
         { queryKey: communityKeys.posts() },
@@ -107,9 +104,6 @@ export const useUpdateCommentMutation = (postId) => {
           comments: updateInList(prev.comments ?? []),
         };
       });
-      queryClient.invalidateQueries({
-        queryKey: postDetailKeys.detail(postId),
-      });
     },
   });
 };
@@ -120,6 +114,8 @@ export const useDeleteCommentMutation = (postId) => {
   return useMutation({
     mutationFn: ({ commentId }) => deleteCommentApi({ commentId }),
     onSuccess: (_data, { commentId }) => {
+      useCommentRemovalStore.getState().hideComment(postId, commentId);
+
       queryClient.setQueryData(postDetailKeys.detail(postId), (prev) => {
         if (!prev) return prev;
 
@@ -151,12 +147,30 @@ export const useDeleteCommentMutation = (postId) => {
         return {
           ...prev,
           comments: removeOrMarkDeleted(prev.comments ?? [], true),
-          commentCount: Math.max((prev.commentCount ?? 1) - 1, 0),
+          commentCount: Math.max((prev.commentCount ?? 0) - 1, 0),
         };
       });
-      queryClient.invalidateQueries({
-        queryKey: postDetailKeys.detail(postId),
-      });
+
+      queryClient.setQueriesData(
+        { queryKey: communityKeys.posts() },
+        (prev) => {
+          if (!prev?.pages) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              posts: page.posts.map((p) =>
+                p.postId === postId
+                  ? {
+                      ...p,
+                      commentCount: Math.max((p.commentCount ?? 0) - 1, 0),
+                    }
+                  : p,
+              ),
+            })),
+          };
+        },
+      );
     },
   });
 };

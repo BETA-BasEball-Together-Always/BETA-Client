@@ -12,8 +12,14 @@ export default function ReplyItem({
   onToggleLike,
   isAllChannel = false,
 }) {
-  const isAuthor = reply.author?.nickName === postAuthorNickname;
-  const isMine = reply.author?.userId === currentUserId;
+  const replyUserId = reply.userId ?? reply.author?.userId;
+  const isAuthor =
+    (reply.nickname ?? reply.author?.nickName ?? reply.author?.nickname) ===
+    postAuthorNickname;
+  const isMine =
+    replyUserId != null &&
+    currentUserId != null &&
+    String(replyUserId) === String(currentUserId);
   return (
     <ThreadItem
       item={reply}

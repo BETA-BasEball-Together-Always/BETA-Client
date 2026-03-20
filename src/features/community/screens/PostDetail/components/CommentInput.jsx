@@ -1,14 +1,33 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
 
 const BORDER_DISABLED = "rgba(106, 106, 106, 0.34)";
 
-export default function CommentInput({ onSubmit, replyTarget, cancelReply }) {
+export default function CommentInput({
+  onSubmit,
+  replyTarget,
+  cancelReply,
+  editTarget,
+  cancelEdit,
+}) {
   const [text, setText] = useState("");
 
   //피그마 기준 입력창 포커스 시 ui 변경 위함!! 구분선 + 등록 버튼 표시
   const [isFocused, setIsFocused] = useState(false);
+
+  const isEditing = !!editTarget?.commentId;
+  const submitLabel = isEditing ? "수정" : "등록";
+
+  useEffect(() => {
+    if (editTarget?.content != null) {
+      setText(editTarget.content);
+      setIsFocused(true); // 편집 버튼 누르면 바로 제출 버튼이 보이게
+      return;
+    }
+    setText("");
+    setIsFocused(false);
+  }, [editTarget?.commentId]);
 
   const isSubmitEnabled = text.trim().length > 0;
 
@@ -16,11 +35,20 @@ export default function CommentInput({ onSubmit, replyTarget, cancelReply }) {
     if (!isSubmitEnabled) return;
     onSubmit(text);
     setText("");
+    setIsFocused(false);
   };
 
   return (
     <View style={[styles.wrapper, isFocused && styles.wrapperWithBorder]}>
-      {replyTarget && (
+      {isEditing ? (
+        <TouchableOpacity onPress={cancelEdit}>
+          <View>
+            <AppText style={styles.replyInfo}>
+              댓글 수정 중... (취소하려면 터치)
+            </AppText>
+          </View>
+        </TouchableOpacity>
+      ) : replyTarget ? (
         <TouchableOpacity onPress={cancelReply}>
           <View>
             <AppText style={styles.replyInfo}>
@@ -28,7 +56,7 @@ export default function CommentInput({ onSubmit, replyTarget, cancelReply }) {
             </AppText>
           </View>
         </TouchableOpacity>
-      )}
+      ) : null}
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -36,13 +64,17 @@ export default function CommentInput({ onSubmit, replyTarget, cancelReply }) {
           onChangeText={setText}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="트윈스 팬으로서 한 마디 남겨보세요 :)"
+          placeholder={
+            isEditing
+              ? "수정할 댓글을 입력하세요"
+              : "트윈스 팬으로서 한 마디 남겨보세요 :)"
+          }
           placeholderTextColor="#666"
           style={[styles.input, isFocused && styles.inputWithButton]}
           multiline
         />
 
-        {isFocused && (
+        {(isFocused || isEditing) && (
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isSubmitEnabled}
@@ -65,7 +97,7 @@ export default function CommentInput({ onSubmit, replyTarget, cancelReply }) {
                     : styles.submitTextDisabled
                 }
               >
-                등록
+                {submitLabel}
               </AppText>
             </View>
           </TouchableOpacity>

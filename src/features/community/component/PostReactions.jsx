@@ -1,29 +1,25 @@
-import React, { useMemo, useState } from "react";
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Pressable,
-  Modal,
-} from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { View, StyleSheet, Modal, Pressable } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
-import HeartIcon from "../assets/svg/CommunityPost/heartIcon.svg";
-import HeartFilledIcon from "../assets/svg/CommunityPost/heartFilledIcon.svg";
-import CommentIcon from "../assets/svg/CommunityPost/commentIcon.svg";
-import CommentOnPressIcon from "../assets/svg/CommunityPost/commentOnPressIcon.svg";
-import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
-import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
+import { toUiEmotionType } from "../utils/emotionTypeMap";
+import { COMMUNITY_REACTIONS } from "../constants/communityReactions";
+import ReactionSummary from "./ReactionSummary";
+import ReactionPicker from "./ReactionPicker";
+import PostActionBar from "./PostActionBar";
 
-// import * as Clipboard from "expo-clipboard";
+const DEFAULT_ACTION_BAR_H = 52;
 
-const REACTION_HEIGHT = 25;
+const getReactionCountsFromPost = (post) => {
+  if (post?.reactionCounts) return { ...post.reactionCounts };
 
-const reactions = [
-  { id: "EMO_JOY", emoji: "💖", bgColor: "#FFBDBD" },
-  { id: "EMO_SAD", emoji: "😭", bgColor: "#C2EFFF" },
-  { id: "EMO_FUN", emoji: "🤣", bgColor: "#FFFABF" },
-  { id: "EMO_HYPE", emoji: "🔥", bgColor: "#FF9F76" },
-];
+  const emotions = post?.emotions ?? {};
+  return {
+    EMO_JOY: emotions.likeCount ?? 0,
+    EMO_SAD: emotions.sadCount ?? 0,
+    EMO_FUN: emotions.funCount ?? 0,
+    EMO_HYPE: emotions.hypeCount ?? 0,
+  };
+};
 
 const PostReactions = ({
   post,
@@ -31,83 +27,77 @@ const PostReactions = ({
   onSelectReaction,
   onToggleEmotion,
   onCommentPress,
+  isEmotionPending = false,
 }) => {
-  const [actionY, setActionY] = useState(0);
-
-  const [selectedReaction, setSelectedReaction] = useState(null);
+  const [actionBarHeight, setActionBarHeight] = useState(DEFAULT_ACTION_BAR_H);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
-  const [reactionCounts, setReactionCounts] = useState(
-    post.reactionCounts || {
-      EMO_JOY: 0,
-      EMO_SAD: 0,
-      EMO_FUN: 0,
-      EMO_HYPE: 0,
-    },
+  const pickerOpen = showReactionPicker && !isEmotionPending;
+
+  const reactionCounts = useMemo(
+    () => getReactionCountsFromPost(post),
+    [
+      post?.reactionCounts,
+      post?.emotions?.likeCount,
+      post?.emotions?.sadCount,
+      post?.emotions?.funCount,
+      post?.emotions?.hypeCount,
+    ],
   );
 
   const totalReactions = useMemo(
     () => Object.values(reactionCounts).reduce((sum, val) => sum + val, 0),
     [reactionCounts],
   );
+  // 현재 “내가 고른 감정”은 부모(selectedEmotionType)가 유일한 source of truth
+  const currentEmotionUiId = useMemo(() => {
+    const ui =
+      toUiEmotionType(selectedEmotionType) ?? selectedEmotionType ?? null;
+    if (!ui) return null;
+    return COMMUNITY_REACTIONS.some((r) => r.id === ui) ? ui : null;
+  }, [selectedEmotionType]);
+
+  const pickerSelectedReaction = useMemo(
+    () => COMMUNITY_REACTIONS.find((r) => r.id === currentEmotionUiId) ?? null,
+    [currentEmotionUiId],
+  );
 
   const [commentMode, setCommentMode] = useState(false);
   const [linkPressed, setLinkPressed] = useState(false);
   const [copyModalVisible, setCopyModalVisible] = useState(false);
 
+  const heartSelected = Boolean(currentEmotionUiId);
+
   const handleLikePress = () => {
+    if (isEmotionPending) return;
     setShowReactionPicker((prev) => !prev);
   };
 
   const handleReactionSelect = (reaction) => {
-    const prevReaction = selectedReaction;
+    if (isEmotionPending) return;
 
-    // 같은 리액션을 다시 누르면 제거
-    if (prevReaction?.id === reaction.id) {
-      setReactionCounts((prevCounts) => ({
-        ...prevCounts,
-        [reaction.id]: Math.max(prevCounts[reaction.id] - 1, 0),
-      }));
-
-      setSelectedReaction(null);
-      setShowReactionPicker(false);
-
-      if (onSelectReaction) {
-        onSelectReaction(post.id, null);
-      }
-
-      return;
-    }
-
-    // 다른 리액션에서 변경되는 경우, 이전 리액션 카운트 감소
-    if (prevReaction) {
-      setReactionCounts((prevCounts) => ({
-        ...prevCounts,
-        [prevReaction.id]: Math.max(prevCounts[prevReaction.id] - 1, 0),
-      }));
-    }
-
-    // 새 리액션 카운트 증가
-    setReactionCounts((prevCounts) => ({
-      ...prevCounts,
-      [reaction.id]: prevCounts[reaction.id] + 1,
-    }));
-
-    setSelectedReaction(reaction);
     setShowReactionPicker(false);
 
-    if (onSelectReaction) {
+    console.log("[emotion picker] select", {
+      postId: post?.postId,
+      reactionUiId: reaction.id,
+      requestEmotionType: reaction.id, // emotionMutations.js에서 toApiEmotionType으로 매핑됨
+      parentSelectedEmotionUiId: selectedEmotionType,
+    });
+
+    if (typeof onSelectReaction === "function") {
       onSelectReaction(post.id, reaction);
+    } else if (typeof onToggleEmotion === "function") {
+      onToggleEmotion(reaction.id);
     }
   };
 
   const handleCommentPress = () => {
     setCommentMode((prev) => !prev);
+    onCommentPress?.();
   };
 
   const handleCopyLink = async () => {
-    // 추후 Clipboard 연동 시 주석 해제
-    // await Clipboard.setStringAsync(post.uri ?? "https://example.com");
     setLinkPressed(true);
     setCopyModalVisible(true);
 
@@ -117,127 +107,66 @@ const PostReactions = ({
     }, 1500);
   };
 
-  const hasReactions = totalReactions > 0;
+  const commentCount = post.commentCount ?? post.comments?.length ?? 0;
+
+  // ReactionPicker 위치 조정 포인트:
+  // anchorBottom이 클수록 피커가 더 “위로” 뜹니다(덜 가려짐).
+  // 더 아래로 원하면 비율을 낮추거나 -offset을 적용하세요.
+  // 위치 조정: anchorBottom이 클수록 피커가 더 위로 뜹니다.
+  // 사용자가 버튼(하트/댓글) 위 영역을 가린 채로 피커가 뜨길 원하므로 약간 더 아래로 내림.
+  // 피커 위치는 반드시 고정(요청한 UI와 동일한 위치)
+  // anchorBottom은 ReactionPicker에서 style.bottom으로 직접 쓰이므로,
+  // 기본값(52px)에서 흔들리면 터치 타겟이 어긋날 수 있습니다.
+  const anchorBottom = DEFAULT_ACTION_BAR_H;
 
   return (
     <>
-      <View style={styles.reactionWrapper}>
-        {/* 공감 리스트 */}
-        <View style={styles.reactionSummary}>
-          {hasReactions && (
-            <View style={styles.reactionIconRow}>
-              {reactions.map((reaction) =>
-                reactionCounts[reaction.id] > 0 ? (
-                  <View
-                    key={reaction.id}
-                    style={[
-                      styles.summaryCircle,
-                      { backgroundColor: reaction.bgColor },
-                    ]}
-                  >
-                    <AppText style={styles.summaryEmoji}>
-                      {reaction.emoji}
-                    </AppText>
-                  </View>
-                ) : null,
-              )}
-              <AppText variant="numMediumRegular" className="text-gray-400">
-                {totalReactions}
-              </AppText>
-            </View>
-          )}
-
-          <AppText
-            variant="numMediumRegular"
-            className="text-gray-400"
-            style={!hasReactions && styles.commentOnly}
-          >
-            댓글 {post.commentCount ?? post.comments?.length ?? 0}
-          </AppText>
+      <View style={styles.reactionBlock}>
+        <View style={styles.summaryLayer}>
+          <ReactionSummary
+            reactions={COMMUNITY_REACTIONS}
+            reactionCounts={reactionCounts}
+            totalReactions={totalReactions}
+            commentCount={commentCount}
+            style={styles.summaryTightTop}
+            hideReactionStrip={totalReactions === 0}
+          />
         </View>
 
-        {/* 🔥 리액션 바 오버레이 */}
-        {showReactionPicker && (
-          <>
-            {/* 바깥 터치 시 닫기 */}
-            <Pressable
-              style={StyleSheet.absoluteFill}
-              onPress={() => setShowReactionPicker(false)}
-            />
-
-            <View
-              style={[
-                styles.reactionOverlay,
-                { top: actionY - REACTION_HEIGHT },
-              ]}
-            >
-              <View style={styles.reactionBar}>
-                {reactions.map((reaction) => {
-                  const isSelected = selectedReaction?.id === reaction.id;
-                  return (
-                    <TouchableOpacity
-                      key={reaction.id}
-                      onPress={() => handleReactionSelect(reaction)}
-                    >
-                      <View
-                        style={[
-                          styles.reactionCircle,
-                          { backgroundColor: reaction.bgColor },
-                          selectedReaction && !isSelected && styles.dimmed,
-                        ]}
-                      >
-                        <AppText style={styles.reactionEmoji}>
-                          {reaction.emoji}
-                        </AppText>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </>
+        {pickerOpen && (
+          <Pressable
+            style={[StyleSheet.absoluteFillObject, styles.pickerBackdrop]}
+            onPress={() => setShowReactionPicker(false)}
+          />
         )}
-      </View>
 
-      <View style={styles.actionContainer}>
         <View
-          style={styles.actionRow}
+          style={styles.actionSlot}
           onLayout={(e) => {
-            setActionY(e.nativeEvent.layout.y);
+            const h = e.nativeEvent.layout.height;
+            if (h > 0) setActionBarHeight(h);
           }}
         >
-          <View style={styles.leftActions}>
-            {/* 좋아요 */}
-            <TouchableOpacity
-              onPress={handleLikePress}
-              onLongPress={() => setShowReactionPicker(true)}
-              activeOpacity={0.7}
-            >
-              {selectedReaction ? (
-                <HeartFilledIcon width={31.3} height={27} />
-              ) : (
-                <HeartIcon width={31.3} height={27} />
-              )}
-            </TouchableOpacity>
-
-            {/* 댓글 */}
-            <TouchableOpacity onPress={handleCommentPress}>
-              {commentMode ? (
-                <CommentOnPressIcon width={25} height={25} />
-              ) : (
-                <CommentIcon width={25} height={25} />
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* URL 복사 */}
-          <TouchableOpacity onPress={handleCopyLink}>
-            {linkPressed ? (
-              <LinkOnPressIcon width={22} height={22} />
-            ) : (
-              <LinkIcon width={22} height={22} />
-            )}
-          </TouchableOpacity>
+          {pickerOpen && (
+            <ReactionPicker
+              reactions={COMMUNITY_REACTIONS}
+              selectedReaction={pickerSelectedReaction}
+              onSelect={handleReactionSelect}
+              anchorBottom={anchorBottom}
+            />
+          )}
+          <PostActionBar
+            selected={heartSelected}
+            commentMode={commentMode}
+            linkPressed={linkPressed}
+            onLikePress={handleLikePress}
+            onLongLikePress={() => {
+              if (!isEmotionPending) setShowReactionPicker(true);
+            }}
+            onCommentPress={handleCommentPress}
+            onCopyPress={handleCopyLink}
+            likeDisabled={isEmotionPending}
+          />
         </View>
       </View>
 
@@ -257,75 +186,25 @@ const PostReactions = ({
 export default PostReactions;
 
 const styles = StyleSheet.create({
-  reactionWrapper: {
+  reactionBlock: {
     position: "relative",
+    overflow: "visible",
   },
-  reactionSummary: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  summaryLayer: {
+    zIndex: 1,
+  },
+  summaryTightTop: {
     marginTop: 19,
-    minHeight: 26,
     marginHorizontal: 4,
   },
-  reactionIconRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  pickerBackdrop: {
+    zIndex: 8,
+    backgroundColor: "rgba(0,0,0,0.12)",
   },
-  commentOnly: {
-    marginLeft: "auto",
-  },
-  summaryCircle: {
-    width: 25,
-    height: 25,
-    borderRadius: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 7,
-    gap: 7,
-  },
-  summaryEmoji: {
-    fontSize: 13.5,
-  },
-  reactionEmoji: {
-    fontSize: 18,
-  },
-  reactionOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    alignItems: "flex-start",
-  },
-  reactionBar: {
-    flexDirection: "row",
-    backgroundColor: "#D9D9D9",
-    borderRadius: 30,
-    paddingVertical: 5.5,
-    alignSelf: "flex-start",
-  },
-  reactionCircle: {
-    width: 50,
-    height: 48,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 4,
-  },
-  dimmed: {
-    opacity: 0.3,
-  },
-  // actionContainer: {},
-  actionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 14,
-    marginHorizontal: 5,
-  },
-  leftActions: {
-    flexDirection: "row",
-    gap: 25,
+  actionSlot: {
+    position: "relative",
+    zIndex: 12,
+    overflow: "visible",
   },
   modalContainer: {
     flex: 1,

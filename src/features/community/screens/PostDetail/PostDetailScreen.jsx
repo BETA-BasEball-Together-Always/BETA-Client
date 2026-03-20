@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/component/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
@@ -36,6 +36,9 @@ import {
   useUpdateCommentMutation,
 } from "../../services/postDetail/postDetailService";
 import { useQueryClient } from "@tanstack/react-query";
+import { toUiEmotionType } from "../../utils/emotionTypeMap";
+import { normalizeCommentsForDisplay } from "../../utils/communityComments";
+import { useCommentRemovalStore } from "../../store/commentRemovalStore";
 
 const { width } = Dimensions.get("window");
 
@@ -44,14 +47,43 @@ const PostDetailScreen = ({ route, navigation }) => {
     post: initialPostParam,
     postId: paramPostId,
     from,
+    initialSelectedEmotionType,
   } = route.params ?? {};
   const postId = paramPostId ?? initialPostParam?.postId;
   const queryClient = useQueryClient();
 
   const currentUser = useUserStore((s) => s.user);
 
-  const { data: detail, isLoading: isPostLoading } = usePostDetailQuery(postId);
+  const { data: detail, isLoading: isPostLoading, refetch } =
+    usePostDetailQuery(postId);
   const post = detail ?? initialPostParam ?? {};
+
+  const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
+  const syncCommentRemovalWithServer = useCommentRemovalStore(
+    (s) => s.syncWithServerTree,
+  );
+
+  const firstFocusRef = useRef(true);
+  useEffect(() => {
+    firstFocusRef.current = true;
+  }, [postId]);
+
+  // 재진입 시에만 refetch — 최초 마운트는 useQuery가 이미 조회, 삭제 직후 불필요한 덮어쓰기 방지
+  useFocusEffect(
+    useCallback(() => {
+      if (!postId) return;
+      if (firstFocusRef.current) {
+        firstFocusRef.current = false;
+        return;
+      }
+      refetch();
+    }, [postId, refetch]),
+  );
+
+  useEffect(() => {
+    if (postId == null || detail?.comments == null) return;
+    syncCommentRemovalWithServer(postId, detail.comments);
+  }, [postId, detail?.comments, syncCommentRemovalWithServer]);
 
   const isAllChannel = post.channel === "ALL";
 
@@ -78,7 +110,10 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetId: null,
   });
 
-  const [selectedEmotionType, setSelectedEmotionType] = useState(null);
+  const [selectedEmotionType, setSelectedEmotionType] = useState(() =>
+    toUiEmotionType(initialSelectedEmotionType),
+  );
+  const [editTarget, setEditTarget] = useState(null); // { commentId, content }
 
   const createCommentMutation = useCreateCommentMutation(postId, {
     currentUser,
@@ -88,7 +123,9 @@ const PostDetailScreen = ({ route, navigation }) => {
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
   const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
     onSuccess: (data) => {
-      setSelectedEmotionType(data.toggled ? data.emotionType : null);
+      setSelectedEmotionType(
+        data.toggled ? toUiEmotionType(data.emotionType) : null,
+      );
     },
   });
   const blockUserMutation = useBlockUserMutation();
@@ -106,6 +143,31 @@ const PostDetailScreen = ({ route, navigation }) => {
 
     return [];
   }, [detail, initialPostParam]);
+
+  const displayComments = useMemo(
+    () =>
+      normalizeCommentsForDisplay(
+        detail?.comments ?? initialPostParam?.comments ?? [],
+        {
+          postId,
+          isHidden: (pid, commentId) =>
+            useCommentRemovalStore.getState().isHidden(pid, commentId),
+        },
+      ),
+    [
+      detail?.comments,
+      initialPostParam?.comments,
+      postId,
+      hiddenCommentKeys,
+    ],
+  );
+
+  // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
+  useEffect(() => {
+    setSelectedEmotionType(
+      toUiEmotionType(route.params?.initialSelectedEmotionType),
+    );
+  }, [postId, route.params?.initialSelectedEmotionType]);
 
   const handleMorePress = () => {
     setPostMoreVisible(true);
@@ -131,7 +193,6 @@ const PostDetailScreen = ({ route, navigation }) => {
     setPressedThread({ targetType: null, targetId: null });
   };
 
-  // TODO: 실제 네비게이션/삭제 로직 연결 예정
   const handleEditPost = () => {
     console.log("edit post");
     closePostMore();
@@ -148,7 +209,27 @@ const PostDetailScreen = ({ route, navigation }) => {
   };
 
   const handleEditThread = () => {
-    console.log("edit thread", threadActionModal);
+    const targetId = threadActionModal.targetId;
+
+    const findById = (list) => {
+      for (const item of list ?? []) {
+        if (item?.commentId === targetId) return item;
+        const nested = Array.isArray(item?.replies)
+          ? findById(item.replies)
+          : null;
+        if (nested) return nested;
+      }
+      return null;
+    };
+
+    const target = findById(
+      detail?.comments ?? initialPostParam?.comments ?? [],
+    );
+    setEditTarget({
+      commentId: targetId,
+      content: target?.content ?? "",
+    });
+    setReplyTarget(null); // edit 모드면 답글 작성 모드를 끈다.
     closeThreadActionModal();
   };
 
@@ -160,21 +241,15 @@ const PostDetailScreen = ({ route, navigation }) => {
       { commentId: targetId },
       {
         onSuccess: () => {
-          queryClient.setQueryData(postDetailKeys.detail(postId), (old) => {
-            if (!old) return old;
-
-            return {
-              ...old,
-              comments: old.comments
-                .filter((c) => c.commentId !== targetId)
-                .map((c) => ({
-                  ...c,
-                  replies: c.replies.filter((r) => r.commentId !== targetId),
-                })),
-            };
-          });
+          if (editTarget?.commentId === targetId) setEditTarget(null);
 
           closeThreadActionModal();
+        },
+        onError: (err) => {
+          console.log("delete comment failed", {
+            commentId: targetId,
+            err,
+          });
         },
       },
     );
@@ -223,6 +298,32 @@ const PostDetailScreen = ({ route, navigation }) => {
         },
       },
     );
+  };
+
+  const handleSubmitComment = (content) => {
+    if (!content.trim()) return;
+
+    // edit 모드면 PUT /community/comments/{commentId}
+    if (editTarget?.commentId) {
+      updateCommentMutation.mutate(
+        { commentId: editTarget.commentId, content },
+        {
+          onSuccess: () => {
+            setEditTarget(null);
+            setReplyTarget(null);
+          },
+          onError: (err) => {
+            console.log("update comment failed", {
+              commentId: editTarget.commentId,
+              err,
+            });
+          },
+        },
+      );
+      return;
+    }
+
+    handleCreateComment(content);
   };
 
   const handleBack = () => {
@@ -323,9 +424,11 @@ const PostDetailScreen = ({ route, navigation }) => {
             <PostReactions
               post={post}
               selectedEmotionType={selectedEmotionType}
-              onToggleEmotion={(emotionType) =>
-                toggleEmotionMutation.mutate({ emotionType })
-              }
+              isEmotionPending={toggleEmotionMutation.isPending}
+              onSelectReaction={(_postId, reaction) => {
+                const emotionType = reaction ? reaction.id : null;
+                toggleEmotionMutation.mutate({ emotionType });
+              }}
             />
           </View>
 
@@ -336,23 +439,43 @@ const PostDetailScreen = ({ route, navigation }) => {
               댓글
             </AppText>
             <CommentList
-              comments={detail?.comments ?? []}
+              comments={displayComments}
               onReplyPress={(commentId) => setReplyTarget(commentId)}
               setCommentData={() => {}}
               postAuthorNickname={post?.author?.nickname}
               onLongPressThread={openThreadActionModal}
               currentUserId={currentUser?.id}
-              onToggleCommentLike={(commentId) =>
-                toggleCommentLikeMutation.mutate({ commentId })
-              }
+              pressedThread={pressedThread}
+              onToggleCommentLike={(commentId) => {
+                toggleCommentLikeMutation.mutate(
+                  { commentId },
+                  {
+                    onSuccess: (data) => {
+                      console.log("toggle comment like", {
+                        commentId,
+                        liked: data?.liked,
+                        likeCount: data?.likeCount,
+                      });
+                    },
+                    onError: (err) => {
+                      console.log("toggle comment like failed", {
+                        commentId,
+                        err,
+                      });
+                    },
+                  },
+                );
+              }}
               isAllChannel={post.channel === "ALL"}
             />
           </View>
         </ScrollView>
         <CommentInput
-          onSubmit={handleCreateComment}
+          onSubmit={handleSubmitComment}
           replyTarget={replyTarget}
           cancelReply={() => setReplyTarget(null)}
+          editTarget={editTarget}
+          cancelEdit={() => setEditTarget(null)}
         />
 
         {postMoreVisible && (

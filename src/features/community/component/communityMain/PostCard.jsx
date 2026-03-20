@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View, Image, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -8,6 +8,8 @@ import TeamLabel from "./TeamLabel";
 
 import PostReactions from "../PostReactions";
 import { useTogglePostEmotionMutation } from "../../services/emotionMutations";
+import { toUiEmotionType } from "../../utils/emotionTypeMap";
+import { getUserEmotionSelection } from "../../store/userEmotionSelectionStore";
 
 const PostCard = ({ post, showTeam = false }) => {
   const navigation = useNavigation();
@@ -17,9 +19,20 @@ const PostCard = ({ post, showTeam = false }) => {
 
   const [selectedEmotionType, setSelectedEmotionType] = useState(null);
 
+  // 상세 화면 등에서 토글 후 돌아왔을 때 하트(선택 감정) 복원
+  useEffect(() => {
+    if (post?.postId == null) return;
+    const stored = getUserEmotionSelection(post.postId);
+    if (stored !== undefined) {
+      setSelectedEmotionType(stored);
+    }
+  }, [post.postId, post.emotions]);
+
   const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId, {
     onSuccess: (data) => {
-      setSelectedEmotionType(data.toggled ? data.emotionType : null);
+      setSelectedEmotionType(
+        data.toggled ? toUiEmotionType(data.emotionType) : null,
+      );
     },
   });
 
@@ -51,7 +64,7 @@ const PostCard = ({ post, showTeam = false }) => {
   const handlePressCard = () => {
     navigation.navigate("Community", {
       screen: "PostDetail",
-      params: { post },
+      params: { post, initialSelectedEmotionType: selectedEmotionType },
     });
   };
 
@@ -127,9 +140,9 @@ const PostCard = ({ post, showTeam = false }) => {
       <PostReactions
         post={reactionPost}
         selectedEmotionType={selectedEmotionType}
+        isEmotionPending={toggleEmotionMutation.isPending}
         onSelectReaction={handleSelectReaction}
         onCommentPress={handlePressCard}
-        onCardPress={handlePressCard}
       />
     </TouchableOpacity>
   );

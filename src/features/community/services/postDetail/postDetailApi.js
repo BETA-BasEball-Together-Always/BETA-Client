@@ -54,10 +54,43 @@ export const toggleCommentLikeApi = async ({ commentId }) => {
 
 // 게시글 감정표현 토글
 export const togglePostEmotionApi = async ({ postId, emotionType }) => {
-  const res = await api.post(`/api/v1/community/posts/${postId}/emotions`, {
-    emotionType,
+  const url = `/api/v1/community/posts/${postId}/emotions`;
+  const body = { emotionType };
+
+  console.log("[community emotion] → REQUEST", {
+    method: "POST",
+    url,
+    body,
+    note: "emotionType은 서버 명세: LIKE | SAD | FUN | HYPE",
   });
-  return res.data;
+
+  let res;
+  try {
+    res = await api.post(url, body);
+  } catch (err) {
+    console.log("[community emotion] ← ERROR", {
+      message: err?.message,
+      status: err?.response?.status,
+      data: err?.response?.data,
+    });
+    throw err;
+  }
+
+  const d = res.data;
+  console.log("[community emotion] ← RESPONSE", {
+    postId: d?.postId,
+    emotionType: d?.emotionType,
+    toggled: d?.toggled,
+    meaning:
+      d?.toggled === true
+        ? "감정 추가 또는 다른 감정으로 변경됨"
+        : d?.toggled === false
+          ? "감정 제거(취소)"
+          : "unknown",
+    emotions: d?.emotions,
+  });
+
+  return d;
 };
 
 // 사용자 차단 / 차단 해제

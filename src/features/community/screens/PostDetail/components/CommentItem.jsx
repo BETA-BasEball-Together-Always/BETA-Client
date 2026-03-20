@@ -17,7 +17,10 @@ export default function CommentItem({
   const [showReplies, setShowReplies] = useState(false);
 
   const isAuthor = comment.nickname === postAuthorNickname;
-  const isMine = comment.userId === currentUserId;
+  const isMine =
+    comment.userId != null &&
+    currentUserId != null &&
+    String(comment.userId) === String(currentUserId);
 
   return (
     <ThreadItem
@@ -58,6 +61,8 @@ export default function CommentItem({
                 currentUserId={currentUserId}
                 onLongPressThread={onLongPressThread}
                 pressedThread={pressedThread}
+                onToggleLike={onToggleLike}
+                isAllChannel={isAllChannel}
               />
             ))
           : null
