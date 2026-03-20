@@ -15,7 +15,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as SecureStore from "expo-secure-store";
 
-import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
 import { useStepBack } from "../../hooks/useStepBack";
