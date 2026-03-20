@@ -14,12 +14,28 @@ export default function useCommunityPosts({ channel, sort }) {
         offset: sort === "popular" ? pageParam : null,
       });
     },
+    /** v5 infiniteQuery 필수 — 최신글 다음 페이지 커서 */
+    initialPageParam: sort === "popular" ? 0 : null,
     getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage.hasNext) return undefined;
+      if (!lastPage?.hasNext) return undefined;
+
+      if (sort === "latest") {
+        return (
+          lastPage.nextCursor ??
+          lastPage.cursor ??
+          lastPage.nextPageCursor ??
+          undefined
+        );
+      }
 
       if (sort === "popular") {
-        return allPages.reduce((acc, page) => acc + page.posts.length, 0);
+        return allPages.reduce(
+          (acc, page) => acc + (page.posts?.length ?? 0),
+          0,
+        );
       }
+
+      return undefined;
     },
   });
 

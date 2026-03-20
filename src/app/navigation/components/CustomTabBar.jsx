@@ -48,6 +48,16 @@ const CustomTabBar = memo(function CustomTabBar({
               target: route.key,
               canPreventDefault: true,
             });
+
+            // ✅ Profile는 재선택 시에도 반드시 "내 마이페이지"로 복귀해야 함
+            if (route.name === "Profile" && !event.defaultPrevented) {
+              navigation.navigate(route.name, {
+                screen: "ProfileMain",
+                params: {},
+              });
+              return;
+            }
+
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }

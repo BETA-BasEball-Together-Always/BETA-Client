@@ -33,9 +33,11 @@ export default TeamLabel;
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
     borderRadius: 5,
+    justifyContent: "center",
+    alignItems: "center",
   },
   text: {
     lineHeight: 13.6,

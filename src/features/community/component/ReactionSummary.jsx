@@ -19,20 +19,31 @@ const ReactionSummary = ({
     <View style={[styles.reactionSummary, style]}>
       {showStrip ? (
         <View style={styles.reactionIconRow}>
-          {reactions.map((reaction) =>
-            (reactionCounts?.[reaction.id] ?? 0) > 0 ? (
-              <View
-                key={reaction.id}
-                style={[
-                  styles.summaryCircle,
-                  { backgroundColor: reaction.bgColor },
-                ]}
-              >
-                <AppText variant="semi13">{reaction.emoji}</AppText>
-              </View>
-            ) : null,
-          )}
-          <AppText variant="numMediumRegular" className="text-gray-400">
+          <View style={styles.iconStack}>
+            {reactions.map((reaction, index) =>
+              (reactionCounts?.[reaction.id] ?? 0) > 0 ? (
+                <View
+                  key={reaction.id}
+                  style={[
+                    styles.summaryCircle,
+                    {
+                      backgroundColor: reaction.bgColor,
+                      zIndex: reactions.length - index,
+                    },
+                  ]}
+                >
+                  <AppText variant="semi13" style={{ lineHeight: 20 }}>
+                    {reaction.emoji}
+                  </AppText>
+                </View>
+              ) : null,
+            )}
+          </View>
+          <AppText
+            variant="numMediumRegular"
+            className="text-gray-400"
+            style={styles.totalText}
+          >
             {totalReactions}
           </AppText>
         </View>
@@ -58,9 +69,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 27,
-    minHeight: 26,
-    marginHorizontal: 5,
+    marginTop: 0,
+    minHeight: 22,
+    marginHorizontal: 2,
   },
   spacer: {
     flex: 1,
@@ -72,12 +83,18 @@ const styles = StyleSheet.create({
   commentOnly: {
     marginLeft: "auto",
   },
+  iconStack: {
+    flexDirection: "row",
+  },
   summaryCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 20,
+    width: 22,
+    height: 22,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 9,
+    marginRight: -3,
+  },
+  totalText: {
+    marginLeft: 12,
   },
 });

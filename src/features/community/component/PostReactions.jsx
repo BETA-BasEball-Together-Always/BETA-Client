@@ -6,7 +6,7 @@ import ReactionSummary from "./ReactionSummary";
 import ReactionPicker from "./ReactionPicker";
 import PostActionBar from "./PostActionBar";
 
-const DEFAULT_ACTION_BAR_H = 52;
+const DEFAULT_ACTION_BAR_H = 32;
 
 const getReactionCountsFromPost = (post) => {
   // mutation cache는 `emotions`만 갱신하는데,

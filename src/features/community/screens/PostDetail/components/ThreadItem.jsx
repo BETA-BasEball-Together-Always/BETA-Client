@@ -13,6 +13,8 @@ import { LinearGradient } from "expo-linear-gradient";
 
 const HEART_SIZE = 20;
 
+const DELETED_COMMENT_TEXT = "삭제된 댓글입니다";
+
 // 댓글 + 답글 ui 공통 컴포넌트!!
 
 export default function ThreadItem({
@@ -22,6 +24,7 @@ export default function ThreadItem({
   isAllChannel = false,
   onToggleLike,
   onLongPress,
+  onPressProfile,
   showReplyActions = false,
   onReplyPress,
   isPressed = false,
@@ -42,7 +45,13 @@ export default function ThreadItem({
   const teamCode = author.teamCode ?? item.teamCode;
   const team = teamCode ? TEAM_DATA[teamCode] : null;
   const ProfileIcon = team?.ProfileIcon;
+  const profileUserId = author.userId ?? item.userId ?? null;
   const avatarSize = variant === "reply" ? 32 : 38;
+
+  const isDeleted =
+    item?.deleted === true ||
+    (typeof item?.content === "string" &&
+      item.content.trim() === DELETED_COMMENT_TEXT);
 
   return (
     <View
@@ -53,7 +62,7 @@ export default function ThreadItem({
       ]}
     >
       <Pressable
-        onLongPress={onLongPress}
+        onLongPress={isDeleted ? undefined : onLongPress}
         delayLongPress={400}
         style={styles.row}
       >
@@ -83,14 +92,26 @@ export default function ThreadItem({
         <View style={styles.rightSection}>
           <View style={styles.topRow}>
             <View style={styles.nameRow}>
-              <AppText variant="bodyMedium" style={styles.nickname}>
-                {displayNickname}
-              </AppText>
-              {isAllChannel && !!teamCode && (
-                <View style={styles.teamLabelWrap}>
-                  <TeamLabel teamCode={teamCode} />
+              <TouchableOpacity
+                activeOpacity={0.7}
+                disabled={!onPressProfile || profileUserId == null}
+                onPress={
+                  onPressProfile && profileUserId != null
+                    ? () => onPressProfile(profileUserId)
+                    : undefined
+                }
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <AppText variant="bodyMedium" style={styles.nickname}>
+                    {displayNickname}
+                  </AppText>
+                  {isAllChannel && !!teamCode && (
+                    <View style={styles.teamLabelWrap}>
+                      <TeamLabel teamCode={teamCode} />
+                    </View>
+                  )}
                 </View>
-              )}
+              </TouchableOpacity>
               {isAuthor && (
                 <AppText variant="smallRegular" style={styles.authorTag}>
                   · 작성자
@@ -104,11 +125,14 @@ export default function ThreadItem({
 
           <View style={styles.contentRow}>
             <View style={styles.contentLeft}>
-              <AppText variant="caption" style={styles.content}>
+              <AppText
+                variant="caption"
+                style={[styles.content, isDeleted && styles.deletedContent]}
+              >
                 {item.content}
               </AppText>
 
-              {showReplyActions && (
+              {showReplyActions && !isDeleted && (
                 <TouchableOpacity
                   onPress={onReplyPress}
                   style={styles.replyButton}
@@ -130,7 +154,7 @@ export default function ThreadItem({
               onPressOut={() => setHeartPressed(false)}
               style={styles.likeButton}
               activeOpacity={0.7}
-              disabled={!onToggleLike}
+              disabled={!onToggleLike || isDeleted}
             >
               <View style={styles.likeIconWrap}>
                 {heartPressed ? (
@@ -244,6 +268,9 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     marginRight: 12,
     lineHeight: 17,
+  },
+  deletedContent: {
+    color: "rgba(228, 228, 228, 0.55)",
   },
   likeButton: {
     alignItems: "center",

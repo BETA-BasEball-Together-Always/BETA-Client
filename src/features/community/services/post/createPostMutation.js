@@ -1,6 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postKeys } from "./postKeys";
 import api from "../../../../shared/libs/api";
+import communityKeys from "../communityKeys";
 
 // 게시글 작성!
 const createPostApi = async (formData) => {
@@ -14,7 +15,21 @@ const createPostApi = async (formData) => {
   return res.data;
 };
 
+/** 커뮤니티 피드 + 마이페이지 목록 갱신 (탭이 비활성일 때도 refetch 되도록 all) */
+export function invalidateCommunityPostLists(queryClient) {
+  queryClient.invalidateQueries({
+    queryKey: communityKeys.posts(),
+    refetchType: "all",
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["mypage"],
+    refetchType: "all",
+  });
+}
+
 export const useCreatePostMutation = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationKey: postKeys.createPost(),
 
@@ -22,6 +37,7 @@ export const useCreatePostMutation = () => {
 
     onSuccess: (data) => {
       console.log("게시글 작성 성공: ", data);
+      invalidateCommunityPostLists(queryClient);
     },
     onError: (error) => {
       console.log("게시글 작성 실패: ", error);

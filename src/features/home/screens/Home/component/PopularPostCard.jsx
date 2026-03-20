@@ -1,37 +1,79 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Image, StyleSheet } from "react-native";
-import { TouchableOpacity, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
 import CommunityUserProfile from "../../../../community/component/CommunityUserProfile";
+import { useUserStore } from "../../../../../shared/store/userStore";
 
 import { useTogglePostEmotionMutation } from "../../../../community/services/emotionMutations";
-import { getUserEmotionSelection } from "../../../../community/store/userEmotionSelectionStore";
+import { useUserEmotionSelection } from "../../../../community/store/userEmotionSelectionStore";
+import { useDeletePostMutation } from "../../../../community/services/post/deletePostMutation";
 
 import PostReactions from "../../../../community/component/PostReactions";
 import { useNavigation } from "@react-navigation/native";
 
 const PopularPostCard = ({ post }) => {
   const navigation = useNavigation();
+  const { user: currentUser } = useUserStore();
+  const deletePostMutation = useDeletePostMutation();
 
-  const [selectedEmotionType, setSelectedEmotionType] = useState(null);
+  const authorUserId = post?.author?.userId;
+  const isOwnPost =
+    currentUser?.id != null &&
+    authorUserId != null &&
+    String(currentUser.id) === String(authorUserId);
+
+  const postMenu = authorUserId
+    ? isOwnPost
+      ? {
+          isOwnPost: true,
+          onEdit: () => {
+            navigation.navigate("Community", {
+              screen: "CreatePost",
+              params: { editPost: post },
+            });
+          },
+          onDelete: () => {
+            Alert.alert("게시글 삭제", "이 게시글을 삭제할까요?", [
+              { text: "취소", style: "cancel" },
+              {
+                text: "삭제",
+                style: "destructive",
+                onPress: () => {
+                  deletePostMutation.mutate(post.postId, {
+                    onError: (e) => {
+                      Alert.alert(
+                        "오류",
+                        e?.response?.data?.message ?? "삭제에 실패했습니다.",
+                      );
+                    },
+                  });
+                },
+              },
+            ]);
+          },
+          onReport: () => {},
+        }
+      : {
+          isOwnPost: false,
+          onEdit: () => {},
+          onDelete: () => {},
+          onReport: () => {
+            Alert.alert("알림", "신고 기능은 준비 중입니다.");
+          },
+        }
+    : undefined;
+
   const [showMore, setShowMore] = useState(false);
   const [expanded, setExpanded] = useState(false);
-
-  const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId, {
-    onSuccess: (data) => {
-      setSelectedEmotionType(
-        data.toggled ? data.emotionType : null,
-      );
-    },
-  });
 
   const normalizeEmotionType = (t) =>
     ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
 
-  useEffect(() => {
-    const stored = getUserEmotionSelection(post.postId);
-    if (stored !== undefined) setSelectedEmotionType(normalizeEmotionType(stored));
-  }, [post.postId]);
+  const selectedEmotionType = normalizeEmotionType(
+    useUserEmotionSelection(post.postId),
+  );
+
+  const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId);
 
   const reactionPost = useMemo(
     () => ({
@@ -57,57 +99,84 @@ const PopularPostCard = ({ post }) => {
     });
   };
 
+  const handlePressProfile = () => {
+    const targetUserId = post?.author?.userId;
+    if (!targetUserId) return;
+
+    const isSelf =
+      currentUser?.id != null &&
+      String(currentUser.id) === String(targetUserId);
+
+    navigation.navigate("Main", {
+      screen: "Profile",
+      params: isSelf
+        ? {}
+        : {
+            screen: "ProfileMain",
+            params: { userId: targetUserId },
+          },
+    });
+  };
+
   return (
-    <TouchableOpacity style={styles.card} onPress={handlePressPost}>
+    <View style={styles.card}>
       <View style={styles.header}>
         <CommunityUserProfile
           nickname={post.author?.nickname}
           teamCode={post.author?.teamCode}
           createdAt={post.createdAt}
-          showTeam={true}
+          showTeam={post.channel === "ALL"}
+          onPress={handlePressProfile}
+          postMenu={postMenu}
         />
       </View>
 
-      {primaryImageUri && (
-        <Image source={{ uri: primaryImageUri }} style={styles.image} />
-      )}
-
-      <AppText
-        variant="smallRegular"
-        numberOfLines={expanded ? undefined : 3}
-        ellipsizeMode="tail"
-        style={styles.content}
-        onTextLayout={(e) => {
-          if (e.nativeEvent.lines.length > 3) setShowMore(true);
-        }}
+      <TouchableOpacity
+        style={{ flex: 1 }}
+        onPress={handlePressPost}
+        activeOpacity={0.8}
       >
-        {post.content}
-      </AppText>
+        {primaryImageUri && (
+          <Image source={{ uri: primaryImageUri }} style={styles.image} />
+        )}
 
-      {showMore && !expanded && (
-        <TouchableOpacity onPress={handlePressPost}>
-          <AppText variant="labelSmall" style={styles.moreText}>
-            ...더보기
-          </AppText>
-        </TouchableOpacity>
-      )}
+        <AppText
+          variant="smallRegular"
+          numberOfLines={expanded ? undefined : 3}
+          ellipsizeMode="tail"
+          style={styles.content}
+          onTextLayout={(e) => {
+            if (e.nativeEvent.lines.length > 3) setShowMore(true);
+          }}
+        >
+          {post.content}
+        </AppText>
 
-      <PostReactions
-        post={reactionPost}
-        selectedEmotionType={selectedEmotionType}
-        isEmotionPending={toggleEmotionMutation.isPending}
-        onToggleEmotion={(_postId, emotionType) => {
-          if (!emotionType) return;
-          toggleEmotionMutation.mutate({ emotionType });
-        }}
-        onSelectReaction={(_, reaction) => {
-          if (!reaction) return;
-          toggleEmotionMutation.mutate({
-            emotionType: reaction.id,
-          });
-        }}
-      />
-    </TouchableOpacity>
+        {showMore && !expanded && (
+          <TouchableOpacity onPress={handlePressPost}>
+            <AppText variant="labelSmall" style={styles.moreText}>
+              ...더보기
+            </AppText>
+          </TouchableOpacity>
+        )}
+
+        <PostReactions
+          post={reactionPost}
+          selectedEmotionType={selectedEmotionType}
+          isEmotionPending={toggleEmotionMutation.isPending}
+          onToggleEmotion={(_postId, emotionType) => {
+            if (!emotionType) return;
+            toggleEmotionMutation.mutate({ emotionType });
+          }}
+          onSelectReaction={(_, reaction) => {
+            if (!reaction) return;
+            toggleEmotionMutation.mutate({
+              emotionType: reaction.id,
+            });
+          }}
+        />
+      </TouchableOpacity>
+    </View>
   );
 };
 

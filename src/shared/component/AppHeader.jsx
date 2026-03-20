@@ -5,13 +5,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import BackIcon from "../assets/svg/chevrons/back.svg";
 import { AppText } from "../theme/components/AppText";
 
-const AppHeader = ({ pageName, showBack = false, backLabel }) => {
+const AppHeader = ({
+  pageName,
+  center,
+  showBack = false,
+  backLabel,
+  left,
+  right,
+}) => {
   const navigation = useNavigation();
+  const shouldShowBack = showBack && !left;
 
   return (
     // <SafeAreaView edges={["top"]} style={styles.safe}>
     <View style={styles.navContainer}>
-      {showBack && (
+      {left}
+      {shouldShowBack && (
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -37,6 +46,10 @@ const AppHeader = ({ pageName, showBack = false, backLabel }) => {
           </AppText>
         </View>
       )}
+
+      {center && <View style={styles.pageNameContainer}>{center}</View>}
+
+      {right && <View style={styles.rightContainer}>{right}</View>}
 
       {/* 오른쪽 균형용 빈 공간 */}
       {/* <View style={styles.right} /> */}
@@ -79,7 +92,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: "100%",
   },
-  //   right: {
-  //     width: 24,
-  //   },
+  rightContainer: {
+    position: "absolute",
+    right: 25,
+    height: "100%",
+    justifyContent: "center",
+  },
 });

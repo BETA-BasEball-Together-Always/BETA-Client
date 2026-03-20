@@ -7,19 +7,27 @@ import useCommunityPosts from "../hooks/useCommunityPosts";
 import { useUserStore } from "../../../shared/store/userStore";
 import { TEAM_DATA } from "../../../shared/constants/teams";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
+import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
 
 const { width } = Dimensions.get("window");
 
-const TeamCommunityScreen = () => {
-  const [sort, setSort] = useState("latest");
+const TeamCommunityScreen = ({ route }) => {
+  const initialSort = route?.params?.initialSort || "latest";
+  const [sort, setSort] = useState(initialSort);
   const user = useUserStore((state) => state.user);
   if (!user) return null;
+
+  // heart fill 복원을 위해, 유저가 감정을 남긴(=liked) 게시물 목록을 서버에서 hydrate
+  useMyLikedPostsInfiniteQuery({
+    enabled: !!user,
+    hydrateSelection: true,
+  });
 
   const { favoriteTeamName, favoriteTeamCode } = user;
   const MainIcon = TEAM_DATA[favoriteTeamCode]?.MainIcon;
 
   const { posts, loadMore, isLoading } = useCommunityPosts({
-    channel: undefined,
+    channel: "TEAM",
     sort,
   });
 

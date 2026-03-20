@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 17,
-    paddingBottom: 100,
+    paddingBottom: 16,
   },
   postListCard: {
     backgroundColor: "rgba(63, 63, 63, 0.30)",
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(127, 127, 127, 0.28)",
     borderWidth: 1,
     marginVertical: 5,
-    paddingVertical: 17,
+    paddingVertical: 10,
     paddingHorizontal: 13,
   },
   fabButton: {

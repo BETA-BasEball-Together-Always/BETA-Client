@@ -25,16 +25,21 @@ const QuestionCard = ({ user }) => {
         {ProfileIcon ? (
           <ProfileIcon width={28} height={28} />
         ) : (
-          <AppText style={{ color: "#FFF" }}>{nickname?.[0]}</AppText>
+          <AppText
+            variant="caption"
+            style={{ color: "#F9F9F9", lineHeight: 18 }}
+          >
+            {nickname?.[0]}
+          </AppText>
         )}
       </LinearGradient>
 
       <View style={{ marginLeft: 12 }}>
-        <AppText variant="semi13" style={{ color: "#FFF" }}>
+        <AppText variant="caption" style={{ color: "#F9F9F9", lineHeight: 18 }}>
           {nickname}
         </AppText>
 
-        <AppText variant="caption" style={styles.questionSubtitle}>
+        <AppText variant="spaced" style={styles.questionSubtitle}>
           오늘은 어떤 마음으로 응원하고 계신가요?
         </AppText>
       </View>
@@ -71,7 +76,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   questionSubtitle: {
-    color: "#9CA3AF",
+    color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16,
     marginTop: 4,
   },
 });

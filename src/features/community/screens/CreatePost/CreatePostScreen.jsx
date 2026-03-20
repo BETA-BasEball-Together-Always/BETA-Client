@@ -28,7 +28,11 @@ import { TEAM_DATA } from "../../../../shared/constants/teams";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
-import { useCreatePostMutation } from "../../services/post/createPostMutation";
+import {
+  invalidateCommunityPostLists,
+  useCreatePostMutation,
+} from "../../services/post/createPostMutation";
+import { useUpdatePostMutation } from "../../services/post/updatePostMutation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoading.svg";
@@ -49,15 +53,28 @@ const DUPLICATE_POST_WINDOW_MS = 30 * 1000; // 30초
 const CreatePostScreen = () => {
   const scrollRef = useRef(null);
   const inputOffsetY = useRef(0);
+  const initialEditRef = useRef(null);
 
   const navigation = useNavigation();
   const route = useRoute();
+  const editPost = route.params?.editPost;
+  const isEditMode = !!editPost?.postId;
+
   const author = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
   const createPostMutation = useCreatePostMutation();
+  const updatePostMutation = useUpdatePostMutation();
 
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(() =>
+    isEditMode ? (editPost?.content ?? "") : "",
+  );
   const [selectedBoardId, setSelectedBoardId] = useState("TEAM");
+  /** 수정 모드: 서버에 남길 기존 이미지 */
+  const [keptExistingImages, setKeptExistingImages] = useState([]);
+  /** 수정 모드: 새로 첨부한 로컬 이미지 */
+  const [pendingNewImages, setPendingNewImages] = useState([]);
+  /** 수정 모드: 삭제 요청할 imageId */
+  const [deletedImageIds, setDeletedImageIds] = useState([]);
   const [isBoardModalVisible, setIsBoardModalVisible] = useState(false);
   const [images, setImages] = useState([]);
   const [limitModalMessage, setLimitModalMessage] = useState("");
@@ -68,11 +85,55 @@ const CreatePostScreen = () => {
 
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
 
-  const isContentMax = content.length >= MAX_CONTENT_LENGTH;
-  const isImagesMax = images.length >= MAX_IMAGES;
-  const isUploadEnabled = content.trim().length > 0 || images.length > 0;
+  useEffect(() => {
+    if (!editPost?.postId) {
+      initialEditRef.current = null;
+      return;
+    }
+    setContent(editPost.content ?? "");
+    const existing = (editPost.images ?? [])
+      .map((img) => ({
+        imageId: Number(img.imageId ?? img.id),
+        uri: img.imageUrl || img.url,
+      }))
+      .filter((x) => x.uri && !Number.isNaN(x.imageId));
+    setKeptExistingImages(existing);
+    setPendingNewImages([]);
+    setDeletedImageIds([]);
+    initialEditRef.current = {
+      content: editPost.content ?? "",
+    };
+  }, [editPost?.postId]);
 
-  const isUploading = createPostMutation.isPending;
+  const totalImageCount = isEditMode
+    ? keptExistingImages.length + pendingNewImages.length
+    : images.length;
+
+  const previewImages = useMemo(() => {
+    if (!isEditMode) return images;
+    return [
+      ...keptExistingImages.map((e) => ({
+        uri: e.uri,
+        key: `existing-${e.imageId}`,
+      })),
+      ...pendingNewImages.map((a, i) => ({
+        ...a,
+        key: `new-${i}-${a.uri}`,
+      })),
+    ];
+  }, [isEditMode, images, keptExistingImages, pendingNewImages]);
+
+  const editBoardLabel = useMemo(() => {
+    const ch = editPost?.channel;
+    if (ch === "ALL") return "전체 게시판";
+    return "응원팀 게시판";
+  }, [editPost?.channel]);
+
+  const isContentMax = content.length >= MAX_CONTENT_LENGTH;
+  const isImagesMax = totalImageCount >= MAX_IMAGES;
+  const isUploadEnabled = content.trim().length > 0 || totalImageCount > 0;
+
+  const isUploading = createPostMutation.isPending || updatePostMutation.isPending;
   const isSpinning = isPickingMedia || isUploading;
 
   const spinAnim = React.useRef(new Animated.Value(0)).current;
@@ -275,6 +336,16 @@ const CreatePostScreen = () => {
   }, [content]);
 
   const handleAddImages = (newAssets) => {
+    if (isEditMode) {
+      setPendingNewImages((prev) => {
+        const cap = MAX_IMAGES - keptExistingImages.length;
+        const merged = [...prev, ...newAssets];
+        if (merged.length <= cap) return merged;
+        openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
+        return merged.slice(0, Math.max(0, cap));
+      });
+      return;
+    }
     setImages((prev) => {
       const merged = [...prev, ...newAssets];
       if (merged.length <= MAX_IMAGES) return merged;
@@ -286,7 +357,7 @@ const CreatePostScreen = () => {
   const handlePressGallery = async () => {
     try {
       setIsPickingMedia(true);
-      const remaining = MAX_IMAGES - images.length;
+      const remaining = MAX_IMAGES - totalImageCount;
       if (remaining <= 0) {
         openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
         return;
@@ -327,6 +398,18 @@ const CreatePostScreen = () => {
   const handlePressCamera = () => navigation.navigate("CreatePostCamera");
 
   const handleRemoveImage = (index) => {
+    if (isEditMode) {
+      const nExisting = keptExistingImages.length;
+      if (index < nExisting) {
+        const removed = keptExistingImages[index];
+        setDeletedImageIds((prev) => [...prev, removed.imageId]);
+        setKeptExistingImages((prev) => prev.filter((_, i) => i !== index));
+      } else {
+        const localIdx = index - nExisting;
+        setPendingNewImages((prev) => prev.filter((_, i) => i !== localIdx));
+      }
+      return;
+    }
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -359,11 +442,63 @@ const CreatePostScreen = () => {
     return uri;
   };
 
+  const appendImageFile = (formData, fieldName, asset, idx) => {
+    if (!asset?.uri) return;
+    const mimeType = guessMimeType(asset.uri);
+    const extMap = {
+      "image/png": "png",
+      "image/gif": "gif",
+      "image/webp": "webp",
+      "image/jpeg": "jpg",
+    };
+    const ext = extMap[mimeType] ?? "jpg";
+
+    formData.append(fieldName, {
+      uri: normalizeFileUri(asset.uri),
+      name: `image-${Date.now()}-${idx}.${ext}`,
+      type: mimeType,
+    });
+  };
+
   const handleUpload = () => {
     if (!isUploadEnabled || isUploading) return;
 
     if (hasHashTagOverflow) {
       openLimitModal("해시태그는 최대 5개만 추가 가능합니다.");
+      return;
+    }
+
+    if (isEditMode) {
+      const formData = new FormData();
+      formData.append("content", content);
+      acceptedHashTags.forEach((tag) => {
+        formData.append("hashtags", tag);
+      });
+      deletedImageIds.forEach((id) => {
+        formData.append("deletedImageIds", String(id));
+      });
+      pendingNewImages.forEach((asset, idx) => {
+        appendImageFile(formData, "newImages", asset, idx);
+      });
+
+      updatePostMutation.mutate(
+        { postId: editPost.postId, formData },
+        {
+          onSuccess: () => {
+            invalidateCommunityPostLists(queryClient);
+            navigation.goBack();
+          },
+          onError: (e) => {
+            const status = e?.response?.status;
+            if (status === 413) {
+              openLimitModal(
+                "게시글 용량이 너무 큽니다.\n이미지 크기나 개수를 줄여 다시 시도해 주세요.",
+              );
+            }
+            console.log("게시글 수정 실패:", e?.response?.data ?? e);
+          },
+        },
+      );
       return;
     }
 
@@ -386,27 +521,13 @@ const CreatePostScreen = () => {
     });
 
     images.forEach((asset, idx) => {
-      if (!asset?.uri) return;
-      const mimeType = guessMimeType(asset.uri);
-      const extMap = {
-        "image/png": "png",
-        "image/gif": "gif",
-        "image/webp": "webp",
-        "image/jpeg": "jpg",
-      };
-      const ext = extMap[mimeType] ?? "jpg";
-
-      formData.append("images", {
-        uri: normalizeFileUri(asset.uri),
-        name: `image-${Date.now()}-${idx}.${ext}`,
-        type: mimeType,
-      });
+      appendImageFile(formData, "images", asset, idx);
     });
 
     createPostMutation.mutate(formData, {
       onSuccess: (data) => {
         lastUploadRef.current = { content: normalizedContent, at: now };
-        queryClient.invalidateQueries({ queryKey: ["community"] });
+        // 목록 갱신은 useCreatePostMutation onSuccess에서 처리
         navigation.navigate("UploadSuccess", {
           createdPostId: data?.postId ?? data?.id ?? null,
         });
@@ -423,8 +544,18 @@ const CreatePostScreen = () => {
     });
   };
 
+  const isEditDirty = () => {
+    if (!isEditMode) return isUploadEnabled;
+    const init = initialEditRef.current;
+    if (!init) return isUploadEnabled;
+    if (content !== init.content) return true;
+    if (pendingNewImages.length > 0) return true;
+    if (deletedImageIds.length > 0) return true;
+    return false;
+  };
+
   const handlePressBack = () => {
-    if (isUploadEnabled) {
+    if (isEditMode ? isEditDirty() : isUploadEnabled) {
       setIsLeaveModalVisible(true);
     } else {
       navigation.goBack();
@@ -459,7 +590,7 @@ const CreatePostScreen = () => {
           }
           center={
             <AppText variant="displayTitle2" className="text-[#E5E5E5]">
-              새 글 작성
+              {isEditMode ? "게시글 수정" : "새 글 작성"}
             </AppText>
           }
           right={
@@ -481,7 +612,7 @@ const CreatePostScreen = () => {
                     : styles.uploadBtnTextDisabled
                 }
               >
-                업로드
+                {isEditMode ? "수정" : "업로드"}
               </AppText>
             </TouchableOpacity>
           }
@@ -493,25 +624,38 @@ const CreatePostScreen = () => {
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable
-            onPress={() => setIsBoardModalVisible(true)}
-            style={styles.selectBar}
-            onLayout={(e) => {
-              const { x, y, width, height } = e.nativeEvent.layout;
-              setDropdownLayout({ x, y, width, height });
-            }}
-          >
-            <View style={styles.textSection}>
-              <AppText variant="labelSmall" style={styles.categoryText}>
-                채널
-              </AppText>
-              <AppText variant="caption" style={styles.categorySubText}>
-                {selectedBoardLabel}
-              </AppText>
+          {isEditMode ? (
+            <View style={styles.selectBar}>
+              <View style={styles.textSection}>
+                <AppText variant="labelSmall" style={styles.categoryText}>
+                  채널
+                </AppText>
+                <AppText variant="caption" style={styles.categorySubText}>
+                  {editBoardLabel}
+                </AppText>
+              </View>
             </View>
+          ) : (
+            <Pressable
+              onPress={() => setIsBoardModalVisible(true)}
+              style={styles.selectBar}
+              onLayout={(e) => {
+                const { x, y, width, height } = e.nativeEvent.layout;
+                setDropdownLayout({ x, y, width, height });
+              }}
+            >
+              <View style={styles.textSection}>
+                <AppText variant="labelSmall" style={styles.categoryText}>
+                  채널
+                </AppText>
+                <AppText variant="caption" style={styles.categorySubText}>
+                  {selectedBoardLabel}
+                </AppText>
+              </View>
 
-            <DropDownIcon width={12} height={10} />
-          </Pressable>
+              <DropDownIcon width={12} height={10} />
+            </Pressable>
+          )}
 
           <View style={styles.divider} />
 
@@ -589,7 +733,7 @@ const CreatePostScreen = () => {
                 </View>
 
                 <ImagePreviewList
-                  images={images}
+                  images={previewImages}
                   onRemove={handleRemoveImage}
                 />
               </View>
@@ -609,7 +753,7 @@ const CreatePostScreen = () => {
                     isImagesMax ? styles.counterTextMax : styles.counterText
                   }
                 >
-                  {` | ${images.length}/${MAX_IMAGES}장`}
+                  {` | ${totalImageCount}/${MAX_IMAGES}장`}
                 </AppText>
               </View>
             </View>
@@ -798,9 +942,11 @@ const styles = StyleSheet.create({
   },
   uploadBtnTextDisabled: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 19,
   },
   uploadBtnTextEnabled: {
     color: "#1E1E1E",
+    lineHeight: 19,
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -977,6 +1123,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 13,
     color: "#E5E5E5",
+    lineHeight: 19,
   },
   limitModalCard: {
     marginTop: 330,

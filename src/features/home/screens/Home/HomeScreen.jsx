@@ -18,13 +18,21 @@ import { useUserStore } from "../../../../shared/store/userStore";
 import PopularPostCard from "./component/PopularPostCard";
 
 import useCommunityPosts from "../../../community/hooks/useCommunityPosts";
+import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
 
 const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const navigation = useNavigation();
 
+  // 홈의 PopularPostCard에서도 heart fill 복원을 위해 liked 목록을 hydrate
+  useMyLikedPostsInfiniteQuery({
+    enabled: !!user,
+    hydrateSelection: true,
+  });
+
+  // 인기 피드는 전체 게시판(ALL)과 동일 소스 — 더보기도 AllCommunity로 이동
   const { posts: allPosts } = useCommunityPosts({
-    channel: user?.favoriteTeamCode || "ALL",
+    channel: "ALL",
     sort: "popular",
   });
 

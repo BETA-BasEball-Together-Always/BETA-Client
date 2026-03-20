@@ -1,25 +1,77 @@
+import { create } from "zustand";
+
+const VALID_EMOTION_TYPES = new Set(["LIKE", "SAD", "FUN", "HYPE"]);
+
 /**
- * 피드(PostCard)는 언마운트/재사용될 수 있어, 상세에서 남긴 감정 선택을
- * 카드 로컬 state만으로는 복원하기 어렵습니다. 이 디바이스 세션에서
- * 사용자가 토글한 감정(서버 emotionType: LIKE|SAD|FUN|HYPE)을 postId 기준으로 보관합니다.
- * (앱 재시작 시 초기화됨 — 서버에 myEmotion 필드가 생기면 대체 가능)
+ * postId -> emotionType (LIKE|SAD|FUN|HYPE|null)
+ *
+ * - In-memory Map만 쓰면 API 하이드레이션 이후에도 UI가 갱신되지 않아서
+ *   Zustand로 바꿔 postCard 등에서 즉시 반영되게 처리
  */
-const selectionByPostId = new Map();
+export const useUserEmotionSelectionStore = create((set) => ({
+  selectionsByPostId: {},
+  setUserEmotionSelection: (postId, emotionTypeOrNull) =>
+    set((prev) => {
+      if (postId == null) return prev;
 
+      const nextValue =
+        emotionTypeOrNull == null
+          ? null
+          : VALID_EMOTION_TYPES.has(emotionTypeOrNull)
+            ? emotionTypeOrNull
+            : null;
+
+      return {
+        selectionsByPostId: {
+          ...prev.selectionsByPostId,
+          [postId]: nextValue,
+        },
+      };
+    }),
+  setUserEmotionSelectionsBulk: (entries) =>
+    set((prev) => ({
+      selectionsByPostId: {
+        ...prev.selectionsByPostId,
+        ...Object.fromEntries(
+          (entries ?? []).map(([postId, emotionTypeOrNull]) => [
+            postId,
+            emotionTypeOrNull == null
+              ? null
+              : VALID_EMOTION_TYPES.has(emotionTypeOrNull)
+                ? emotionTypeOrNull
+                : null,
+          ]),
+        ),
+      },
+    })),
+  clearUserEmotionSelection: (postId) =>
+    set((prev) => {
+      if (postId == null) return prev;
+      const next = { ...prev.selectionsByPostId };
+      delete next[postId];
+      return { selectionsByPostId: next };
+    }),
+}));
+
+/**
+ * 기존 코드 호환용: store를 직접 업데이트하는 함수 export
+ * (emotionMutations 등에서 "일반 함수 형태"로 import 중)
+ */
 export function setUserEmotionSelection(postId, emotionTypeOrNull) {
-  if (postId == null) return;
-  selectionByPostId.set(postId, emotionTypeOrNull);
-}
-
-/** undefined: 아직 이 기기에서 토글한 적 없음 */
-export function getUserEmotionSelection(postId) {
-  if (postId == null) return undefined;
-  return selectionByPostId.has(postId)
-    ? selectionByPostId.get(postId)
-    : undefined;
+  useUserEmotionSelectionStore
+    .getState()
+    .setUserEmotionSelection(postId, emotionTypeOrNull);
 }
 
 export function clearUserEmotionSelection(postId) {
-  if (postId == null) return;
-  selectionByPostId.delete(postId);
+  useUserEmotionSelectionStore.getState().clearUserEmotionSelection(postId);
+}
+
+export function getUserEmotionSelection(postId) {
+  if (postId == null) return undefined;
+  return useUserEmotionSelectionStore.getState().selectionsByPostId[postId];
+}
+
+export function useUserEmotionSelection(postId) {
+  return useUserEmotionSelectionStore((s) => s.selectionsByPostId[postId]);
 }

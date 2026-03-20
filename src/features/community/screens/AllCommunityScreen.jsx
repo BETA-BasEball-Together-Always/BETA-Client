@@ -6,6 +6,7 @@ import { useUserStore } from "../../../shared/store/userStore";
 
 import AllCommunityBackground from "../assets/svg/AllCommunityBackground/all_background.svg";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
+import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
 
 const AllCommunityScreen = ({ route }) => {
   const initialSort = route?.params?.initialSort || "latest";
@@ -13,10 +14,15 @@ const AllCommunityScreen = ({ route }) => {
   const user = useUserStore((state) => state.user);
   if (!user) return null;
 
-  const { favoriteTeamCode } = user;
+  // heart fill 복원을 위해, 유저가 감정을 남긴(=liked) 게시물 목록을 서버에서 hydrate
+  useMyLikedPostsInfiniteQuery({
+    enabled: !!user,
+    hydrateSelection: true,
+  });
 
+  // 전체 게시판: API/작성 시 channel 값과 동일하게 "ALL" (CreatePost의 전체 게시판 선택과 일치)
   const { posts, loadMore, isLoading } = useCommunityPosts({
-    channel: favoriteTeamCode,
+    channel: "ALL",
     sort,
   });
 

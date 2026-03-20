@@ -11,6 +11,7 @@ export default function ReplyItem({
   pressedThread,
   onToggleLike,
   isAllChannel = false,
+  onPressProfile,
 }) {
   const replyUserId = reply.userId ?? reply.author?.userId;
   const isAuthor =
@@ -43,6 +44,7 @@ export default function ReplyItem({
       onToggleLike={
         onToggleLike ? () => onToggleLike(reply.commentId) : undefined
       }
+      onPressProfile={onPressProfile}
     />
   );
 }

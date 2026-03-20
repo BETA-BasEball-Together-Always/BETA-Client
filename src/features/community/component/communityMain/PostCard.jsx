@@ -1,40 +1,76 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { StyleSheet, View, Image, TouchableOpacity } from "react-native";
+import React, { useMemo } from "react";
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { AppText } from "../../../../shared/theme/components/AppText";
-import { LinearGradient } from "expo-linear-gradient";
-import { TEAM_DATA } from "../../../../shared/constants/teams";
-import TeamLabel from "./TeamLabel";
 
 import PostReactions from "../PostReactions";
 import { useTogglePostEmotionMutation } from "../../services/emotionMutations";
-import { getUserEmotionSelection } from "../../store/userEmotionSelectionStore";
+import { useUserEmotionSelection } from "../../store/userEmotionSelectionStore";
+import CommunityUserProfile from "../CommunityUserProfile";
+import { useUserStore } from "../../../../shared/store/userStore";
+import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 
 const PostCard = ({ post, showTeam = false }) => {
   const navigation = useNavigation();
+  const { user: currentUser } = useUserStore();
+  const deletePostMutation = useDeletePostMutation();
   const { author } = post;
-  const team = TEAM_DATA[author?.teamCode];
-  const ProfileIcon = team?.ProfileIcon;
+  const authorUserId = author?.userId;
 
-  const [selectedEmotionType, setSelectedEmotionType] = useState(null);
+  const isOwnPost =
+    currentUser?.id != null &&
+    authorUserId != null &&
+    String(currentUser.id) === String(authorUserId);
+
+  const postMenu = authorUserId
+    ? isOwnPost
+      ? {
+          isOwnPost: true,
+          onEdit: () => {
+            navigation.navigate("Community", {
+              screen: "CreatePost",
+              params: { editPost: post },
+            });
+          },
+          onDelete: () => {
+            Alert.alert("게시글 삭제", "이 게시글을 삭제할까요?", [
+              { text: "취소", style: "cancel" },
+              {
+                text: "삭제",
+                style: "destructive",
+                onPress: () => {
+                  deletePostMutation.mutate(post.postId, {
+                    onError: (e) => {
+                      Alert.alert(
+                        "오류",
+                        e?.response?.data?.message ?? "삭제에 실패했습니다.",
+                      );
+                    },
+                  });
+                },
+              },
+            ]);
+          },
+          onReport: () => {},
+        }
+      : {
+          isOwnPost: false,
+          onEdit: () => {},
+          onDelete: () => {},
+          onReport: () => {
+            Alert.alert("알림", "신고 기능은 준비 중입니다.");
+          },
+        }
+    : undefined;
 
   const normalizeEmotionType = (t) =>
     ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
 
-  // 상세 화면 등에서 토글 후 돌아왔을 때 하트(선택 감정) 복원
-  useEffect(() => {
-    if (post?.postId == null) return;
-    const stored = getUserEmotionSelection(post.postId);
-    if (stored !== undefined) {
-      setSelectedEmotionType(normalizeEmotionType(stored));
-    }
-  }, [post.postId, post.emotions]);
+  const selectedEmotionType = normalizeEmotionType(
+    useUserEmotionSelection(post.postId),
+  );
 
-  const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId, {
-    onSuccess: (data) => {
-      setSelectedEmotionType(data.toggled ? data.emotionType : null);
-    },
-  });
+  const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId);
 
   const contentWithoutHashtags = useMemo(() => {
     const raw = post?.content ?? "";
@@ -68,6 +104,24 @@ const PostCard = ({ post, showTeam = false }) => {
     });
   };
 
+  const handlePressProfile = () => {
+    if (!authorUserId) return;
+
+    const isSelf =
+      currentUser?.id != null &&
+      String(currentUser.id) === String(authorUserId);
+
+    navigation.navigate("Main", {
+      screen: "Profile",
+      params: isSelf
+        ? {}
+        : {
+            screen: "ProfileMain",
+            params: { userId: authorUserId },
+          },
+    });
+  };
+
   const reactionPost = useMemo(
     () => ({
       ...post,
@@ -92,66 +146,54 @@ const PostCard = ({ post, showTeam = false }) => {
   };
 
   return (
-    <TouchableOpacity
-      style={styles.container}
-      activeOpacity={0.8}
-      onPress={handlePressCard}
-    >
-      {/* 프로필 */}
+    <View style={styles.container}>
       <View style={styles.authorRow}>
-        <LinearGradient
-          colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
-          locations={team?.gradient?.locations}
-          start={team?.gradient?.start}
-          end={team?.gradient?.end}
-          style={styles.avatarCircle}
-        >
-          {ProfileIcon ? (
-            <ProfileIcon width={28} height={28} />
-          ) : (
-            <AppText style={{ color: "#FFF" }}>{author?.nickname?.[0]}</AppText>
+        <CommunityUserProfile
+          nickname={author?.nickname}
+          teamCode={author?.teamCode}
+          createdAt={post?.createdAt}
+          showTeam={showTeam}
+          onPress={handlePressProfile}
+          postMenu={postMenu}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={styles.bodyPressable}
+        activeOpacity={0.8}
+        onPress={handlePressCard}
+      >
+        <View style={styles.contentSection}>
+          <AppText variant="caption" style={styles.contentText}>
+            {contentWithoutHashtags}
+          </AppText>
+
+          {post.hashtags?.length > 0 && (
+            <View style={styles.hashRow}>
+              <AppText variant="caption" style={styles.hashText}>
+                {post.hashtags.map((tag) => `#${tag}`).join(" ")}
+              </AppText>
+            </View>
           )}
-        </LinearGradient>
 
-        <AppText variant="caption" style={styles.nickname}>
-          {author?.nickname}
-        </AppText>
+          {primaryImageUri && (
+            <Image source={{ uri: primaryImageUri }} style={styles.image} />
+          )}
+        </View>
 
-        {showTeam && author?.teamCode && (
-          <TeamLabel teamCode={author.teamCode} />
-        )}
-      </View>
-
-      <View style={styles.contentSection}>
-        <AppText variant="caption" style={styles.contentText}>
-          {contentWithoutHashtags}
-        </AppText>
-
-        {post.hashtags?.length > 0 && (
-          <View style={styles.hashRow}>
-            <AppText variant="caption" style={styles.hashText}>
-              {post.hashtags.map((tag) => `#${tag}`).join(" ")}
-            </AppText>
-          </View>
-        )}
-
-        {primaryImageUri && (
-          <Image source={{ uri: primaryImageUri }} style={styles.image} />
-        )}
-      </View>
-
-      <PostReactions
-        post={reactionPost}
-        selectedEmotionType={selectedEmotionType}
-        isEmotionPending={toggleEmotionMutation.isPending}
-        onToggleEmotion={(_postId, emotionType) => {
-          if (!emotionType) return;
-          toggleEmotionMutation.mutate({ emotionType });
-        }}
-        onSelectReaction={handleSelectReaction}
-        onCommentPress={handlePressCard}
-      />
-    </TouchableOpacity>
+        <PostReactions
+          post={reactionPost}
+          selectedEmotionType={selectedEmotionType}
+          isEmotionPending={toggleEmotionMutation.isPending}
+          onToggleEmotion={(_postId, emotionType) => {
+            if (!emotionType) return;
+            toggleEmotionMutation.mutate({ emotionType });
+          }}
+          onSelectReaction={handleSelectReaction}
+          onCommentPress={handlePressCard}
+        />
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -162,14 +204,11 @@ const styles = StyleSheet.create({
     flexDirection: "column",
   },
   authorRow: {
-    flexDirection: "row",
-    alignItems: "center",
     marginBottom: 4,
+    width: "100%",
   },
-  nickname: {
-    color: "#fff",
-    fontWeight: "700",
-    marginRight: 6,
+  bodyPressable: {
+    flex: 1,
   },
   image: {
     width: "100%",
@@ -183,12 +222,14 @@ const styles = StyleSheet.create({
   },
   contentText: {
     color: "#F9F9F9",
+    lineHeight: 19,
   },
   hashRow: {
     marginTop: 6,
   },
   hashText: {
     color: "#6F9D48",
+    lineHeight: 19,
   },
   avatarCircle: {
     width: 40,

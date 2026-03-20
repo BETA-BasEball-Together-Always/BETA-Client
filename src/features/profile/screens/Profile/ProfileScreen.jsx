@@ -1,102 +1,214 @@
-import { Image, StyleSheet, View, TouchableOpacity } from "react-native";
-import React, { useState } from "react";
+import { StyleSheet, View, TouchableOpacity } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import SettingsIcon from "../../assets/svg/Settings.svg";
 import FeedTabContent from "./components/FeedTabContent";
 import EmptyState from "./components/EmptyState";
+import { TEAM_DATA } from "../../../../shared/constants/teams";
+import { LinearGradient } from "expo-linear-gradient";
 
-const mockUser = {
-  nickname: "김야구",
-  teamName: "LG 트윈스",
-  teamColor: "#C30452",
-  teamLogo: require("../../assets/png/ProfileLG.png"),
-};
+import { useUserStore } from "../../../../shared/store/userStore";
+import {
+  useMyCommentedPostsInfiniteQuery,
+  useMyLikedPostsInfiniteQuery,
+  useMyPostsInfiniteQuery,
+  useFlattenMypagePosts,
+  useUserFromUserPostsQuery,
+  useUserPostsInfiniteQuery,
+} from "../../hooks/useMypagePosts";
+import TeamLabel from "../../../community/component/communityMain/TeamLabel";
 
-const mockData = {
-  feed: [],
-  like: [],
-  comment: [],
-};
+const ProfileScreen = ({ navigation, route }) => {
+  const { user } = useUserStore();
+  if (!user) return null;
+  const { favoriteTeamCode, nickname } = user;
 
-const ProfileScreen = ({ navigation }) => {
+  const viewedUserId = route?.params?.userId ?? null;
+  const isSelf =
+    viewedUserId == null || String(viewedUserId) === String(user?.id);
+
+  const team = TEAM_DATA[favoriteTeamCode];
+  const ProfileIcon = team?.ProfileIcon;
+
   const handlePressSetting = () => {
     navigation.navigate("ProfileSetting");
   };
+
   const [activeTab, setActiveTab] = useState("feed");
+  const safeActiveTab = isSelf ? activeTab : "feed";
+
+  useEffect(() => {
+    if (!isSelf) setActiveTab("feed");
+  }, [isSelf]);
+
+  // heart fill 복원을 위해 liked 목록은 항상 hydrate
+  useMyLikedPostsInfiniteQuery({
+    enabled: !!user,
+    hydrateSelection: true,
+  });
+
+  const myPostsQuery = useMyPostsInfiniteQuery({ enabled: !!user && isSelf });
+  const myCommentedQuery = useMyCommentedPostsInfiniteQuery({
+    enabled: !!user && isSelf,
+  });
+  const myLikedQuery = useMyLikedPostsInfiniteQuery({
+    enabled: !!user && isSelf,
+    hydrateSelection: false,
+  });
+
+  const userPostsQuery = useUserPostsInfiniteQuery({
+    userId: viewedUserId,
+    enabled: !!user && !isSelf,
+  });
+
+  const userFromQuery = useUserFromUserPostsQuery(userPostsQuery);
+
+  const myPosts = useFlattenMypagePosts(myPostsQuery.data);
+  const myLikedPosts = useFlattenMypagePosts(myLikedQuery.data);
+  const myCommentedPosts = useFlattenMypagePosts(myCommentedQuery.data);
+
+  const userPosts = useFlattenMypagePosts(userPostsQuery.data);
 
   const renderTabContent = () => {
-    switch (activeTab) {
+    switch (safeActiveTab) {
       case "feed":
-        return mockData.feed.length > 0 ? (
-          <FeedTabContent posts={mockData.feed} />
-        ) : (
-          <EmptyState message="작성된 게시물이 없습니다" />
+        return (
+          <FeedTabContent
+            posts={isSelf ? myPosts : userPosts}
+            emptyMessage={
+              isSelf ? "작성된 게시물이 없습니다" : "작성된 게시물이 없습니다"
+            }
+            onEndReached={
+              isSelf ? myPostsQuery.fetchNextPage : userPostsQuery.fetchNextPage
+            }
+            isLoading={
+              isSelf
+                ? myPostsQuery.isLoading || myPostsQuery.isFetchingNextPage
+                : userPostsQuery.isLoading || userPostsQuery.isFetchingNextPage
+            }
+            hasNext={
+              !!(isSelf ? myPostsQuery.hasNextPage : userPostsQuery.hasNextPage)
+            }
+          />
         );
       case "like":
-        return mockData.like.length > 0 ? (
-          <FeedTabContent posts={mockData.like} />
-        ) : (
-          <EmptyState message="좋아요를 남긴 게시물이 없습니다" />
+        if (!isSelf) {
+          return <EmptyState message="잘못된 탭입니다" />;
+        }
+        return (
+          <FeedTabContent
+            posts={myLikedPosts}
+            emptyMessage="좋아요를 남긴 게시물이 없습니다"
+            onEndReached={myLikedQuery.fetchNextPage}
+            isLoading={
+              myLikedQuery.isLoading || myLikedQuery.isFetchingNextPage
+            }
+            hasNext={!!myLikedQuery.hasNextPage}
+          />
         );
-
       case "comment":
-        return mockData.comment.length > 0 ? (
-          <FeedTabContent posts={mockData.comment} />
-        ) : (
-          <EmptyState message="댓글을 남긴 게시물이 없습니다" />
+        if (!isSelf) {
+          return <EmptyState message="잘못된 탭입니다" />;
+        }
+        return (
+          <FeedTabContent
+            posts={myCommentedPosts}
+            emptyMessage="댓글을 남긴 게시물이 없습니다"
+            onEndReached={myCommentedQuery.fetchNextPage}
+            isLoading={
+              myCommentedQuery.isLoading || myCommentedQuery.isFetchingNextPage
+            }
+            hasNext={!!myCommentedQuery.hasNextPage}
+          />
         );
-
       default:
-        return null;
+        return <EmptyState message="잘못된 탭입니다" />;
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <AppText
-          variant="displayTitle2"
-          className="text-white"
-          style={{ lineHeight: 29 }}
-        >
-          마이스타디움
-        </AppText>
-        <TouchableOpacity onPress={handlePressSetting} activeOpacity={0.7}>
-          <SettingsIcon
-            width={24}
-            height={24}
-            color="#FFFFFF"
-            stroke="#FFFFFF"
-          />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.userProfile}>
-        <Image source={mockUser.teamLogo} style={styles.teamImage} />
-        <View style={styles.userInfoContainer}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      {isSelf && (
+        <View style={styles.header}>
           <AppText
-            variant="heading"
+            variant="displayTitle2"
             className="text-white"
-            style={{ lineHeight: 24.5 }}
+            style={{ lineHeight: 29 }}
           >
-            {mockUser.nickname}
+            마이스타디움
           </AppText>
-          <AppText
-            variant="middle"
-            className="text-white"
-            style={styles.bioText}
-          >
-            한 줄 소개를 작성해 보세요 :)
-          </AppText>
+          <TouchableOpacity onPress={handlePressSetting} activeOpacity={0.7}>
+            <SettingsIcon
+              width={24}
+              height={24}
+              color="#FFFFFF"
+              stroke="#FFFFFF"
+            />
+          </TouchableOpacity>
         </View>
+      )}
+      <View style={styles.userProfile}>
+        {(() => {
+          const displayTeamCode = isSelf
+            ? favoriteTeamCode
+            : userFromQuery?.teamCode;
+          const displayTeam = TEAM_DATA[displayTeamCode];
+          const DisplayProfileIcon = displayTeam?.ProfileIcon;
+          const displayNickname = isSelf ? nickname : userFromQuery?.nickname;
+          const displayBio = userFromQuery?.bio;
+          return (
+            <>
+              <LinearGradient
+                colors={displayTeam?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
+                locations={displayTeam?.gradient?.locations}
+                start={displayTeam?.gradient?.start}
+                end={displayTeam?.gradient?.end}
+                style={styles.avatarCircle}
+              >
+                {DisplayProfileIcon ? (
+                  <DisplayProfileIcon width={47} height={47} />
+                ) : (
+                  <AppText style={{ color: "#FFF" }}>
+                    {displayNickname?.[0]}
+                  </AppText>
+                )}
+              </LinearGradient>
+              <View style={styles.userInfoContainer}>
+                <View style={styles.userNameContainer}>
+                  <AppText
+                    variant="heading"
+                    className="text-white"
+                    style={{ lineHeight: 24.5 }}
+                  >
+                    {displayNickname}
+                  </AppText>
+                  {!isSelf && displayTeamCode && (
+                    <TeamLabel teamCode={displayTeamCode} />
+                  )}
+                </View>
+                <AppText
+                  variant="middle"
+                  className="text-white"
+                  style={styles.bioText}
+                >
+                  {displayBio ?? "한 줄 소개를 작성해 보세요 :)"}{" "}
+                </AppText>
+              </View>
+            </>
+          );
+        })()}
       </View>
 
       <View style={styles.tabContainer}>
-        {[
-          { key: "feed", label: "내 피드" },
-          { key: "like", label: "좋아요" },
-          { key: "comment", label: "댓글" },
-        ].map((tab) => {
+        {(isSelf
+          ? [
+              { key: "feed", label: "내 피드" },
+              { key: "like", label: "좋아요" },
+              { key: "comment", label: "댓글" },
+            ]
+          : [{ key: "feed", label: "피드" }]
+        ).map((tab) => {
           const isActive = activeTab === tab.key;
 
           return (
@@ -144,10 +256,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 35,
     height: 89,
   },
-  teamImage: {
+  avatarCircle: {
     width: 70,
     height: 70,
-    borderRadius: 50,
+    borderRadius: 70,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
   },
   userInfoContainer: {
     marginLeft: 16,

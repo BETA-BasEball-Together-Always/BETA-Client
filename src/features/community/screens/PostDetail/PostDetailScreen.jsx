@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,7 +22,6 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/component/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
-import MenuIcon from "../../assets/svg/TopBar/menuIcon.svg";
 
 import PostReactions from "../../component/PostReactions";
 import CommunityUserProfile from "../../component/CommunityUserProfile";
@@ -41,9 +41,10 @@ import {
   useTogglePostEmotionMutation,
   useUpdateCommentMutation,
 } from "../../services/postDetail/postDetailService";
-import { useQueryClient } from "@tanstack/react-query";
 import { normalizeCommentsForDisplay } from "../../utils/communityComments";
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
+import { useUserEmotionSelection } from "../../store/userEmotionSelectionStore";
+import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 
 const { width } = Dimensions.get("window");
 
@@ -55,7 +56,6 @@ const PostDetailScreen = ({ route, navigation }) => {
     initialSelectedEmotionType,
   } = route.params ?? {};
   const postId = paramPostId ?? initialPostParam?.postId;
-  const queryClient = useQueryClient();
 
   const currentUser = useUserStore((s) => s.user);
 
@@ -104,14 +104,18 @@ const PostDetailScreen = ({ route, navigation }) => {
   const scrollRef = useRef(null);
 
   const [replyTarget, setReplyTarget] = useState(null);
-  const [postMoreVisible, setPostMoreVisible] = useState(false);
   const [threadActionModal, setThreadActionModal] = useState({
     visible: false,
     targetType: null,
     targetId: null,
   });
 
-  const isMine = currentUser?.id === post?.author?.userId;
+  const isMine =
+    currentUser?.id != null &&
+    post?.author?.userId != null &&
+    String(currentUser.id) === String(post.author.userId);
+
+  const deletePostMutation = useDeletePostMutation();
 
   const [pressedThread, setPressedThread] = useState({
     targetType: null,
@@ -124,6 +128,14 @@ const PostDetailScreen = ({ route, navigation }) => {
   const [selectedEmotionType, setSelectedEmotionType] = useState(() =>
     normalizeEmotionType(initialSelectedEmotionType),
   );
+  const myEmotionTypeFromStore = useUserEmotionSelection(postId);
+
+  // PostCard에서 넘어오지 않는 케이스(또는 앱 재실행 직후)에서도
+  // store hydration 결과로 heart fill이 복원되도록 동기화합니다.
+  useEffect(() => {
+    if (myEmotionTypeFromStore === undefined) return;
+    setSelectedEmotionType(myEmotionTypeFromStore);
+  }, [postId, myEmotionTypeFromStore]);
   const [editTarget, setEditTarget] = useState(null); // { commentId, content }
 
   const createCommentMutation = useCreateCommentMutation(postId, {
@@ -134,9 +146,7 @@ const PostDetailScreen = ({ route, navigation }) => {
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
   const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
     onSuccess: (data) => {
-      setSelectedEmotionType(
-        data.toggled ? data.emotionType : null,
-      );
+      setSelectedEmotionType(data.toggled ? data.emotionType : null);
     },
   });
   const blockUserMutation = useBlockUserMutation();
@@ -170,14 +180,6 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
 
-  const handleMorePress = () => {
-    setPostMoreVisible(true);
-  };
-
-  const closePostMore = () => {
-    setPostMoreVisible(false);
-  };
-
   const openThreadActionModal = ({ isMine, targetType, targetId }) => {
     setPressedThread({ targetType, targetId });
 
@@ -195,18 +197,36 @@ const PostDetailScreen = ({ route, navigation }) => {
   };
 
   const handleEditPost = () => {
-    console.log("edit post");
-    closePostMore();
+    navigation.navigate("CreatePost", {
+      editPost: detail ?? post,
+    });
   };
 
   const handleDeletePost = () => {
-    console.log("delete post");
-    closePostMore();
+    Alert.alert("게시글 삭제", "이 게시글을 삭제할까요?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: () => {
+          deletePostMutation.mutate(postId, {
+            onSuccess: () => {
+              navigation.goBack();
+            },
+            onError: (e) => {
+              Alert.alert(
+                "오류",
+                e?.response?.data?.message ?? "삭제에 실패했습니다.",
+              );
+            },
+          });
+        },
+      },
+    ]);
   };
 
   const handleReportPost = () => {
-    console.log("report post");
-    closePostMore();
+    Alert.alert("알림", "신고 기능은 준비 중입니다.");
   };
 
   const handleEditThread = () => {
@@ -235,25 +255,33 @@ const PostDetailScreen = ({ route, navigation }) => {
   };
 
   const handleDeleteThread = () => {
-    console.log("delete thread", threadActionModal);
     const targetId = threadActionModal.targetId;
+    if (targetId == null) return;
 
-    deleteCommentMutation.mutate(
-      { commentId: targetId },
+    Alert.alert("댓글 삭제", "이 댓글을 삭제할까요?", [
+      { text: "취소", style: "cancel", onPress: () => {} },
       {
-        onSuccess: () => {
-          if (editTarget?.commentId === targetId) setEditTarget(null);
-
-          closeThreadActionModal();
-        },
-        onError: (err) => {
-          console.log("delete comment failed", {
-            commentId: targetId,
-            err,
-          });
+        text: "삭제",
+        style: "destructive",
+        onPress: () => {
+          deleteCommentMutation.mutate(
+            { commentId: targetId },
+            {
+              onSuccess: () => {
+                if (editTarget?.commentId === targetId) setEditTarget(null);
+                closeThreadActionModal();
+              },
+              onError: (err) => {
+                Alert.alert(
+                  "오류",
+                  err?.response?.data?.message ?? "댓글 삭제에 실패했습니다.",
+                );
+              },
+            },
+          );
         },
       },
-    );
+    ]);
   };
 
   const handleReportThread = () => {
@@ -271,30 +299,8 @@ const PostDetailScreen = ({ route, navigation }) => {
     createCommentMutation.mutate(
       { content, parentId: replyTarget ?? null },
       {
-        onSuccess: (newComment) => {
-          queryClient.setQueryData(postDetailKeys.detail(postId), (old) => {
-            if (!old) return old;
-
-            if (!replyTarget) {
-              return {
-                ...old,
-                comments: [...old.comments, newComment],
-              };
-            }
-
-            return {
-              ...old,
-              comments: old.comments.map((c) =>
-                c.commentId === replyTarget
-                  ? {
-                      ...c,
-                      replies: [...c.replies, newComment],
-                    }
-                  : c,
-              ),
-            };
-          });
-
+        // 상세 캐시 갱신은 useCreateCommentMutation onSuccess에서 처리 (중복 추가 방지)
+        onSuccess: () => {
           setReplyTarget(null);
         },
       },
@@ -329,11 +335,18 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const handleBack = () => {
     if (from === "upload") {
+      // 커스텀 탭바(customTabBar)는 MainTabNavigator에만 존재합니다.
+      // 따라서 CommunityStack 내부(AllCommunity/TeamCommunity)로 이동하면 탭바가 사라지므로,
+      // Root의 `Main`으로 이동시켜 탭바가 유지되도록 합니다.
       if (post.channel === "ALL") {
-        navigation.replace("AllCommunity");
+        navigation.replace("Main", {
+          screen: "AllCommunity",
+          params: { initialSort: "latest" },
+        });
       } else {
-        navigation.replace("TeamCommunity", {
-          teamCode: post.author?.teamCode,
+        navigation.replace("Main", {
+          screen: "TeamCommunity",
+          params: { initialSort: "latest" },
         });
       }
     } else {
@@ -360,11 +373,6 @@ const PostDetailScreen = ({ route, navigation }) => {
               </AppText>
             </TouchableOpacity>
           }
-          right={
-            <TouchableOpacity onPress={handleMorePress}>
-              <MenuIcon width={20} height={20} />
-            </TouchableOpacity>
-          }
         />
 
         <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
@@ -375,6 +383,37 @@ const PostDetailScreen = ({ route, navigation }) => {
                 teamCode={author.teamCode}
                 createdAt={post.createdAt}
                 showTeam={isAllChannel}
+                onPress={() => {
+                  const targetUserId = author?.userId;
+                  if (!targetUserId) return;
+                  const isSelf =
+                    currentUser?.id != null &&
+                    String(currentUser.id) === String(targetUserId);
+                  navigation.navigate("Main", {
+                    screen: "Profile",
+                    params: isSelf
+                      ? {}
+                      : {
+                          screen: "ProfileMain",
+                          params: { userId: targetUserId },
+                        },
+                  });
+                }}
+                postMenu={
+                  isMine
+                    ? {
+                        isOwnPost: true,
+                        onEdit: handleEditPost,
+                        onDelete: handleDeletePost,
+                        onReport: () => {},
+                      }
+                    : {
+                        isOwnPost: false,
+                        onEdit: () => {},
+                        onDelete: () => {},
+                        onReport: handleReportPost,
+                      }
+                }
               />
             </View>
 
@@ -474,6 +513,21 @@ const PostDetailScreen = ({ route, navigation }) => {
                 );
               }}
               isAllChannel={post.channel === "ALL"}
+              onPressProfile={(targetUserId) => {
+                if (!targetUserId) return;
+                const isSelf =
+                  currentUser?.id != null &&
+                  String(currentUser.id) === String(targetUserId);
+                navigation.navigate("Main", {
+                  screen: "Profile",
+                  params: isSelf
+                    ? {}
+                    : {
+                        screen: "ProfileMain",
+                        params: { userId: targetUserId },
+                      },
+                });
+              }}
             />
           </View>
         </ScrollView>
@@ -484,47 +538,6 @@ const PostDetailScreen = ({ route, navigation }) => {
           editTarget={editTarget}
           cancelEdit={() => setEditTarget(null)}
         />
-
-        {postMoreVisible && (
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={styles.modalBackdrop}
-              activeOpacity={1}
-              onPress={closePostMore}
-            />
-            <View style={styles.postMoreMenu}>
-              {isMine ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.postMoreButton}
-                    onPress={handleEditPost}
-                  >
-                    <AppText variant="bodyMedium" style={styles.postMoreText}>
-                      수정하기
-                    </AppText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.postMoreButton}
-                    onPress={handleDeletePost}
-                  >
-                    <AppText variant="bodyMedium" style={styles.postMoreText}>
-                      삭제하기
-                    </AppText>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={styles.postMoreButton}
-                  onPress={handleReportPost}
-                >
-                  <AppText variant="bodyMedium" style={styles.postMoreText}>
-                    신고하기
-                  </AppText>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        )}
 
         {threadActionModal.visible && (
           <View style={styles.modalOverlay}>
@@ -718,29 +731,13 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   bottomSheetButton: {
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#232323",
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginBottom: 8,
   },
   bottomSheetText: {
-    color: "#F9F9F9",
-  },
-  postMoreMenu: {
-    position: "absolute",
-    top: 56,
-    right: 16,
-    backgroundColor: "#27272A",
-    borderRadius: 8,
-    paddingVertical: 4,
-    minWidth: 120,
-  },
-  postMoreButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  postMoreText: {
     color: "#F9F9F9",
   },
 });

@@ -12,6 +12,7 @@ export default function CommentList({
   pressedThread,
   onToggleCommentLike,
   isAllChannel = false,
+  onPressProfile,
 }) {
   return (
     <View style={styles.container}>
@@ -27,6 +28,7 @@ export default function CommentList({
           pressedThread={pressedThread}
           onToggleLike={onToggleCommentLike}
           isAllChannel={isAllChannel}
+          onPressProfile={onPressProfile}
         />
       ))}
     </View>

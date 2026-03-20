@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     backgroundColor: "#121212",
+    // transform: [{ translateY: -6 }],
   },
   wrapperWithBorder: {
     borderTopWidth: 1,

@@ -1,6 +1,8 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postKeys } from "./postKeys";
 import api from "../../../../shared/libs/api";
+import postDetailKeys from "../postDetail/postDetailKeys";
+import communityKeys from "../communityKeys";
 
 // 게시글 수정!
 const updatePostApi = async ({ postId, formData }) => {
@@ -8,17 +10,25 @@ const updatePostApi = async ({ postId, formData }) => {
     headers: {
       "Content-Type": "multipart/form-data",
     },
+    timeout: 20000,
   });
   return res.data;
 };
 
 export const useUpdatePostMutation = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationKey: postKeys.updatePost(),
 
     mutationFn: ({ postId, formData }) => updatePostApi({ postId, formData }),
 
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      const postId = variables?.postId;
+      if (postId != null) {
+        queryClient.invalidateQueries({ queryKey: postDetailKeys.detail(postId) });
+      }
+      queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
       console.log("게시글 수정 성공: ", data);
     },
 

@@ -38,7 +38,7 @@ export function normalizeCommentsForDisplay(comments, options = {}) {
   if (!Array.isArray(comments)) return [];
   const { postId, isHidden } = options;
 
-  return comments
+  const topLevel = comments
     .map((c) => {
       if (isHidden?.(postId, c.commentId)) return null;
       const replies = filterDeletedLeaves(c.replies ?? [], postId, isHidden);
@@ -48,4 +48,11 @@ export function normalizeCommentsForDisplay(comments, options = {}) {
       return { ...c, replies };
     })
     .filter(Boolean);
+
+  // 댓글: 등록 순(오래된 것이 위) — API가 최신순으로 줄 때도 맞춤
+  return topLevel.sort(
+    (a, b) =>
+      new Date(a.createdAt || 0).getTime() -
+      new Date(b.createdAt || 0).getTime(),
+  );
 }

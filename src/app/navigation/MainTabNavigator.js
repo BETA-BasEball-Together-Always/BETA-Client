@@ -5,8 +5,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeScreen from "@features/home/screens/Home/HomeScreen";
 import TeamCommunityScreen from "@features/community/screens/TeamCommunityScreen";
 import AllCommunityScreen from "@features/community/screens/AllCommunityScreen";
-import ProfileScreen from "@features/profile/screens/Profile/ProfileScreen";
 import PhotoBoothStack from "./PhotoBoothStack";
+import ProfileStack from "./ProfileStack";
 
 // 커스텀 탭바
 import CustomTabBar from "./components/CustomTabBar";

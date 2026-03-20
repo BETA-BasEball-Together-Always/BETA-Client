@@ -14,11 +14,9 @@ const ImagePreviewList = ({ images, onRemove }) => {
       {images.map((asset, idx) => {
         const aspectRatio =
           asset?.width && asset?.height ? asset.width / asset.height : 1;
+        const itemKey = asset?.key ?? `${asset?.uri ?? "image"}-${idx}`;
         return (
-          <View
-            key={`${asset?.uri ?? "image"}-${idx}`}
-            style={styles.previewWrap}
-          >
+          <View key={itemKey} style={styles.previewWrap}>
             <View style={styles.previewImageClip}>
               <Image
                 source={{ uri: asset.uri }}
