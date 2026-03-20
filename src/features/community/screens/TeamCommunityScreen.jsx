@@ -23,8 +23,6 @@ const TeamCommunityScreen = () => {
     sort,
   });
 
-  console.log("posts: ", posts);
-
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       {MainIcon && (
