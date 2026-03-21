@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { AppText } from "../../../../../shared/theme/components/AppText";
-import { getRelativeTime } from "../utils/relativeTime";
+import { getRelativeTimeForComment } from "../utils/relativeTime";
 import HeartIcon from "../../../assets/svg/CommunityPost/heartIcon.svg";
 import HeartFilledIcon from "../../../assets/svg/CommunityPost/heartFilledIcon.svg";
 import HeartOnPressIcon from "../../../assets/svg/CommunityPost/heartOnPressIcon.svg";
@@ -119,7 +119,7 @@ export default function ThreadItem({
               )}
             </View>
             <AppText variant="numMediumRegular" style={styles.timeText}>
-              {getRelativeTime(item.createdAt)}
+              {getRelativeTimeForComment(item.createdAt)}
             </AppText>
           </View>
 

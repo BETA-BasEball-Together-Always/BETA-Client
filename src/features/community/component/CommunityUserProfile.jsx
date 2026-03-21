@@ -10,7 +10,7 @@ import { AppText } from "../../../shared/theme/components/AppText";
 import { LinearGradient } from "expo-linear-gradient";
 import { TEAM_DATA } from "../../../shared/constants/teams";
 import TeamLabel from "./communityMain/TeamLabel";
-import { getRelativeTime } from "../screens/PostDetail/utils/relativeTime";
+import { getRelativeTimeForPostBody } from "../screens/PostDetail/utils/relativeTime";
 import MenuIcon from "../assets/svg/TopBar/menuIcon.svg";
 
 /**
@@ -75,7 +75,7 @@ const CommunityUserProfile = ({
 
           {createdAt && (
             <AppText style={styles.timeAgo}>
-              {getRelativeTime(createdAt)}
+              {getRelativeTimeForPostBody(createdAt)}
             </AppText>
           )}
         </View>

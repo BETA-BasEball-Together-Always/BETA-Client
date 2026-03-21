@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -123,6 +123,15 @@ const PostCard = ({ post, showTeam = false }) => {
     [post],
   );
 
+  /** numberOfLines={3}만 쓰면 onTextLayout에서 실제 줄 수를 알 수 없어 1회 측정 */
+  const [bodyLineCount, setBodyLineCount] = useState(null);
+  const bodyNeedsMore =
+    bodyLineCount != null && bodyLineCount > 3 && !showAsUnavailable;
+
+  useEffect(() => {
+    setBodyLineCount(null);
+  }, [post?.postId, contentWithoutHashtags]);
+
   const reactionCounts = useMemo(() => {
     const emotions = post.emotions ?? {};
     return {
@@ -221,6 +230,14 @@ const PostCard = ({ post, showTeam = false }) => {
         <View style={styles.contentSection}>
           <AppText
             variant="caption"
+            numberOfLines={
+              bodyLineCount != null && bodyLineCount > 3 ? 3 : undefined
+            }
+            ellipsizeMode="tail"
+            onTextLayout={(e) => {
+              if (bodyLineCount !== null) return;
+              setBodyLineCount(e.nativeEvent.lines.length);
+            }}
             style={[
               styles.contentText,
               showAsUnavailable && styles.unavailableText,
@@ -230,6 +247,18 @@ const PostCard = ({ post, showTeam = false }) => {
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
               : contentWithoutHashtags}
           </AppText>
+
+          {bodyNeedsMore ? (
+            <TouchableOpacity
+              onPress={handlePressCard}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
+            >
+              <AppText variant="labelSmall" style={styles.moreLink}>
+                ...더보기
+              </AppText>
+            </TouchableOpacity>
+          ) : null}
 
           {!showAsUnavailable && hashtagLabels.length > 0 && (
             <View style={styles.hashRow}>
@@ -303,6 +332,10 @@ const styles = StyleSheet.create({
   contentText: {
     color: "#F9F9F9",
     lineHeight: 19,
+  },
+  moreLink: {
+    color: "rgba(228, 228, 228, 0.5)",
+    marginTop: 4,
   },
   unavailableText: {
     color: "rgba(228, 228, 228, 0.55)",

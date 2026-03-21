@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
   ImageBackground,
+  ActivityIndicator,
 } from "react-native";
 import React from "react";
 import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
@@ -17,8 +18,8 @@ import Banner from "../../assets/png/banner.png";
 import { useUserStore } from "../../../../shared/store/userStore";
 import PopularPostCard from "./component/PopularPostCard";
 
-import useCommunityPosts from "../../../community/hooks/useCommunityPosts";
 import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
+import useHomePopularFeed from "../../hooks/useHomePopularFeed";
 
 const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
@@ -30,13 +31,23 @@ const HomeScreen = () => {
     hydrateSelection: true,
   });
 
-  // 인기 피드는 전체 게시판(ALL)과 동일 소스 — 더보기도 AllCommunity로 이동
-  const { posts: allPosts } = useCommunityPosts({
-    channel: "ALL",
-    sort: "popular",
-  });
+  const {
+    dailyPopular,
+    refetch,
+    isLoading: popularLoading,
+    isError: popularError,
+    isFetchingNextPage,
+  } = useHomePopularFeed();
 
-  const popularPosts = allPosts?.slice(0, 5) || [];
+  const popularBusy =
+    !popularError &&
+    dailyPopular.length === 0 &&
+    (popularLoading || isFetchingNextPage);
+  const popularEmpty =
+    !popularError &&
+    !popularLoading &&
+    !isFetchingNextPage &&
+    dailyPopular.length === 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -99,24 +110,38 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {popularPosts.slice(0, 5).map((post, index) => (
-            <PopularPostCard
-              key={`${post.postId}-${index}`}
-              post={post}
-              onPress={() =>
-                navigation.navigate({
-                  name: "AllCommunity",
-                  params: {
-                    initialSort: "popular",
-                    initialPostId: post.postId,
-                  },
-                  merge: true,
-                })
-              }
-            />
-          ))}
-        </ScrollView>
+        {popularError ? (
+          <View style={styles.popularFallback}>
+            <AppText variant="caption" style={styles.popularFallbackText}>
+              피드를 불러올 수 없습니다
+            </AppText>
+            <TouchableOpacity
+              onPress={() => refetch()}
+              style={styles.popularRetry}
+              accessibilityRole="button"
+            >
+              <AppText variant="middle" style={styles.popularRetryLabel}>
+                다시 시도
+              </AppText>
+            </TouchableOpacity>
+          </View>
+        ) : popularBusy ? (
+          <View style={styles.popularLoading}>
+            <ActivityIndicator color="#F9F9F9" />
+          </View>
+        ) : popularEmpty ? (
+          <View style={styles.popularEmpty}>
+            <AppText variant="caption" style={styles.popularEmptyText}>
+              아직 인기 게시물이 없어요
+            </AppText>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {dailyPopular.map((post) => (
+              <PopularPostCard key={String(post.postId)} post={post} />
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -214,6 +239,40 @@ const styles = StyleSheet.create({
     marginBlock: 7,
   },
   popularHeading: {
+    color: "#F9F9F9",
+  },
+  popularLoading: {
+    minHeight: 120,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  popularEmpty: {
+    minHeight: 120,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  popularEmptyText: {
+    color: "rgba(249, 249, 249, 0.65)",
+  },
+  popularFallback: {
+    minHeight: 120,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  popularFallbackText: {
+    color: "rgba(249, 249, 249, 0.75)",
+  },
+  popularRetry: {
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  popularRetryLabel: {
     color: "#F9F9F9",
   },
 });

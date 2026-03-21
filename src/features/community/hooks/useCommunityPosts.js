@@ -88,7 +88,13 @@ export default function useCommunityPosts({ channel, sort, enabled = true }) {
   return {
     posts,
     loadMore: query.fetchNextPage,
+    fetchNextPage: query.fetchNextPage,
     refetch: query.refetch,
     isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    hasNextPage: query.hasNextPage ?? false,
+    isFetchingNextPage: query.isFetchingNextPage,
+    pageCount: query.data?.pages?.length ?? 0,
   };
 }

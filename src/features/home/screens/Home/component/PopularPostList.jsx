@@ -9,7 +9,7 @@ import { AppText } from "../../../../../shared/theme/components/AppText";
 const PopularPostList = ({ posts }) => {
   const sortedPosts = useDailyPopularPosts(posts);
 
-  if (!posts || posts.length === 0) {
+  if (!posts?.length || sortedPosts.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <AppText variant="caption" className="text-[#F9F9F9]">
