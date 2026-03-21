@@ -1,6 +1,9 @@
 import React, { memo } from "react";
 import { View, StyleSheet } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import TabBarItem from "./TabBarItem";
 import { getDeepActiveRouteName } from "../utils/navigationHelper";
 
@@ -8,8 +11,8 @@ const CustomTabBar = memo(function CustomTabBar({
   state,
   descriptors,
   navigation,
-  colors,        // { active, inactive }
-  hiddenRoutes,  // ["CameraScreen", "EditScreen"]
+  colors, // { active, inactive }
+  hiddenRoutes, // ["CameraScreen", "EditScreen"]
 }) {
   const insets = useSafeAreaInsets();
 
@@ -45,6 +48,16 @@ const CustomTabBar = memo(function CustomTabBar({
               target: route.key,
               canPreventDefault: true,
             });
+
+            // ✅ Profile는 재선택 시에도 반드시 "내 마이페이지"로 복귀해야 함
+            if (route.name === "Profile" && !event.defaultPrevented) {
+              navigation.navigate(route.name, {
+                screen: "ProfileMain",
+                params: {},
+              });
+              return;
+            }
+
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
@@ -68,14 +81,19 @@ export default CustomTabBar;
 
 const styles = StyleSheet.create({
   // 배경을 투명/다크 중 택1. 여기선 다크.
-  safe: { backgroundColor: "#121212" },
+  safe: {
+    backgroundColor: "#121212",
+    shadowColor: "#666666",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 8,
+  },
   bar: {
     flexDirection: "row",
-    height: 60,
-    paddingHorizontal: '7%',
+    height: 80,
+    paddingHorizontal: 28,
     justifyContent: "space-between",
     alignItems: "center",
-    // borderWidth:1,
-    // borderColor:'green'
   },
 });

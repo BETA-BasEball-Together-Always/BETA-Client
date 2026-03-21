@@ -2,26 +2,41 @@
 import NaverLogin from "@react-native-seoul/naver-login";
 
 export const naverSignIn = async () => {
-  // 1) 로그인 시도
-  const {isSuccess, successResponse, failureResponse} =
-    await NaverLogin.login();
+  try {
+    const result = await NaverLogin.login();
 
-  // 2) 실패 처리
-  if (!isSuccess) {
-    if (failureResponse?.isCancel) {
-      return {cancelled: true};
+    if (!result) {
+      console.warn("NaverLogin.login()가 undefined를 반환했습니다.");
+      return { cancelled: true };
     }
-    throw new Error(failureResponse?.message || "Naver login failed");
+
+    const { isSuccess, successResponse, failureResponse } = result;
+    console.log("네이버 로그인 결과: ", result);
+
+    if (!isSuccess) {
+      if (failureResponse?.isCancel) {
+        console.log("네이버 로그인 취소됨");
+        return { cancelled: true };
+      }
+      console.warn("네이버 로그인 실패: ", failureResponse);
+      throw new Error(failureResponse?.message || "Naver login failed");
+    }
+
+    // accessToken으로 프로필 조회!
+    const profileResult = await NaverLogin.getProfile(
+      successResponse.accessToken,
+    );
+    console.log("네이버 프로필: ", profileResult);
+
+    return {
+      cancelled: false,
+      token: successResponse,
+      profile: profileResult?.response ?? null,
+    };
+  } catch (error) {
+    console.error("naverSignIn 오류: ", error);
+    console.error("naverSignIn 오류 데이터: ", error.data);
+    console.error("naverSignIn 오류 리스폰스: ", error.response);
+    return { cancelled: true };
   }
-
-  // 3) accessToken으로 프로필 불러오기
-  const profileResult = await NaverLogin.getProfile(
-    successResponse.accessToken
-  );
-
-  return {
-    cancelled: false,
-    token: successResponse, // accessToken, refreshToken 등
-    profile: profileResult.response, // 네이버 프로필(이메일, 닉네임 등)
-  };
 };

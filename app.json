@@ -2,6 +2,7 @@
   "expo": {
     "name": "Beta",
     "slug": "Beta",
+    "scheme": "navergJBa1AaJEw6uVIiRTfPw",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -18,10 +19,16 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "야구네컷 촬영을 위해 카메라 접근이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "사진을 업로드하기 위해 사진 보관함 접근이 필요합니다.",
         "NSPhotoLibraryAddUsageDescription": "편집된 야구네컷을 사진 보관함에 저장합니다.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "kakaokompassauth",
+          "kakaolink",
+          "naversearchapp"
+        ]
       },
-      "bundleIdentifier": "com.bmbx08.Beta"
+      "bundleIdentifier": "com.beta.baseballapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -30,7 +37,7 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": ["android.permission.CAMERA"],
-      "package": "com.bmbx08.Beta"
+      "package": "com.beta.baseballapp"
     },
     "web": {
       "favicon": "./assets/favicon.png",

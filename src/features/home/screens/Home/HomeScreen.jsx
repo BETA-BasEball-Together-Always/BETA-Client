@@ -1,14 +1,242 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ScrollView,
+  ImageBackground,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import React from "react";
+import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
+import SearchIcon from "../../../community/assets/svg/TopBar/searchIcon.svg";
+import { AppText } from "../../../../shared/theme/components/AppText";
+import { useNavigation } from "@react-navigation/native";
+
+import AllCommunityBackgroundLayer from "../../../community/component/AllCommunityBackgroundLayer";
+import Banner from "../../assets/png/banner.png";
+import { useUserStore } from "../../../../shared/store/userStore";
+import PopularPostCard from "./component/PopularPostCard";
+
+import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
+import useHomePopularFeed from "../../hooks/useHomePopularFeed";
+import FetchStateView from "../../../../shared/components/FetchStateView";
 
 const HomeScreen = () => {
+  const user = useUserStore((state) => state.user);
+  const navigation = useNavigation();
+
+  useMyLikedPostsInfiniteQuery({
+    enabled: !!user,
+    hydrateSelection: true,
+  });
+
+  const {
+    dailyPopular,
+    refetch,
+    isError: popularError,
+    isPopularFeedBusy,
+  } = useHomePopularFeed();
+
+  const showPopularEmptyMessage =
+    !popularError && !isPopularFeedBusy && dailyPopular.length === 0;
+
   return (
-    <View>
-      <Text>HomeScreen</Text>
+    <View style={styles.screenRoot}>
+      <AllCommunityBackgroundLayer />
+
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+        <View style={styles.topBar}>
+          {/* 네브바 균형용 */}
+          <View style={styles.leftPlaceholder} />
+
+          <Text style={styles.appName}>BETA</Text>
+
+          <View style={styles.btnContainer}>
+            {/* 검색 페이지 navigation 연결! */}
+            <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
+              <SearchIcon width={24} height={24} />
+            </TouchableOpacity>
+
+            {/* 나중에 알림 페이지 만들면 여기에 연결할 것! */}
+            <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
+              <AlarmIcon width={24} height={24} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <AppText variant="displayTitle" style={styles.header}>
+            {user?.nickname} 님
+          </AppText>
+          <AppText variant="heading" style={styles.subText}>
+            오늘도 BETA와 함께 응원해봐요 🔥
+          </AppText>
+
+          <View style={styles.bannerWrapper}>
+            <ImageBackground
+              source={Banner}
+              style={styles.bannerImage}
+              imageStyle={{ borderRadius: 10 }}
+            >
+              <TouchableOpacity
+                style={styles.bannerButton}
+                onPress={() => navigation.navigate("PhotoBooth")}
+              >
+                <Text style={styles.bannerButtonText}>직관 추억 남기기</Text>
+              </TouchableOpacity>
+            </ImageBackground>
+          </View>
+
+          <View style={styles.popularHeader}>
+            <AppText variant="semi18" style={styles.popularHeading}>
+              인기 피드 ✨️
+            </AppText>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate({
+                  name: "AllCommunity",
+                  params: { initialSort: "popular" },
+                  merge: true,
+                })
+              }
+            >
+              <AppText variant="middle" className="text-[#D4D4D4]">
+                더보기
+              </AppText>
+            </TouchableOpacity>
+          </View>
+
+          <FetchStateView
+            style={styles.popularFetch}
+            isError={popularError}
+            onRetry={() => refetch()}
+          >
+            {dailyPopular.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {dailyPopular.map((post) => (
+                  <PopularPostCard key={String(post.postId)} post={post} />
+                ))}
+              </ScrollView>
+            ) : showPopularEmptyMessage ? (
+              <View style={styles.popularEmpty}>
+                <AppText variant="caption" style={styles.popularEmptyText}>
+                  오늘 등록된 인기 게시물이 없어요
+                </AppText>
+              </View>
+            ) : null}
+          </FetchStateView>
+        </ScrollView>
+      </SafeAreaView>
     </View>
-  )
-}
+  );
+};
 
-export default HomeScreen
+export default HomeScreen;
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+    backgroundColor: "#121212",
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "transparent",
+    justifyContent: "center",
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+  },
+  leftPlaceholder: {
+    width: 60,
+  },
+  appName: {
+    flex: 1,
+    textAlign: "center",
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 28,
+    fontStyle: "italic",
+  },
+  btnContainer: {
+    width: 60,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 14,
+  },
+  iconBtn: {
+    alignItems: "flex-end",
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+  },
+  header: {
+    color: "#F9F9F9",
+    marginTop: 17,
+    lineHeight: 32.7,
+  },
+  subText: {
+    color: "#F9F9F9",
+    lineHeight: 24.5,
+    marginTop: 13,
+  },
+
+  //배너
+  bannerWrapper: {
+    marginTop: 30,
+    alignItems: "center",
+  },
+  bannerImage: {
+    width: "100%",
+    height: 155,
+    justifyContent: "flex-end",
+    paddingBottom: 11,
+  },
+  bannerButton: {
+    backgroundColor: "#FFF",
+    alignSelf: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 17,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  bannerButtonText: {
+    color: "#373737",
+    fontSize: 14,
+    fontWeight: "800",
+    fontStyle: "italic",
+  },
+
+  popularHeader: {
+    justifyContent: "space-between",
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 45,
+    marginBlock: 7,
+  },
+  popularHeading: {
+    color: "#F9F9F9",
+  },
+  popularFetch: {
+    minHeight: 120,
+    marginTop: 40,
+  },
+  popularEmpty: {
+    minHeight: 120,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+  },
+  popularEmptyText: {
+    color: "rgba(249, 249, 249, 0.65)",
+  },
+});

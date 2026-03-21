@@ -45,10 +45,10 @@ module.exports = {
         "body-medium": 16,
 
         // Text
-        caption: 14,
+        caption: 15,
         spaced: 13,
-        "text-small-regular": 9,
-        middle: 13,
+        "text-small-regular": 12,
+        middle: 14,
 
         "text-semi-16": 16,
         "text-semi-18": 18,
@@ -56,10 +56,10 @@ module.exports = {
         "text-semi-13": 13,
 
         // Label
-        "label-small": 12,
+        "label-small": 13,
 
         // Number
-        "num-small-regular": 8,
+        "num-small-regular": 9,
         "num-medium-regular": 10,
       },
     },

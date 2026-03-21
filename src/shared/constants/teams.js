@@ -1,0 +1,170 @@
+import LG from "../assets/svg/teams/LG.svg";
+import DOOSAN from "../assets/svg/teams/Doosan.svg";
+import HANWHA from "../assets/svg/teams/Hanhwa.svg";
+import KIA from "../assets/svg/teams/KIA.svg";
+import KIWOOM from "../assets/svg/teams/Kiwoom.svg";
+import KT from "../assets/svg/teams/KT.svg";
+import LOTTE from "../assets/svg/teams/Lotte.svg";
+import NC from "../assets/svg/teams/NC.svg";
+import SAMSUNG from "../assets/svg/teams/Samsung.svg";
+import SSG from "../assets/svg/teams/SSG.svg";
+
+export const TEAM_DATA = {
+  KT: {
+    label: "KT위즈",
+    MainIcon: KT,
+    ProfileIcon: KT,
+    gradient: {
+      colors: ["#4A4A4A", "#2A2A2A", "#141414", "#050505"],
+      locations: [0, 0.3, 0.65, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "#D5D5D5",
+      backgroundColor: "rgba(36, 36, 36, 0.80)",
+    },
+  },
+  LG: {
+    label: "LG 트윈스",
+    MainIcon: LG,
+    ProfileIcon: LG,
+    gradient: {
+      colors: ["#231F20", "#B0293C", "#EA465D", "#FF866A", "#FFB5C0"],
+      locations: [0, 0.5, 0.8, 1, 1],
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "rgba(255, 247, 248, 0.80)",
+      backgroundColor: "rgba(176, 41, 60, 0.56)",
+    },
+  },
+
+  SAMSUNG: {
+    label: "삼성라이온즈",
+    MainIcon: SAMSUNG,
+    ProfileIcon: SAMSUNG,
+    gradient: {
+      colors: ["#7ABFFF", "#1A6FCC", "#003A80", "#001A40"],
+      locations: [0, 0.3, 0.65, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "#E3E3E3",
+      backgroundColor: "rgba(0, 101, 178, 0.29)",
+    },
+  },
+  KIA: {
+    label: "KIA타이거즈",
+    MainIcon: KIA,
+    ProfileIcon: KIA,
+    gradient: {
+      colors: ["#FF5050", "#CC1020", "#7A0010", "#380005"],
+      locations: [0, 0.35, 0.7, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "rgba(221, 27, 30, 0.81)",
+      backgroundColor: "rgba(3, 3, 3, 0.58)",
+    },
+  },
+  DOOSAN: {
+    label: "두산베어스",
+    MainIcon: DOOSAN,
+    ProfileIcon: DOOSAN,
+    gradient: {
+      colors: ["#4B6FA5", "#1A2E6E", "#0A1540", "#05091F"],
+      locations: [0, 0.3, 0.65, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "#E8345E",
+      backgroundColor: "rgba(27, 39, 117, 0.44)",
+    },
+  },
+  HANWHA: {
+    label: "한화이글스",
+    MainIcon: HANWHA,
+    ProfileIcon: HANWHA,
+    gradient: {
+      colors: ["#FFAA50", "#E85C00", "#C24B00", "#7A2800"],
+      locations: [0, 0.3, 0.65, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "#E95C28",
+      backgroundColor: "rgba(233, 92, 40, 0.17)",
+    },
+  },
+  KIWOOM: {
+    label: "키움히어로즈",
+    MainIcon: KIWOOM,
+    ProfileIcon: KIWOOM,
+    gradient: {
+      colors: ["#C03050", "#8C1A2E", "#4A0818", "#1A0008"],
+      locations: [0, 0.35, 0.7, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "#A8485E",
+      backgroundColor: "rgba(79, 10, 26, 0.47)",
+    },
+  },
+  LOTTE: {
+    label: "롯데자이언츠",
+    MainIcon: LOTTE,
+    ProfileIcon: LOTTE,
+    gradient: {
+      colors: ["#C05070", "#8B1A35", "#4A0D1C", "#1A0008"],
+      locations: [0, 0.35, 0.7, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "rgba(211, 31, 69, 0.86)",
+      backgroundColor: "rgba(3, 35, 69, 0.81)",
+    },
+  },
+  NC: {
+    label: "NC다이노스",
+    MainIcon: NC,
+    ProfileIcon: NC,
+    gradient: {
+      colors: ["#5A8FCC", "#1A3B6E", "#0D1F3C", "#060F1E"],
+      locations: [0, 0.35, 0.7, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "#947465",
+      backgroundColor: "rgba(40, 69, 121, 0.70)",
+    },
+  },
+  SSG: {
+    label: "SSG랜더스",
+    MainIcon: SSG,
+    ProfileIcon: SSG,
+    gradient: {
+      colors: ["#FF7A3D", "#D42B2B", "#8B0000", "#5A0000"],
+      locations: [0, 0.35, 0.7, 1],
+      start: { x: 0.1, y: 0.1 },
+      end: { x: 1, y: 1 },
+    },
+    labelStyle: {
+      color: "rgba(247, 181, 41, 0.91)",
+      backgroundColor: "rgba(238, 45, 61, 0.53)",
+    },
+  },
+};
+
+// 배열 형태의 팀 리스트!
+export const TEAM_LIST = Object.entries(TEAM_DATA).map(([key, value]) => ({
+  key,
+  ...value,
+}));
