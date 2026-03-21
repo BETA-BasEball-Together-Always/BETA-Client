@@ -4,6 +4,7 @@ import MainTabNavigator from "./MainTabNavigator";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "@app/SplashScreen";
 import CommunityStack from "./CommunityStack";
+import SearchScreen from "@features/search/screens/SearchScreen";
 import { bootstrapSession } from "../../shared/services/sessionBootstrap";
 
 const Stack = createNativeStackNavigator();
@@ -59,6 +60,11 @@ const RootNavigator = () => {
         initialParams={authInitialParams}
       />
       <Stack.Screen name="Community" component={CommunityStack} />
+      <Stack.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{ animation: "slide_from_right" }}
+      />
     </Stack.Navigator>
   );
 };

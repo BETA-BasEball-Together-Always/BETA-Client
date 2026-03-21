@@ -54,7 +54,10 @@ const HomeScreen = () => {
 
           <View style={styles.btnContainer}>
             {/* 검색 페이지 navigation 연결! */}
-            <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate("Search")}
+            >
               <SearchIcon width={24} height={24} />
             </TouchableOpacity>
 
