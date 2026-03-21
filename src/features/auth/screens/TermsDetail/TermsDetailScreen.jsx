@@ -12,6 +12,9 @@ import AuthBackground from "../../components/AuthBackground";
 import TermsAgreementCard from "../../components/TermsAgreementCard";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupConsentMutation } from "../../services/signupConsentMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
+import { useStepBack } from "../../hooks/useStepBack";
+import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
@@ -30,6 +33,8 @@ const TermsDetailScreen = ({ navigation }) => {
   );
 
   const signupConsentMutation = useSignupConsentMutation();
+  const signupStatusMutation = useSignupStatusMutation();
+  const handleBack = useStepBack("Login");
 
   return (
     <View style={styles.root}>
@@ -40,7 +45,7 @@ const TermsDetailScreen = ({ navigation }) => {
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.replace("PrevStep")}
+          onPress={handleBack}
           activeOpacity={0.85}
         >
           <BackIcon />
@@ -81,8 +86,18 @@ const TermsDetailScreen = ({ navigation }) => {
           ]}
           activeOpacity={isRequiredAgreed ? 0.85 : 1}
           disabled={!isRequiredAgreed}
-          onPress={() => {
+          onPress={async () => {
             if (!isRequiredAgreed) return;
+
+            try {
+              const status = await signupStatusMutation.mutateAsync();
+              if (status?.signupStep && status.signupStep !== "SOCIAL_AUTHENTICATED") {
+                navigateFromSignupStatus(status, navigation);
+                return;
+              }
+            } catch (e) {
+              console.warn("[signup/status]", e);
+            }
 
             signupConsentMutation.mutate(
               {
@@ -91,7 +106,6 @@ const TermsDetailScreen = ({ navigation }) => {
               },
               {
                 onSuccess: (data) => {
-                  // data: { signupStep: 'CONSENT_AGREED', email }
                   navigation.replace("SocialSignup", {
                     signup: { email: data?.email ?? "" },
                   });

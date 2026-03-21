@@ -1,5 +1,5 @@
 // src/features/auth/screens/LoginScreen.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -28,13 +28,34 @@ import KakaoIcon from "../../assets/Login/kakao.svg";
 import NaverIcon from "../../assets/Login/naver.svg";
 import AppleIcon from "../../assets/Login/apple.svg";
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
   const [providerConflict, setProviderConflict] = useState(null); // 'KAKAO' | 'NAVER' | 'APPLE' | null
   const signupStatusMutation = useSignupStatusMutation();
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
+
+  const authErrorMessage = route?.params?.authErrorMessage ?? null;
+
+  useEffect(() => {
+    if (!authErrorMessage) return;
+    Alert.alert("로그인 실패", authErrorMessage);
+  }, [authErrorMessage]);
+
+  const showApiAuthError = (error, title, fallbackMessage) => {
+    const msg =
+      error?.response?.data?.message ??
+      error?.response?.data?.error?.message ??
+      error?.message ??
+      fallbackMessage;
+    Alert.alert(title, msg);
+  };
+
+  const inferProviderFromMessage = (message) => {
+    const msg = String(message ?? "");
+    return ["KAKAO", "NAVER", "APPLE"].find((p) => msg.includes(p)) ?? null;
+  };
 
   const conflictColors = useMemo(
     () => ({
@@ -191,11 +212,19 @@ const LoginScreen = ({ navigation }) => {
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              setProviderConflict(socialProvider || "APPLE");
+              const inferred =
+                inferProviderFromMessage(error?.response?.data?.message);
+              setProviderConflict(
+                socialProvider || inferred || provider || "APPLE",
+              );
               return;
             }
 
-            Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
+            showApiAuthError(
+              error,
+              "애플 로그인 실패",
+              "잠시 후 다시 시도해 주세요.",
+            );
           },
         },
       );
@@ -204,7 +233,11 @@ const LoginScreen = ({ navigation }) => {
       console.log("애플 로그인 오류:", error);
       console.log("애플 로그인 오류 메시지:", error?.message);
       console.log("애플 로그인 오류 코드:", error?.code);
-      Alert.alert("애플 로그인 실패", "잠시 후 다시 시도해 주세요.");
+      showApiAuthError(
+        error,
+        "애플 로그인 실패",
+        "잠시 후 다시 시도해 주세요.",
+      );
     } finally {
       setIsSocialLoading(false);
     }
@@ -247,23 +280,35 @@ const LoginScreen = ({ navigation }) => {
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              setProviderConflict(socialProvider || "KAKAO");
-              return;
-            }
-            if (error?.response?.status === 400 && code === "SOCIAL004") {
-              Alert.alert(
-                "카카오 로그인 오류",
-                "카카오 계정에 이메일이 등록되어 있지 않습니다.",
+              const inferred =
+                inferProviderFromMessage(error?.response?.data?.message);
+              setProviderConflict(
+                socialProvider || inferred || provider || "KAKAO",
               );
               return;
             }
-            Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
+            if (error?.response?.status === 400 && code === "SOCIAL004") {
+              const msg =
+                error?.response?.data?.message ??
+                "카카오 계정에 이메일이 등록되어 있지 않습니다.";
+              Alert.alert("카카오 로그인 오류", msg);
+              return;
+            }
+            showApiAuthError(
+              error,
+              "카카오 로그인 실패",
+              "잠시 후 다시 시도해주세요.",
+            );
           },
         },
       );
     } catch (error) {
       console.log("카카오 로그인 JS 단계 오류:", error);
-      Alert.alert("카카오 로그인 실패", "잠시 후 다시 시도해주세요.");
+      showApiAuthError(
+        error,
+        "카카오 로그인 실패",
+        "잠시 후 다시 시도해주세요.",
+      );
     } finally {
       setIsSocialLoading(false);
     }
@@ -300,24 +345,36 @@ const LoginScreen = ({ navigation }) => {
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              setProviderConflict(socialProvider || "NAVER");
-              return;
-            }
-            if (error?.response?.status === 400 && code === "SOCIAL004") {
-              Alert.alert(
-                "네이버 로그인 오류",
-                "네이버 계정에 이메일이 등록되어 있지 않습니다.",
+              const inferred =
+                inferProviderFromMessage(error?.response?.data?.message);
+              setProviderConflict(
+                socialProvider || inferred || provider || "NAVER",
               );
               return;
             }
-            Alert.alert("네이버 로그인 실패", "잠시 후 다시 시도해주세요.");
+            if (error?.response?.status === 400 && code === "SOCIAL004") {
+              const msg =
+                error?.response?.data?.message ??
+                "네이버 계정에 이메일이 등록되어 있지 않습니다.";
+              Alert.alert("네이버 로그인 오류", msg);
+              return;
+            }
+            showApiAuthError(
+              error,
+              "네이버 로그인 실패",
+              "잠시 후 다시 시도해주세요.",
+            );
           },
         },
       );
     } catch (error) {
       console.log(error);
       console.log("네이버 로그인 JS 단계 오류:", error);
-      Alert.alert("네이버 로그인 실패", "잠시 후 다시 시도해주세요.");
+      showApiAuthError(
+        error,
+        "네이버 로그인 실패",
+        "잠시 후 다시 시도해주세요.",
+      );
     } finally {
       setIsSocialLoading(false);
     }

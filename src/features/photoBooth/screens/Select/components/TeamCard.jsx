@@ -1,34 +1,38 @@
-// TeamCard.jsx
-import React, { useEffect } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, Image } from "react-native";
-
-const CARD_BG = "#1A1A1A";
+import React from "react";
+import { View, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { AppText } from "../../../../../shared/theme/components/AppText";
+import GlassSurface from "./GlassSurface";
 
 const TeamCard = ({ item, isSelected, onPress }) => {
-  const Logo = item.Icon; // ← SVG 컴포넌트(있을 때)
+  const Logo = item.Icon;
 
   return (
     <View style={styles.itemWrap}>
       <TouchableOpacity
-        activeOpacity={0.9}
+        activeOpacity={0.92}
         onPress={() => onPress(item)}
-        style={[styles.teamCard, isSelected && { backgroundColor: "#fff" }]}
+        style={styles.touch}
       >
-        {Logo ? (
-          // SVG 컴포넌트 렌더
-          <Logo width={100} height={100} />
-        ) : (
-          // PNG fallback
-          <Image
-            source={item.logo}
-            style={styles.teamLogo}
-            resizeMode="contain"
-          />
-        )}
+        <GlassSurface
+          selected={isSelected}
+          borderRadius={16}
+          style={styles.glass}
+          contentStyle={styles.glassInner}
+        >
+          {Logo ? (
+            <Logo width={88} height={88} />
+          ) : (
+            <Image
+              source={item.logo}
+              style={styles.teamLogo}
+              resizeMode="contain"
+            />
+          )}
+        </GlassSurface>
       </TouchableOpacity>
-      <Text style={styles.itemLabel} numberOfLines={1}>
+      <AppText variant="medium" style={styles.itemLabel} numberOfLines={1}>
         {item.name}
-      </Text>
+      </AppText>
     </View>
   );
 };
@@ -40,19 +44,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  teamCard: {
+  touch: {
+    borderRadius: 16,
+  },
+  glass: {
     width: 128,
     height: 128,
-    borderRadius: 16,
-    backgroundColor: CARD_BG,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  teamLogo: { width: 100, height: 100 },
+  glassInner: {
+    flex: 1,
+    width: "100%",
+    maxHeight: 128,
+  },
+  teamLogo: { width: 88, height: 88 },
   itemLabel: {
     marginTop: 6,
-    fontSize: 12,
-    color: "#fff",
+    color: "#F9F9F9",
     maxWidth: 96,
     textAlign: "center",
   },

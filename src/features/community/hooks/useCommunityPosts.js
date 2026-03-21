@@ -1,9 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {
-  fetchPostsApi,
-  totalEmotionCountFromPost,
-} from "../services/communityService";
+import { fetchPostsApi } from "../services/communityService";
 import communityKeys from "../services/communityKeys";
 
 function dedupePostsById(pages) {
@@ -16,6 +13,25 @@ function dedupePostsById(pages) {
   return Array.from(map.values());
 }
 
+function getNextLatestCursor(lastPage) {
+  if (!lastPage?.hasNext) return undefined;
+  return (
+    lastPage.nextCursor ??
+    lastPage.nextCursorId ??
+    lastPage.cursorId ??
+    lastPage.cursor ??
+    lastPage.nextPageCursor ??
+    undefined
+  );
+}
+
+function getNextPopularOffset(lastPage, pageParam) {
+  if (!lastPage?.hasNext) return undefined;
+  if (typeof lastPage.nextOffset === "number") return lastPage.nextOffset;
+  const prev = typeof pageParam === "number" ? pageParam : 0;
+  return prev + 1;
+}
+
 export default function useCommunityPosts({ channel, sort, enabled = true }) {
   const channelForList = channel ?? null;
 
@@ -24,59 +40,30 @@ export default function useCommunityPosts({ channel, sort, enabled = true }) {
 
     queryFn: async ({ pageParam }) => {
       if (sort === "popular") {
-        const p =
-          pageParam != null && typeof pageParam === "object"
-            ? pageParam
-            : null;
+        const offset = typeof pageParam === "number" ? pageParam : 0;
         return fetchPostsApi({
           channel: channelForList,
-          sort,
-          cursorId: p?.cursorId,
-          cursorEmotionCount: p?.cursorEmotionCount,
+          sort: "popular",
+          offset,
         });
       }
 
-      const cursorId =
-        typeof pageParam === "number" || typeof pageParam === "string"
-          ? pageParam
-          : undefined;
+      const cursor =
+        pageParam === null || pageParam === undefined ? undefined : pageParam;
 
       return fetchPostsApi({
         channel: channelForList,
-        sort,
-        cursorId,
+        sort: "latest",
+        cursor,
       });
     },
     enabled,
-    initialPageParam: null,
-    getNextPageParam: (lastPage) => {
-      if (!lastPage?.hasNext) return undefined;
-
+    initialPageParam: sort === "popular" ? 0 : undefined,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
       if (sort === "popular") {
-        const posts = lastPage.posts ?? [];
-        const lastPost = posts[posts.length - 1];
-        const cursorId =
-          lastPage.nextCursorId ??
-          lastPage.nextCursor ??
-          lastPage.cursorId ??
-          lastPage.cursor ??
-          lastPost?.postId;
-        const cursorEmotionCount =
-          lastPage.nextCursorEmotionCount ??
-          lastPage.cursorEmotionCount ??
-          (lastPost != null ? totalEmotionCountFromPost(lastPost) : undefined);
-        if (cursorId == null || cursorEmotionCount == null) return undefined;
-        return { cursorId, cursorEmotionCount };
+        return getNextPopularOffset(lastPage, lastPageParam);
       }
-
-      return (
-        lastPage.nextCursorId ??
-        lastPage.nextCursor ??
-        lastPage.cursorId ??
-        lastPage.cursor ??
-        lastPage.nextPageCursor ??
-        undefined
-      );
+      return getNextLatestCursor(lastPage);
     },
   });
 
@@ -91,6 +78,8 @@ export default function useCommunityPosts({ channel, sort, enabled = true }) {
     fetchNextPage: query.fetchNextPage,
     refetch: query.refetch,
     isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     hasNextPage: query.hasNextPage ?? false,

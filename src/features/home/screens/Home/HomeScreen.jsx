@@ -3,29 +3,29 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   ImageBackground,
-  ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import React from "react";
 import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
+import SearchIcon from "../../../community/assets/svg/TopBar/searchIcon.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useNavigation } from "@react-navigation/native";
 
-import AllCommunityBackground from "../../../community/assets/svg/AllCommunityBackground/all_background.svg";
+import AllCommunityBackgroundLayer from "../../../community/component/AllCommunityBackgroundLayer";
 import Banner from "../../assets/png/banner.png";
 import { useUserStore } from "../../../../shared/store/userStore";
 import PopularPostCard from "./component/PopularPostCard";
 
 import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
 import useHomePopularFeed from "../../hooks/useHomePopularFeed";
+import FetchStateView from "../../../../shared/components/FetchStateView";
 
 const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const navigation = useNavigation();
 
-  // 홈의 PopularPostCard에서도 heart fill 복원을 위해 liked 목록을 hydrate
   useMyLikedPostsInfiniteQuery({
     enabled: !!user,
     hydrateSelection: true,
@@ -34,156 +34,141 @@ const HomeScreen = () => {
   const {
     dailyPopular,
     refetch,
-    isLoading: popularLoading,
     isError: popularError,
-    isFetchingNextPage,
+    isPopularFeedBusy,
   } = useHomePopularFeed();
 
-  const popularBusy =
-    !popularError &&
-    dailyPopular.length === 0 &&
-    (popularLoading || isFetchingNextPage);
-  const popularEmpty =
-    !popularError &&
-    !popularLoading &&
-    !isFetchingNextPage &&
-    dailyPopular.length === 0;
+  const showPopularEmptyMessage =
+    !popularError && !isPopularFeedBusy && dailyPopular.length === 0;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <AllCommunityBackground
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xxMidYMid slice"
-        style={styles.bgSvg}
-      />
-      <View style={styles.bgOverlay} />
+    <View style={styles.screenRoot}>
+      <AllCommunityBackgroundLayer />
 
-      <View style={styles.topBar}>
-        <Text style={styles.appName}>BETA</Text>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+        <View style={styles.topBar}>
+          {/* 네브바 균형용 */}
+          <View style={styles.leftPlaceholder} />
 
-        {/* 나중에 알림 페이지 만들면 여기에 연결할 것! */}
-        <TouchableOpacity style={styles.alarmButton} onPress={() => {}}>
-          <AlarmIcon width={24} height={24} />
-        </TouchableOpacity>
-      </View>
+          <Text style={styles.appName}>BETA</Text>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <AppText variant="displayTitle" style={styles.header}>
-          {user?.nickname} 님
-        </AppText>
-        <AppText variant="heading" style={styles.subText}>
-          오늘도 BETA와 함께 응원해봐요 🔥
-        </AppText>
-
-        <View style={styles.bannerWrapper}>
-          <ImageBackground
-            source={Banner}
-            style={styles.bannerImage}
-            imageStyle={{ borderRadius: 10 }}
-          >
-            <TouchableOpacity
-              style={styles.bannerButton}
-              onPress={() => navigation.navigate("PhotoBooth")}
-            >
-              <Text style={styles.bannerButtonText}>직관 추억 남기기</Text>
+          <View style={styles.btnContainer}>
+            {/* 검색 페이지 navigation 연결! */}
+            <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
+              <SearchIcon width={24} height={24} />
             </TouchableOpacity>
-          </ImageBackground>
+
+            {/* 나중에 알림 페이지 만들면 여기에 연결할 것! */}
+            <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
+              <AlarmIcon width={24} height={24} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.popularHeader}>
-          <AppText variant="semi18" style={styles.popularHeading}>
-            인기 피드 ✨️
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <AppText variant="displayTitle" style={styles.header}>
+            {user?.nickname} 님
           </AppText>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate({
-                name: "AllCommunity",
-                params: { initialSort: "popular" },
-                merge: true,
-              })
-            }
-          >
-            <AppText variant="middle" className="text-[#D4D4D4]">
-              더보기
-            </AppText>
-          </TouchableOpacity>
-        </View>
+          <AppText variant="heading" style={styles.subText}>
+            오늘도 BETA와 함께 응원해봐요 🔥
+          </AppText>
 
-        {popularError ? (
-          <View style={styles.popularFallback}>
-            <AppText variant="caption" style={styles.popularFallbackText}>
-              피드를 불러올 수 없습니다
+          <View style={styles.bannerWrapper}>
+            <ImageBackground
+              source={Banner}
+              style={styles.bannerImage}
+              imageStyle={{ borderRadius: 10 }}
+            >
+              <TouchableOpacity
+                style={styles.bannerButton}
+                onPress={() => navigation.navigate("PhotoBooth")}
+              >
+                <Text style={styles.bannerButtonText}>직관 추억 남기기</Text>
+              </TouchableOpacity>
+            </ImageBackground>
+          </View>
+
+          <View style={styles.popularHeader}>
+            <AppText variant="semi18" style={styles.popularHeading}>
+              인기 피드 ✨️
             </AppText>
             <TouchableOpacity
-              onPress={() => refetch()}
-              style={styles.popularRetry}
-              accessibilityRole="button"
+              onPress={() =>
+                navigation.navigate({
+                  name: "AllCommunity",
+                  params: { initialSort: "popular" },
+                  merge: true,
+                })
+              }
             >
-              <AppText variant="middle" style={styles.popularRetryLabel}>
-                다시 시도
+              <AppText variant="middle" className="text-[#D4D4D4]">
+                더보기
               </AppText>
             </TouchableOpacity>
           </View>
-        ) : popularBusy ? (
-          <View style={styles.popularLoading}>
-            <ActivityIndicator color="#F9F9F9" />
-          </View>
-        ) : popularEmpty ? (
-          <View style={styles.popularEmpty}>
-            <AppText variant="caption" style={styles.popularEmptyText}>
-              아직 인기 게시물이 없어요
-            </AppText>
-          </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {dailyPopular.map((post) => (
-              <PopularPostCard key={String(post.postId)} post={post} />
-            ))}
-          </ScrollView>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+
+          <FetchStateView
+            style={styles.popularFetch}
+            isError={popularError}
+            onRetry={() => refetch()}
+          >
+            {dailyPopular.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {dailyPopular.map((post) => (
+                  <PopularPostCard key={String(post.postId)} post={post} />
+                ))}
+              </ScrollView>
+            ) : showPopularEmptyMessage ? (
+              <View style={styles.popularEmpty}>
+                <AppText variant="caption" style={styles.popularEmptyText}>
+                  오늘 등록된 인기 게시물이 없어요
+                </AppText>
+              </View>
+            ) : null}
+          </FetchStateView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  screenRoot: {
     flex: 1,
     backgroundColor: "#121212",
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "transparent",
     justifyContent: "center",
-  },
-  bgSvg: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  bgOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(2, 4, 8, 0.25)",
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 22,
     paddingVertical: 10,
   },
+  leftPlaceholder: {
+    width: 60,
+  },
   appName: {
+    flex: 1,
+    textAlign: "center",
     color: "#FFF",
     fontWeight: "800",
-    fontSize: 28.606,
+    fontSize: 28,
     fontStyle: "italic",
   },
-  alarmButton: {
+  btnContainer: {
+    width: 60,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 14,
+  },
+  iconBtn: {
     alignItems: "flex-end",
   },
   scrollContent: {
@@ -241,11 +226,9 @@ const styles = StyleSheet.create({
   popularHeading: {
     color: "#F9F9F9",
   },
-  popularLoading: {
+  popularFetch: {
     minHeight: 120,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 16,
+    marginTop: 40,
   },
   popularEmpty: {
     minHeight: 120,
@@ -255,24 +238,5 @@ const styles = StyleSheet.create({
   },
   popularEmptyText: {
     color: "rgba(249, 249, 249, 0.65)",
-  },
-  popularFallback: {
-    minHeight: 120,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 16,
-  },
-  popularFallbackText: {
-    color: "rgba(249, 249, 249, 0.75)",
-  },
-  popularRetry: {
-    marginTop: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  popularRetryLabel: {
-    color: "#F9F9F9",
   },
 });

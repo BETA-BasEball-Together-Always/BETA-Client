@@ -20,6 +20,9 @@ import SignupStepIndicator from "../../components/SignupStepIndicator";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
+import { useStepBack } from "../../hooks/useStepBack";
+import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
@@ -31,6 +34,8 @@ const SocialSignupScreen = ({ navigation, route }) => {
 
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const signupProfileMutation = useSignupProfileMutation();
+  const signupStatusMutation = useSignupStatusMutation();
+  const handleBack = useStepBack("TermsDetail");
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
 
@@ -64,8 +69,18 @@ const SocialSignupScreen = ({ navigation, route }) => {
     );
   }, [nicknameField.value, nicknameField.error, nicknameField.isAvailable]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!isFormValid) return;
+
+    try {
+      const status = await signupStatusMutation.mutateAsync();
+      if (status?.signupStep && status.signupStep !== "CONSENT_AGREED") {
+        navigateFromSignupStatus(status, navigation);
+        return;
+      }
+    } catch (e) {
+      console.warn("[signup/status]", e);
+    }
 
     const nickname = nicknameField.value.trim();
 
@@ -105,7 +120,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
                 <View style={styles.headerRow}>
                   <TouchableOpacity
                     style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+                    onPress={handleBack}
                     activeOpacity={0.8}
                   >
                     <BackIcon />

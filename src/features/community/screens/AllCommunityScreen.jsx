@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, SafeAreaView } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import useCommunityPosts from "../hooks/useCommunityPosts";
 import PostList from "../component/communityMain/PostList";
 import { useUserStore } from "../../../shared/store/userStore";
+import FetchStateView from "../../../shared/components/FetchStateView";
 
-import AllCommunityBackground from "../assets/svg/AllCommunityBackground/all_background.svg";
+import AllCommunityBackgroundLayer from "../component/AllCommunityBackgroundLayer";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
 
@@ -25,63 +27,65 @@ const AllCommunityScreen = ({ route }) => {
     hydrateSelection: true,
   });
 
-  const { posts, loadMore, isLoading } = useCommunityPosts({
+  const {
+    posts,
+    loadMore,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+    isFetchingNextPage,
+  } = useCommunityPosts({
     channel: "ALL",
     sort,
   });
 
+  const blockingLoad =
+    !isError && posts.length === 0 && (isLoading || isFetching);
+
   if (!user) return null;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <AllCommunityBackground
-        width="100%"
-        height="100%"
-        preserveAspectRatio="xMidYMid slice"
-        style={styles.bgSvg}
-      />
-      <View style={styles.bgOverlay} />
+    <View style={styles.screenRoot}>
+      <AllCommunityBackgroundLayer />
 
-      <CommunityTopBar isTeam={false} />
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <CommunityTopBar isTeam={false} />
 
-      <PostList
-        posts={posts}
-        onEndReached={loadMore}
-        isLoading={isLoading}
-        showTeam={true}
-        sort={sort}
-        onSortChange={setSort}
-        user={user}
-      />
-    </SafeAreaView>
+        <FetchStateView
+          style={styles.fetchArea}
+          isLoading={blockingLoad}
+          isError={isError}
+          onRetry={() => refetch()}
+        >
+          <PostList
+            posts={posts}
+            onEndReached={loadMore}
+            isLoading={isFetchingNextPage}
+            isFeedBusy={isLoading || isFetching}
+            showTeam={true}
+            sort={sort}
+            onSortChange={setSort}
+            user={user}
+          />
+        </FetchStateView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 export default AllCommunityScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screenRoot: {
     flex: 1,
     backgroundColor: "#020408",
   },
-  container: {
-    justifyContent: "center",
-    paddingHorizontal: 17,
+  safeArea: {
     flex: 1,
+    backgroundColor: "transparent",
   },
-  bgSvg: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  bgOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(2, 4, 8, 0.25)",
+  fetchArea: {
+    flex: 1,
   },
 });

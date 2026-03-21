@@ -2,29 +2,26 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 
-/**
- * 사용자 전역 상태 + 토큰
- *
- * user 예시 (백엔드 UserDto 기반):
- * {
- *   id,
- *   email,
- *   nickname,
- *   favoriteTeamCode,
- *   favoriteTeamName,
- *   socialProvider,
- *   ...
- * }
- */
+const USER_JSON_KEY = "userJson";
+
 export const useUserStore = create((set) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
 
-  setUser: (user) => {
+  setUser: async (user) => {
     set({ user });
     if (user?.favoriteTeamName) {
       SecureStore.setItemAsync("favoriteTeamLabel", user.favoriteTeamName);
+    }
+    try {
+      if (user) {
+        await SecureStore.setItemAsync(USER_JSON_KEY, JSON.stringify(user));
+      } else {
+        await SecureStore.deleteItemAsync(USER_JSON_KEY);
+      }
+    } catch {
+      /* ignore */
     }
   },
 
@@ -49,5 +46,10 @@ export const useUserStore = create((set) => ({
     await SecureStore.deleteItemAsync("accessToken");
     await SecureStore.deleteItemAsync("refreshToken");
     await SecureStore.deleteItemAsync("favoriteTeamLabel");
+    try {
+      await SecureStore.deleteItemAsync(USER_JSON_KEY);
+    } catch {
+      /* ignore */
+    }
   },
 }));

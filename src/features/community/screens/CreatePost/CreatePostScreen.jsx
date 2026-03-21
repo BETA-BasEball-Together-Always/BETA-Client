@@ -46,10 +46,38 @@ const MAX_CONTENT_LENGTH = 2000;
 const MAX_IMAGES = 5;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB (단일 이미지 상한)
 const MAX_TOTAL_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB (요청 전체 이미지 합산 상한, nginx 한도 대비)
-const MAX_UPLOAD_WIDTH = 1280; // 업로드 시 리사이즈 기준 폭
+/** 긴 변 기준(가로·세로 모두) — 세로 긴 사진도 용량·해상도 상한에 맞춤 */
+const MAX_UPLOAD_LONG_EDGE = 1920;
+const MIN_JPEG_QUALITY = 0.4;
 const MAX_HASHTAGS = 5;
 const MAX_HASHTAG_LEN = 20;
 const DUPLICATE_POST_WINDOW_MS = 30 * 1000; // 30초
+
+const guessMimeType = (uri) => {
+  const lower = (uri || "").toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".heic")) return "image/jpeg";
+  if (lower.endsWith(".heif")) return "image/jpeg";
+  return "image/jpeg";
+};
+
+const buildResizeToMaxLongEdge = (width, height, maxEdge) => {
+  const w = Number(width) || 1;
+  const h = Number(height) || 1;
+  const maxSide = Math.max(w, h);
+  if (maxSide <= maxEdge) return [];
+  const scale = maxEdge / maxSide;
+  return [
+    {
+      resize: {
+        width: Math.round(w * scale),
+        height: Math.round(h * scale),
+      },
+    },
+  ];
+};
 
 const CreatePostScreen = () => {
   const scrollRef = useRef(null);
@@ -149,6 +177,8 @@ const CreatePostScreen = () => {
 
   const spinAnim = React.useRef(new Animated.Value(0)).current;
   const lastUploadRef = useRef({ content: "", at: 0 });
+  const captureEffectIdRef = useRef(0);
+  const photoBoothEffectIdRef = useRef(0);
 
   const openLimitModal = (message) => {
     setLimitModalMessage(message);
@@ -211,40 +241,109 @@ const CreatePostScreen = () => {
     setContent(next);
   };
 
-  const compressIfNeeded = async (asset) => {
-    // 아주 큰 이미지일 경우 가로 1280 기준으로 리사이즈 + jpeg 압축
-    try {
-      const actions = [];
-      if (asset.width && asset.width > MAX_UPLOAD_WIDTH) {
-        const ratio = MAX_UPLOAD_WIDTH / asset.width;
-        actions.push({
-          resize: {
-            width: MAX_UPLOAD_WIDTH,
-            height: Math.round(asset.height * ratio),
-          },
-        });
-      }
-
-      if (actions.length === 0) {
-        return asset;
-      }
-
-      const result = await ImageManipulator.manipulateAsync(
+  /** width/height 누락 시 비율 깨짐 방지 */
+  const ensureAssetDimensions = async (asset) => {
+    if (!asset?.uri) return asset;
+    const w = asset.width;
+    const h = asset.height;
+    if (w && h && w > 0 && h > 0) return asset;
+    return new Promise((resolve) => {
+      Image.getSize(
         asset.uri,
-        actions,
-        {
-          compress: 0.7,
-          format: ImageManipulator.SaveFormat.JPEG,
-        },
+        (w0, h0) => resolve({ ...asset, width: w0, height: h0 }),
+        () =>
+          resolve({
+            ...asset,
+            width: w || 1080,
+            height: h || 1440,
+          }),
       );
+    });
+  };
 
-      return {
-        uri: result.uri,
-        width: result.width,
-        height: result.height,
-      };
+  /**
+   * 래스터 이미지: 긴 변 리사이즈 + JPEG 재압축으로 장당 10MB 이하를 목표로 맞춤 (비율 유지)
+   * GIF: 애니 유지를 위해 변환 없이 용량만 검사
+   */
+  const normalizeRasterForUpload = async (asset) => {
+    const mime = guessMimeType(asset.uri);
+    if (mime === "image/gif") {
+      const withDims = await ensureAssetDimensions(asset);
+      try {
+        const info = await FileSystem.getInfoAsync(withDims.uri, { size: true });
+        if (typeof info?.size === "number" && info.size > MAX_IMAGE_BYTES) {
+          openLimitModal(
+            "GIF 이미지 용량이 너무 큽니다.\n다른 이미지로 시도해 주세요.",
+          );
+          return null;
+        }
+      } catch {
+        // size 미확인 시 서버 검증에 맡김
+      }
+      return withDims;
+    }
+
+    try {
+      const base = await ensureAssetDimensions(asset);
+      const ow = base.width || 1;
+      const oh = base.height || 1;
+      const qualities = [0.85, 0.75, 0.65, 0.55, 0.45, 0.4, MIN_JPEG_QUALITY];
+      const maxSide0 = Math.max(ow, oh);
+      let longEdgeCap = Math.min(maxSide0, MAX_UPLOAD_LONG_EDGE);
+
+      while (longEdgeCap >= 320) {
+        const actions = buildResizeToMaxLongEdge(ow, oh, longEdgeCap);
+        const resized = await ImageManipulator.manipulateAsync(
+          base.uri,
+          actions,
+          {
+            compress: 0.85,
+            format: ImageManipulator.SaveFormat.JPEG,
+          },
+        );
+
+        for (const q of qualities) {
+          const encoded = await ImageManipulator.manipulateAsync(
+            resized.uri,
+            [],
+            {
+              compress: Math.max(q, MIN_JPEG_QUALITY),
+              format: ImageManipulator.SaveFormat.JPEG,
+            },
+          );
+          try {
+            const info = await FileSystem.getInfoAsync(encoded.uri, {
+              size: true,
+            });
+            if (
+              typeof info?.size === "number" &&
+              info.size <= MAX_IMAGE_BYTES
+            ) {
+              return {
+                uri: encoded.uri,
+                width: encoded.width,
+                height: encoded.height,
+              };
+            }
+          } catch {
+            return {
+              uri: encoded.uri,
+              width: encoded.width,
+              height: encoded.height,
+            };
+          }
+        }
+
+        longEdgeCap = Math.round(longEdgeCap * 0.72);
+      }
+
+      openLimitModal(
+        "이미지 용량을 줄여도 한도(장당 10MB)에 맞지 않습니다.\n다른 이미지를 선택해 주세요.",
+      );
+      return null;
     } catch {
-      return asset;
+      openLimitModal("이미지를 처리하지 못했습니다.\n다른 이미지로 시도해 주세요.");
+      return null;
     }
   };
 
@@ -261,8 +360,8 @@ const CreatePostScreen = () => {
     for (const original of assets ?? []) {
       if (!original?.uri) continue;
 
-      // 먼저 필요하다면 리사이즈/압축
-      const a = await compressIfNeeded(original);
+      const a = await normalizeRasterForUpload(original);
+      if (!a) continue;
 
       const mimeType = guessMimeType(a.uri);
       if (!allowed.has(mimeType)) {
@@ -428,27 +527,64 @@ const CreatePostScreen = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  /** 카메라 촬영 복귀: captureNonce로 매번 실행(같은 객체 참조로 effect가 스킵되는 문제 방지) */
   useEffect(() => {
-    const captured = route?.params?.capturedAsset;
-    if (!captured?.uri) return;
+    const nonce = route.params?.captureNonce;
+    const captured = route.params?.capturedAsset;
+    if (nonce == null || !captured?.uri) return;
+    const id = ++captureEffectIdRef.current;
+    let cancelled = false;
     (async () => {
       setIsPickingMedia(true);
-      const validated = await validateAndNormalizeAssets([captured]);
-      handleAddImages(validated);
-      navigation.setParams({ capturedAsset: undefined });
-      setIsPickingMedia(false);
+      try {
+        const validated = await validateAndNormalizeAssets([captured]);
+        if (cancelled || id !== captureEffectIdRef.current) return;
+        handleAddImages(validated);
+        navigation.setParams({
+          capturedAsset: undefined,
+          captureNonce: undefined,
+        });
+      } finally {
+        if (!cancelled && id === captureEffectIdRef.current) {
+          setIsPickingMedia(false);
+        }
+      }
     })();
-  }, [route?.params?.capturedAsset]); //안 넘어가면 navigation, 이거 추가할 것
+    return () => {
+      cancelled = true;
+    };
+  }, [route.params?.captureNonce]);
 
-  const guessMimeType = (uri) => {
-    const lower = (uri || "").toLowerCase();
-    if (lower.endsWith(".png")) return "image/png";
-    if (lower.endsWith(".gif")) return "image/gif";
-    if (lower.endsWith(".webp")) return "image/webp";
-    if (lower.endsWith(".heic")) return "image/jpeg";
-    if (lower.endsWith(".heif")) return "image/jpeg";
-    return "image/jpeg";
-  };
+  /**
+   * 야구네컷 Share → 게시글 작성: 이번에 넘어온 이미지로 교체(기존 첨부 누적 방지).
+   * effect id로 Strict Mode 이중 실행 시 중복 적용 방지.
+   */
+  useEffect(() => {
+    const nonce = route.params?.photoBoothAttachNonce;
+    const list = route.params?.initialImagesFromPhotoBooth;
+    if (nonce == null || !list?.length || isEditMode) return;
+    const id = ++photoBoothEffectIdRef.current;
+    let cancelled = false;
+    (async () => {
+      setIsPickingMedia(true);
+      try {
+        const validated = await validateAndNormalizeAssets(list);
+        if (cancelled || id !== photoBoothEffectIdRef.current) return;
+        setImages(validated.slice(0, MAX_IMAGES));
+        navigation.setParams({
+          initialImagesFromPhotoBooth: undefined,
+          photoBoothAttachNonce: undefined,
+        });
+      } finally {
+        if (!cancelled && id === photoBoothEffectIdRef.current) {
+          setIsPickingMedia(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [route.params?.photoBoothAttachNonce, isEditMode]);
 
   const normalizeFileUri = (uri) => {
     if (!uri) return uri;

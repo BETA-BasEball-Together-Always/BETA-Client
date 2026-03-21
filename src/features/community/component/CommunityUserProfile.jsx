@@ -14,11 +14,10 @@ import { getRelativeTimeForPostBody } from "../screens/PostDetail/utils/relative
 import MenuIcon from "../assets/svg/TopBar/menuIcon.svg";
 
 /**
+ * 본인 게시글일 때만 전달. 수정/삭제만 제공합니다.
  * @typedef {object} PostMenuConfig
- * @property {boolean} isOwnPost
  * @property {() => void} onEdit
  * @property {() => void} onDelete
- * @property {() => void} onReport
  */
 
 const CommunityUserProfile = ({
@@ -116,35 +115,22 @@ const CommunityUserProfile = ({
                 },
               ]}
             >
-              {postMenu.isOwnPost ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.postMoreButton}
-                    onPress={() => runThenClose(postMenu.onEdit)}
-                  >
-                    <AppText variant="semi16" style={styles.postMoreText}>
-                      수정
-                    </AppText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.postMoreButton}
-                    onPress={() => runThenClose(postMenu.onDelete)}
-                  >
-                    <AppText variant="semi16" style={styles.postMoreText}>
-                      삭제
-                    </AppText>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={styles.postMoreButton}
-                  onPress={() => runThenClose(postMenu.onReport)}
-                >
-                  <AppText variant="semi16" style={styles.postMoreText}>
-                    신고
-                  </AppText>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.postMoreButton}
+                onPress={() => runThenClose(postMenu.onEdit)}
+              >
+                <AppText variant="semi16" style={styles.postMoreText}>
+                  수정
+                </AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.postMoreButton}
+                onPress={() => runThenClose(postMenu.onDelete)}
+              >
+                <AppText variant="semi16" style={styles.postMoreText}>
+                  삭제
+                </AppText>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>

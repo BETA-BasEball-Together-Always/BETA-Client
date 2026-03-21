@@ -17,6 +17,7 @@ import * as SecureStore from "expo-secure-store";
 import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupStepIndicator from "../../components/SignupStepIndicator";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_DATA, TEAM_LIST } from "../../../../shared/constants/teams";
 
@@ -33,10 +34,11 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const externalTeamList = route?.params?.teamList ?? null;
 
   const signupTeamMutation = useSignupTeamMutation();
+  const signupStatusMutation = useSignupStatusMutation();
 
   const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
 
-  const handleBack = useStepBack("SignupNickname");
+  const handleBack = useStepBack("SocialSignup");
 
   // const teams = useMemo(() => {
   //   if (externalTeamList && externalTeamList.length > 0) {
@@ -67,27 +69,53 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     // teamList 있으면 필터링, 없으면 team_list 전체 사용
     const baseList = externalTeamList
       ? TEAM_LIST.filter((t) =>
-          externalTeamList.som((ext) => ext.teamCode === t.key),
+          externalTeamList.some((ext) => ext.teamCode === t.key),
         )
       : TEAM_LIST;
     return baseList;
   }, [externalTeamList]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!isNextEnabled) return;
+
+    try {
+      const status = await signupStatusMutation.mutateAsync();
+      if (status?.signupStep === "TEAM_SELECTED") {
+        const selectedTeamLabel = TEAM_LIST.find(
+          (t) => t.key === selectedTeam,
+        )?.label;
+
+        if (selectedTeamLabel) {
+          await SecureStore.setItemAsync(
+            "favoriteTeamLabel",
+            selectedTeamLabel,
+          );
+        }
+
+        navigation.replace("SignupGenderAge", {
+          signup: {
+            ...signup,
+            favoriteTeamCode: selectedTeam,
+          },
+          favoriteTeamLabel: selectedTeamLabel,
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn("[signup/status]", e);
+    }
 
     signupTeamMutation.mutate(
       { teamCode: selectedTeam },
       {
         onSuccess: async () => {
-          const selectedTeamLabel = TEAMS.find(
+          const selectedTeamLabel = TEAM_LIST.find(
             (t) => t.key === selectedTeam,
           )?.label;
 
-          // 로컬에도 저장
           await SecureStore.setItemAsync(
             "favoriteTeamLabel",
-            selectedTeamLabel,
+            selectedTeamLabel ?? "",
           );
 
           navigation.replace("SignupGenderAge", {
@@ -260,12 +288,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
     gap: 12,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 22, // 세로 간격
+    rowGap: 22,
   },
 
   item: {

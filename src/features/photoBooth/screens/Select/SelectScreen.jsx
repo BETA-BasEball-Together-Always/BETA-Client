@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
   FlatList,
   TouchableOpacity,
-  Image,
   StyleSheet,
   StatusBar,
+  useWindowDimensions,
 } from "react-native";
 import TeamCard from "./components/TeamCard";
 import FrameCard from "./components/FrameCard";
@@ -24,8 +23,10 @@ import LGIcon from "@shared/assets/svg/teams/LG.svg";
 import SSGIcon from "@shared/assets/svg/teams/SSG.svg";
 import NCIcon from "@shared/assets/svg/teams/NC.svg";
 import KTIcon from "@shared/assets/svg/teams/KT.svg";
+import { AppText } from "../../../../shared/theme/components/AppText";
 
-const CARD_BG = "#1A1A1A";
+import { SafeAreaView } from "react-native-safe-area-context";
+import PhotoBoothBack from "../assets/svg/photoBoothBack.svg";
 
 const teams = [
   { id: "1", teamKey: "kiwoom", name: "키움 히어로즈", Icon: KiwoomIcon },
@@ -42,8 +43,8 @@ const teams = [
 
 /** 2) 프레임 종류 정의(아이디만 사용; 이미지는 아래 FRAMES에서 고름) */
 const frames = [
-  { id: "2x2", name: "2x2" },
-  { id: "1x4", name: "1x4" },
+  { id: "2x2", name: "2 x 2" },
+  { id: "1x4", name: "1 x 4" },
 ];
 
 /** 4) 선택팀에 맞는 프레임 이미지 선택 헬퍼 */
@@ -55,6 +56,7 @@ const getFrameSource = (teamKeyOrNull, frameId) => {
 const SelectScreen = ({ navigation }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [selectedFrame, setSelectedFrame] = useState(null);
+  const { width: bgWidth, height: bgHeight } = useWindowDimensions();
 
   const { setSelectedTeam: setGlobalTeam, setSelectedFrame: setGlobalFrame } =
     photoBoothStore();
@@ -73,58 +75,88 @@ const SelectScreen = ({ navigation }) => {
     }
   };
 
+  const toggleTeam = (item) => {
+    setSelectedTeam((prev) => (prev?.id === item.id ? null : item));
+  };
+
+  const toggleFrame = (item) => {
+    setSelectedFrame((prev) => (prev?.id === item.id ? null : item));
+  };
+
   const renderTeam = ({ item }) => (
     <TeamCard
       item={item}
       isSelected={selectedTeam?.id === item.id}
-      onPress={setSelectedTeam}
+      onPress={toggleTeam}
     />
   );
 
-  const renderFrame = ({ item, key }) => {
+  const renderFrame = ({ item }) => {
     const source = getFrameSource(selectedTeam?.teamKey ?? null, item.id);
     return (
       <FrameCard
-        key={key}
+        key={item.id}
         item={item}
         source={source}
         isSelected={selectedFrame?.id === item.id}
-        onPress={setSelectedFrame}
+        onPress={toggleFrame}
       />
     );
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
-      <Text style={styles.title}>야구네컷</Text>
-
-      <View style={styles.cardSection}>
-        <Text style={styles.sectionTitle}>팀 선택</Text>
-        <FlatList
-          data={teams}
-          horizontal
-          keyExtractor={(it) => it.id}
-          renderItem={renderTeam}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 12 }}
+    <View style={styles.screenRoot}>
+      <View style={styles.backgroundLayer} pointerEvents="none">
+        <PhotoBoothBack
+          width={bgWidth}
+          height={bgHeight}
+          preserveAspectRatio="xMidYMid slice"
         />
-        <Text style={[styles.sectionTitle, { marginTop: 0 }]}>프레임 선택</Text>
-        <View style={styles.framesRow}>
-          {frames.map((f, key) => renderFrame({ item: f, key }))}
-        </View>
       </View>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+        <AppText variant="displayTitle" style={styles.title}>
+          야구네컷
+        </AppText>
 
-      <TouchableOpacity
-        onPress={handleNext}
-        disabled={!(selectedTeam && selectedFrame)}
-        style={[
-          styles.nextButton,
-          !(selectedTeam && selectedFrame) && styles.nextButtonDisabled,
-        ]}
-      >
-        <Text style={styles.nextText}>다음</Text>
-      </TouchableOpacity>
+        <View style={styles.content}>
+          <View style={styles.cardSection}>
+            <AppText variant="heading" style={styles.sectionTitle}>
+              팀 선택
+            </AppText>
+            <FlatList
+              data={teams}
+              horizontal
+              keyExtractor={(it) => it.id}
+              renderItem={renderTeam}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.teamListContent}
+            />
+            <View style={styles.frameSection}>
+              <AppText variant="heading" style={styles.sectionTitle}>
+                프레임 선택
+              </AppText>
+              <View style={styles.framesRow}>
+                {frames.map((f) => renderFrame({ item: f }))}
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          onPress={handleNext}
+          disabled={!(selectedTeam && selectedFrame)}
+          style={[
+            styles.nextButton,
+            styles.nextButtonInset,
+            !(selectedTeam && selectedFrame) && styles.nextButtonDisabled,
+          ]}
+        >
+          <AppText variant="heading" style={styles.nextText}>
+            다음
+          </AppText>
+        </TouchableOpacity>
+      </SafeAreaView>
     </View>
   );
 };
@@ -132,40 +164,65 @@ const SelectScreen = ({ navigation }) => {
 export default SelectScreen;
 
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+    backgroundColor: "#020408",
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#0D0D0D",
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    backgroundColor: "transparent",
+  },
+  content: {
+    flex: 1,
   },
   title: {
-    fontSize: 24,
-    color: "#fff",
-    fontWeight: "bold",
+    color: "#F9F9F9",
     textAlign: "center",
-    marginBottom: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    lineHeight: 32.7,
   },
   cardSection: {
-    flexDirection: "flex-start",
+    flex: 1,
+    marginTop: 25,
+  },
+  /** FlatList는 화면 전체 너비로 스크롤하고, 콘텐츠만 좌우 인셋 */
+  teamListContent: {
+    paddingHorizontal: 20,
+    paddingRight: 24,
+  },
+  frameSection: {
+    // marginTop: 20,
   },
   sectionTitle: {
-    fontSize: 18,
-    color: "#fff",
-    fontWeight: "600",
-    marginBottom: 15,
+    color: "#F9F9F9",
+    marginBottom: 15.5,
+    lineHeight: 24.5,
+    paddingHorizontal: 20,
   },
   framesRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
+    paddingHorizontal: 20,
   },
   nextButton: {
-    marginBottom: 10,
-    backgroundColor: "#EDEDED",
+    marginBottom: 20,
+    backgroundColor: "#F9F9F9",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
   },
-  nextButtonDisabled: { backgroundColor: "#3A3A3A" },
-  nextText: { color: "#000", fontWeight: "700" },
+  nextButtonInset: {
+    marginHorizontal: 20,
+  },
+  nextButtonDisabled: {
+    backgroundColor: "#232323",
+  },
+  nextText: {
+    color: "#3E3E3E",
+    lineHeight: 24.5,
+  },
 });

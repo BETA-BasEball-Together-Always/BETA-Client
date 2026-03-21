@@ -48,6 +48,7 @@ import {
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import FetchStateView from "../../../../shared/components/FetchStateView";
 
 const { width } = Dimensions.get("window");
 
@@ -64,16 +65,11 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const {
     data: detail,
-    isLoading: isPostLoading,
     isFetched: isPostDetailFetched,
     isError: isPostDetailError,
-    error: postDetailError,
+    refetch: refetchPostDetail,
   } = usePostDetailQuery(postId);
   const post = detail ?? initialPostParam ?? {};
-  const postFetchErrorMessage = getApiErrorMessage(
-    postDetailError,
-    "게시글을 찾을 수 없습니다",
-  );
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
   const syncCommentRemovalWithServer = useCommentRemovalStore(
@@ -197,12 +193,11 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
 
-  const openThreadActionModal = ({ isMine, targetType, targetId }) => {
+  const openThreadActionModal = ({ targetType, targetId }) => {
     setPressedThread({ targetType, targetId });
 
     setThreadActionModal({
       visible: true,
-      isMine,
       targetType,
       targetId,
     });
@@ -238,10 +233,6 @@ const PostDetailScreen = ({ route, navigation }) => {
         },
       },
     ]);
-  };
-
-  const handleReportPost = () => {
-    Alert.alert("알림", "신고 기능은 준비 중입니다.");
   };
 
   const handleEditThread = () => {
@@ -297,15 +288,6 @@ const PostDetailScreen = ({ route, navigation }) => {
         },
       },
     ]);
-  };
-
-  const handleReportThread = () => {
-    console.log("report thread", threadActionModal);
-    closeThreadActionModal();
-  };
-
-  const handleCancelReportThread = () => {
-    closeThreadActionModal();
   };
 
   const handleCreateComment = (content) => {
@@ -425,11 +407,11 @@ const PostDetailScreen = ({ route, navigation }) => {
         edges={["top", "left", "right", "bottom"]}
       >
         {errorScreenHeader}
-        <View style={styles.errorCenter}>
-          <AppText variant="middle" style={styles.errorText}>
-            {postFetchErrorMessage}
-          </AppText>
-        </View>
+        <FetchStateView
+          style={{ flex: 1 }}
+          isError
+          onRetry={() => refetchPostDetail()}
+        />
       </SafeAreaView>
     );
   }
@@ -482,17 +464,10 @@ const PostDetailScreen = ({ route, navigation }) => {
                 postMenu={
                   isMine
                     ? {
-                        isOwnPost: true,
                         onEdit: handleEditPost,
                         onDelete: handleDeletePost,
-                        onReport: () => {},
                       }
-                    : {
-                        isOwnPost: false,
-                        onEdit: () => {},
-                        onDelete: () => {},
-                        onReport: handleReportPost,
-                      }
+                    : undefined
                 }
               />
             </View>
@@ -636,57 +611,22 @@ const PostDetailScreen = ({ route, navigation }) => {
               onPress={closeThreadActionModal}
             />
             <View style={styles.bottomSheet}>
-              {threadActionModal.isMine ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.bottomSheetButton}
-                    onPress={handleEditThread}
-                  >
-                    <AppText
-                      variant="bodyMedium"
-                      style={styles.bottomSheetText}
-                    >
-                      수정하기
-                    </AppText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.bottomSheetButton}
-                    onPress={handleDeleteThread}
-                  >
-                    <AppText
-                      variant="bodyMedium"
-                      style={styles.bottomSheetText}
-                    >
-                      삭제하기
-                    </AppText>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={styles.bottomSheetButton}
-                    onPress={handleReportThread}
-                  >
-                    <AppText
-                      variant="bodyMedium"
-                      style={styles.bottomSheetText}
-                    >
-                      신고하기
-                    </AppText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.bottomSheetButton}
-                    onPress={handleCancelReportThread}
-                  >
-                    <AppText
-                      variant="bodyMedium"
-                      style={styles.bottomSheetText}
-                    >
-                      취소
-                    </AppText>
-                  </TouchableOpacity>
-                </>
-              )}
+              <TouchableOpacity
+                style={styles.bottomSheetButton}
+                onPress={handleEditThread}
+              >
+                <AppText variant="bodyMedium" style={styles.bottomSheetText}>
+                  수정하기
+                </AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.bottomSheetButton}
+                onPress={handleDeleteThread}
+              >
+                <AppText variant="bodyMedium" style={styles.bottomSheetText}>
+                  삭제하기
+                </AppText>
+              </TouchableOpacity>
             </View>
           </View>
         )}

@@ -35,10 +35,9 @@ export default function CommentItem({
       }
         onPressProfile={onPressProfile}
       onLongPress={
-        onLongPressThread
+        isMine && onLongPressThread
           ? () =>
               onLongPressThread({
-                isMine,
                 targetType: "comment",
                 targetId: comment.commentId,
               })

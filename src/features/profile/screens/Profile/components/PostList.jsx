@@ -1,5 +1,6 @@
 import React from "react";
 import { FlatList, StyleSheet, View } from "react-native";
+import CommunityLoadingSpinner from "../../../../../shared/components/CommunityLoadingSpinner";
 import PostCard from "../../../../community/component/communityMain/PostCard";
 import { isAllChannelPost } from "../../../../community/utils/communityChannel";
 
@@ -26,7 +27,11 @@ const PostList = ({
         onEndReached={hasNext ? onEndReached : undefined}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
-          isLoading ? <View style={styles.footerSpacer} /> : null
+          isLoading ? (
+            <View style={styles.footerSpinner}>
+              <CommunityLoadingSpinner size={36} />
+            </View>
+          ) : null
         }
       />
     </View>
@@ -52,7 +57,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 13,
   },
-  footerSpacer: {
-    height: 24,
+  footerSpinner: {
+    paddingVertical: 20,
+    alignItems: "center",
   },
 });

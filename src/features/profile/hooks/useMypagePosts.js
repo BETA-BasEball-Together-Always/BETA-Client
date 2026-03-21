@@ -6,13 +6,8 @@ import {
   fetchMyCommentedPostsApi,
   fetchUserPostsApi,
 } from "../services/mypageService";
+import { mypageQueryKeys } from "../mypageQueryKeys";
 import { useUserEmotionSelectionStore } from "../../community/store/userEmotionSelectionStore";
-
-const MY_PAGE_KEYS = {
-  posts: () => ["mypage", "posts"],
-  liked: () => ["mypage", "liked"],
-  commented: () => ["mypage", "commented"],
-};
 
 const normalizeEmotionType = (t) =>
   ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
@@ -32,7 +27,7 @@ const resolveMyEmotionTypeForPost = (post) => {
 
 export const useMyPostsInfiniteQuery = ({ enabled } = {}) => {
   return useInfiniteQuery({
-    queryKey: MY_PAGE_KEYS.posts(),
+    queryKey: mypageQueryKeys.posts(),
     queryFn: ({ pageParam }) => fetchMyPostsApi({ cursor: pageParam }),
     enabled: enabled ?? true,
     initialPageParam: null,
@@ -43,7 +38,7 @@ export const useMyPostsInfiniteQuery = ({ enabled } = {}) => {
 
 export const useMyCommentedPostsInfiniteQuery = ({ enabled } = {}) => {
   return useInfiniteQuery({
-    queryKey: MY_PAGE_KEYS.commented(),
+    queryKey: mypageQueryKeys.commented(),
     queryFn: ({ pageParam }) =>
       fetchMyCommentedPostsApi({ cursor: pageParam }),
     enabled: enabled ?? true,
@@ -58,7 +53,7 @@ export const useMyLikedPostsInfiniteQuery = ({
   hydrateSelection = false,
 } = {}) => {
   const query = useInfiniteQuery({
-    queryKey: MY_PAGE_KEYS.liked(),
+    queryKey: mypageQueryKeys.liked(),
     queryFn: ({ pageParam }) => fetchMyLikedPostsApi({ cursor: pageParam }),
     enabled: enabled ?? true,
     initialPageParam: null,

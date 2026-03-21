@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import postDetailKeys from "./postDetail/postDetailKeys";
 import { togglePostEmotionApi } from "./postDetail/postDetailApi";
 import communityKeys from "./communityKeys";
+import { mypageQueryKeys } from "../../profile/mypageQueryKeys";
 import { setUserEmotionSelection } from "../store/userEmotionSelectionStore";
 import { useRef } from "react";
 
@@ -63,6 +64,22 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         postId,
         data?.toggled ? data?.emotionType : null,
       );
+
+      // 마이페이지「좋아요」탭: 감정 제거 시 목록에서 제거 (API /mypage/liked는 반응 있는 글만)
+      if (data?.toggled === false) {
+        queryClient.setQueryData(mypageQueryKeys.liked(), (prev) => {
+          if (!prev?.pages) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              posts: (page.posts ?? []).filter(
+                (p) => String(p.postId) !== String(postId),
+              ),
+            })),
+          };
+        });
+      }
 
       if (typeof userOnSuccess === "function") {
         userOnSuccess(data, variables, context);

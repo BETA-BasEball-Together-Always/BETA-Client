@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, SafeAreaView, Dimensions } from "react-native";
-import { AppText } from "../../../shared/theme/components/AppText";
+import { View, StyleSheet, SafeAreaView } from "react-native";
 import PostList from "../component/communityMain/PostList";
 import useCommunityPosts from "../hooks/useCommunityPosts";
+import FetchStateView from "../../../shared/components/FetchStateView";
 
 import { useUserStore } from "../../../shared/store/userStore";
 import { TEAM_DATA } from "../../../shared/constants/teams";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
-
-const { width } = Dimensions.get("window");
 
 const TeamCommunityScreen = ({ route }) => {
   const paramSort = route?.params?.initialSort;
@@ -32,10 +30,21 @@ const TeamCommunityScreen = ({ route }) => {
 
   const MainIcon = TEAM_DATA[favoriteTeamCode]?.MainIcon;
 
-  const { posts, loadMore, isLoading } = useCommunityPosts({
+  const {
+    posts,
+    loadMore,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+    isFetchingNextPage,
+  } = useCommunityPosts({
     channel: null,
     sort,
   });
+
+  const blockingLoad =
+    !isError && posts.length === 0 && (isLoading || isFetching);
 
   if (!user) return null;
 
@@ -50,14 +59,22 @@ const TeamCommunityScreen = ({ route }) => {
 
       <CommunityTopBar isTeam={true} teamName={favoriteTeamName} />
 
-      <PostList
-        posts={posts}
-        onEndReached={loadMore}
-        isLoading={isLoading}
-        sort={sort}
-        onSortChange={setSort}
-        user={user}
-      />
+      <FetchStateView
+        style={styles.fetchArea}
+        isLoading={blockingLoad}
+        isError={isError}
+        onRetry={() => refetch()}
+      >
+        <PostList
+          posts={posts}
+          onEndReached={loadMore}
+          isLoading={isFetchingNextPage}
+          isFeedBusy={isLoading || isFetching}
+          sort={sort}
+          onSortChange={setSort}
+          user={user}
+        />
+      </FetchStateView>
     </SafeAreaView>
   );
 };
@@ -82,6 +99,9 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: "center",
     paddingHorizontal: 17,
+    flex: 1,
+  },
+  fetchArea: {
     flex: 1,
   },
 });

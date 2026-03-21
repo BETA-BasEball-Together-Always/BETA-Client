@@ -351,9 +351,12 @@ export default function CameraScreen({ navigation, route }) {
         </IconWithLabel>
       </View>
 
-      {/* Preview */}
+      {/* Preview — 자식이 전부 absolute면 부모 가로가 0으로 수축해 프리뷰가 검게 보일 수 있음 → width 명시 */}
       <View style={[styles.previewWrap, { height: previewHeight }]}>
-        <Animated.View style={[StyleSheet.absoluteFill, zoomStyle]}>
+        <Animated.View
+          style={[StyleSheet.absoluteFill, zoomStyle]}
+          collapsable={false}
+        >
           <Camera
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
@@ -435,8 +438,7 @@ export default function CameraScreen({ navigation, route }) {
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFillObject,
-          { backgroundColor: "#ffffffa0" },
-          styles.flashOverlay,
+          { backgroundColor: "#ffffffa0", zIndex: 100 },
           flashOverlayStyle,
         ]}
       />
@@ -487,8 +489,8 @@ const styles = StyleSheet.create({
   },
 
   previewWrap: {
-    // width: "100%",
-    alignSelf: "center",
+    width: "100%",
+    alignSelf: "stretch",
     overflow: "hidden",
     backgroundColor: "#000",
   },

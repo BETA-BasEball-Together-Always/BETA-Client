@@ -82,13 +82,18 @@ const ProfileScreen = ({ navigation, route }) => {
               isSelf ? myPostsQuery.fetchNextPage : userPostsQuery.fetchNextPage
             }
             isLoading={
+              isSelf ? myPostsQuery.isLoading : userPostsQuery.isLoading
+            }
+            isFetchingNextPage={
               isSelf
-                ? myPostsQuery.isLoading || myPostsQuery.isFetchingNextPage
-                : userPostsQuery.isLoading || userPostsQuery.isFetchingNextPage
+                ? myPostsQuery.isFetchingNextPage
+                : userPostsQuery.isFetchingNextPage
             }
             hasNext={
               !!(isSelf ? myPostsQuery.hasNextPage : userPostsQuery.hasNextPage)
             }
+            isError={isSelf ? myPostsQuery.isError : userPostsQuery.isError}
+            onRetry={() => (isSelf ? myPostsQuery : userPostsQuery).refetch()}
           />
         );
       case "like":
@@ -100,10 +105,11 @@ const ProfileScreen = ({ navigation, route }) => {
             posts={myLikedPosts}
             emptyMessage="좋아요를 남긴 게시물이 없습니다"
             onEndReached={myLikedQuery.fetchNextPage}
-            isLoading={
-              myLikedQuery.isLoading || myLikedQuery.isFetchingNextPage
-            }
+            isLoading={myLikedQuery.isLoading}
+            isFetchingNextPage={myLikedQuery.isFetchingNextPage}
             hasNext={!!myLikedQuery.hasNextPage}
+            isError={myLikedQuery.isError}
+            onRetry={() => myLikedQuery.refetch()}
           />
         );
       case "comment":
@@ -115,10 +121,11 @@ const ProfileScreen = ({ navigation, route }) => {
             posts={myCommentedPosts}
             emptyMessage="댓글을 남긴 게시물이 없습니다"
             onEndReached={myCommentedQuery.fetchNextPage}
-            isLoading={
-              myCommentedQuery.isLoading || myCommentedQuery.isFetchingNextPage
-            }
+            isLoading={myCommentedQuery.isLoading}
+            isFetchingNextPage={myCommentedQuery.isFetchingNextPage}
             hasNext={!!myCommentedQuery.hasNextPage}
+            isError={myCommentedQuery.isError}
+            onRetry={() => myCommentedQuery.refetch()}
           />
         );
       default:
@@ -270,7 +277,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 22,
-    paddingVertical: 20,
+    paddingVertical: 15,
   },
   userProfile: {
     flexDirection: "row",

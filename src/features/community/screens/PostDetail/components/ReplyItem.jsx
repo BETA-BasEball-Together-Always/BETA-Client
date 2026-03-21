@@ -32,10 +32,9 @@ export default function ReplyItem({
         pressedThread?.targetId === reply.commentId
       }
       onLongPress={
-        onLongPressThread
+        isMine && onLongPressThread
           ? () =>
               onLongPressThread({
-                isMine,
                 targetType: "reply",
                 targetId: reply.commentId,
               })

@@ -47,43 +47,34 @@ const PopularPostCard = ({ post }) => {
     String(currentUser.id) === String(authorUserId);
 
   const postMenu =
-    !showAsUnavailable && authorUserId
-      ? isOwnPost
-        ? {
-            isOwnPost: true,
-            onEdit: () => {
-              navigation.navigate("Community", {
-                screen: "CreatePost",
-                params: { editPost: post },
-              });
-            },
-            onDelete: () => {
-              Alert.alert("게시글 삭제", "이 게시글을 삭제할까요?", [
-                { text: "취소", style: "cancel" },
-                {
-                  text: "삭제",
-                  style: "destructive",
-                  onPress: () => {
-                    deletePostMutation.mutate(post.postId, {
-                      onError: (e) => {
-                        const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
-                        setTimeout(() => Alert.alert("오류", msg), 0);
-                      },
-                    });
-                  },
+    !showAsUnavailable &&
+    isOwnPost &&
+    authorUserId != null
+      ? {
+          onEdit: () => {
+            navigation.navigate("Community", {
+              screen: "CreatePost",
+              params: { editPost: post },
+            });
+          },
+          onDelete: () => {
+            Alert.alert("게시글 삭제", "이 게시글을 삭제할까요?", [
+              { text: "취소", style: "cancel" },
+              {
+                text: "삭제",
+                style: "destructive",
+                onPress: () => {
+                  deletePostMutation.mutate(post.postId, {
+                    onError: (e) => {
+                      const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+                      setTimeout(() => Alert.alert("오류", msg), 0);
+                    },
+                  });
                 },
-              ]);
-            },
-            onReport: () => {},
-          }
-        : {
-            isOwnPost: false,
-            onEdit: () => {},
-            onDelete: () => {},
-            onReport: () => {
-              Alert.alert("알림", "신고 기능은 준비 중입니다.");
-            },
-          }
+              },
+            ]);
+          },
+        }
       : undefined;
 
   const [showMore, setShowMore] = useState(false);

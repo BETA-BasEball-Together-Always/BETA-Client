@@ -13,7 +13,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CommonActions } from "@react-navigation/native";
 import {
   Camera,
   useCameraDevice,
@@ -61,18 +60,15 @@ export default function CreatePostCameraScreen({ navigation }) {
         height: photo.height,
       };
 
-      // 바로 이전 라우트(CreatePost)에 params를 주입한 뒤 pop
-      const state = navigation.getState();
-      const prevRoute = state?.routes?.[state.routes.length - 2];
-      if (prevRoute?.key) {
-        navigation.dispatch(
-          CommonActions.setParams({
-            params: { capturedAsset },
-            key: prevRoute.key,
-          }),
-        );
-      }
-      navigation.goBack();
+      /** captureNonce로 매 촬영마다 useEffect가 확실히 실행되도록 함(누적 첨부 유지) */
+      navigation.navigate({
+        name: "CreatePost",
+        params: {
+          capturedAsset,
+          captureNonce: Date.now(),
+        },
+        merge: true,
+      });
     } catch (e) {
       console.log("CreatePostCamera takePhoto error:", e);
     } finally {
