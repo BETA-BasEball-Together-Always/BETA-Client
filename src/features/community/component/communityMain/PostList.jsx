@@ -22,7 +22,9 @@ const PostList = ({
     <View style={styles.container}>
       <FlatList
         data={posts}
-        keyExtractor={(item) => item.postId.toString()}
+        keyExtractor={(item, index) =>
+          item?.postId != null ? `${item.postId}-${index}` : `post-${index}`
+        }
         ListHeaderComponent={
           <View style={styles.header}>
             <SortTabs sort={sort} onChange={onSortChange} />

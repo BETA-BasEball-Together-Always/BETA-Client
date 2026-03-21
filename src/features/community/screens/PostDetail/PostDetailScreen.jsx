@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -15,10 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/component/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
@@ -45,6 +41,13 @@ import { normalizeCommentsForDisplay } from "../../utils/communityComments";
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
 import { useUserEmotionSelection } from "../../store/userEmotionSelectionStore";
 import { useDeletePostMutation } from "../../services/post/deletePostMutation";
+import { isAllChannelPost } from "../../utils/communityChannel";
+import {
+  DELETED_POST_MESSAGE,
+  getActivePostImages,
+  isPostDeletedOrHiddenInFeed,
+} from "../../utils/communityPostVisibility";
+import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
 
 const { width } = Dimensions.get("window");
 
@@ -62,30 +65,19 @@ const PostDetailScreen = ({ route, navigation }) => {
   const {
     data: detail,
     isLoading: isPostLoading,
-    refetch,
+    isFetched: isPostDetailFetched,
+    isError: isPostDetailError,
+    error: postDetailError,
   } = usePostDetailQuery(postId);
   const post = detail ?? initialPostParam ?? {};
+  const postFetchErrorMessage = getApiErrorMessage(
+    postDetailError,
+    "게시글을 찾을 수 없습니다",
+  );
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
   const syncCommentRemovalWithServer = useCommentRemovalStore(
     (s) => s.syncWithServerTree,
-  );
-
-  const firstFocusRef = useRef(true);
-  useEffect(() => {
-    firstFocusRef.current = true;
-  }, [postId]);
-
-  // 재진입 시에만 refetch — 최초 마운트는 useQuery가 이미 조회, 삭제 직후 불필요한 덮어쓰기 방지
-  useFocusEffect(
-    useCallback(() => {
-      if (!postId) return;
-      if (firstFocusRef.current) {
-        firstFocusRef.current = false;
-        return;
-      }
-      refetch();
-    }, [postId, refetch]),
   );
 
   useEffect(() => {
@@ -93,7 +85,7 @@ const PostDetailScreen = ({ route, navigation }) => {
     syncCommentRemovalWithServer(postId, detail.comments);
   }, [postId, detail?.comments, syncCommentRemovalWithServer]);
 
-  const isAllChannel = post.channel === "ALL";
+  const isAllChannel = isAllChannelPost(post.channel);
 
   const author = detail?.author ?? post?.author ?? {};
 
@@ -136,6 +128,25 @@ const PostDetailScreen = ({ route, navigation }) => {
     if (myEmotionTypeFromStore === undefined) return;
     setSelectedEmotionType(myEmotionTypeFromStore);
   }, [postId, myEmotionTypeFromStore]);
+
+  useEffect(() => {
+    if (myEmotionTypeFromStore !== undefined) return;
+    const raw =
+      detail?.myEmotion ??
+      detail?.myEmotionType ??
+      initialPostParam?.myEmotion ??
+      initialPostParam?.myEmotionType;
+    const normalized = normalizeEmotionType(raw);
+    if (normalized != null) setSelectedEmotionType(normalized);
+  }, [
+    detail?.myEmotion,
+    detail?.myEmotionType,
+    initialPostParam?.myEmotion,
+    initialPostParam?.myEmotionType,
+    myEmotionTypeFromStore,
+    postId,
+  ]);
+
   const [editTarget, setEditTarget] = useState(null); // { commentId, content }
 
   const createCommentMutation = useCreateCommentMutation(postId, {
@@ -143,6 +154,13 @@ const PostDetailScreen = ({ route, navigation }) => {
   });
   const updateCommentMutation = useUpdateCommentMutation(postId);
   const deleteCommentMutation = useDeleteCommentMutation(postId);
+
+  const showDeleteBusy =
+    deletePostMutation.isPending || deleteCommentMutation.isPending;
+  const deleteBusyMessage = deletePostMutation.isPending
+    ? "게시글을 삭제하고 있어요"
+    : "댓글을 삭제하고 있어요";
+
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
   const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
     onSuccess: (data) => {
@@ -153,15 +171,14 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const imageList = useMemo(() => {
     const source = detail ?? initialPostParam;
-
-    if (source?.images?.length > 0) {
-      return source.images.map((img) =>
+    const imgs = getActivePostImages(source);
+    const urls = imgs
+      .map((img) =>
         typeof img === "string" ? img : img.imageUrl || img.url,
-      );
-    }
-
+      )
+      .filter(Boolean);
+    if (urls.length > 0) return urls;
     if (source?.image) return [source.image];
-
     return [];
   }, [detail, initialPostParam]);
 
@@ -214,10 +231,8 @@ const PostDetailScreen = ({ route, navigation }) => {
               navigation.goBack();
             },
             onError: (e) => {
-              Alert.alert(
-                "오류",
-                e?.response?.data?.message ?? "삭제에 실패했습니다.",
-              );
+              const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+              setTimeout(() => Alert.alert("오류", msg), 0);
             },
           });
         },
@@ -264,17 +279,17 @@ const PostDetailScreen = ({ route, navigation }) => {
         text: "삭제",
         style: "destructive",
         onPress: () => {
+          closeThreadActionModal();
           deleteCommentMutation.mutate(
             { commentId: targetId },
             {
               onSuccess: () => {
                 if (editTarget?.commentId === targetId) setEditTarget(null);
-                closeThreadActionModal();
               },
               onError: (err) => {
                 Alert.alert(
                   "오류",
-                  err?.response?.data?.message ?? "댓글 삭제에 실패했습니다.",
+                  getApiErrorMessage(err, "댓글 삭제에 실패했습니다."),
                 );
               },
             },
@@ -338,7 +353,7 @@ const PostDetailScreen = ({ route, navigation }) => {
       // 커스텀 탭바(customTabBar)는 MainTabNavigator에만 존재합니다.
       // 따라서 CommunityStack 내부(AllCommunity/TeamCommunity)로 이동하면 탭바가 사라지므로,
       // Root의 `Main`으로 이동시켜 탭바가 유지되도록 합니다.
-      if (post.channel === "ALL") {
+      if (isAllChannelPost(post.channel)) {
         navigation.replace("Main", {
           screen: "AllCommunity",
           params: { initialSort: "latest" },
@@ -353,6 +368,71 @@ const PostDetailScreen = ({ route, navigation }) => {
       navigation.goBack();
     }
   };
+
+  const errorScreenHeader = (
+    <AppHeader
+      left={
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <BackIcon width={12} height={18.5} />
+          <AppText variant="bodyRegular" style={styles.backLabel}>
+            뒤로가기
+          </AppText>
+        </TouchableOpacity>
+      }
+    />
+  );
+
+  if (!postId) {
+    return (
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top", "left", "right", "bottom"]}
+      >
+        {errorScreenHeader}
+        <View style={styles.errorCenter}>
+          <AppText variant="middle" style={styles.errorText}>
+            게시글을 찾을 수 없습니다
+          </AppText>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const mergedForDeletedCheck = detail ?? initialPostParam ?? null;
+  if (mergedForDeletedCheck && isPostDeletedOrHiddenInFeed(mergedForDeletedCheck)) {
+    return (
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top", "left", "right", "bottom"]}
+      >
+        {errorScreenHeader}
+        <View style={styles.errorCenter}>
+          <AppText variant="middle" style={styles.errorText}>
+            {DELETED_POST_MESSAGE}
+          </AppText>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isPostDetailFetched && isPostDetailError && detail == null) {
+    return (
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top", "left", "right", "bottom"]}
+      >
+        {errorScreenHeader}
+        <View style={styles.errorCenter}>
+          <AppText variant="middle" style={styles.errorText}>
+            {postFetchErrorMessage}
+          </AppText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -512,7 +592,7 @@ const PostDetailScreen = ({ route, navigation }) => {
                   },
                 );
               }}
-              isAllChannel={post.channel === "ALL"}
+              isAllChannel={isAllChannelPost(post.channel)}
               onPressProfile={(targetUserId) => {
                 if (!targetUserId) return;
                 const isSelf =
@@ -538,6 +618,15 @@ const PostDetailScreen = ({ route, navigation }) => {
           editTarget={editTarget}
           cancelEdit={() => setEditTarget(null)}
         />
+
+        <Modal visible={showDeleteBusy} transparent animationType="fade">
+          <View style={styles.deleteBusyRoot}>
+            <ActivityIndicator size="large" color="#F9F9F9" />
+            <AppText variant="middle" style={styles.deleteBusyText}>
+              {deleteBusyMessage}
+            </AppText>
+          </View>
+        </Modal>
 
         {threadActionModal.visible && (
           <View style={styles.modalOverlay}>
@@ -739,5 +828,27 @@ const styles = StyleSheet.create({
   },
   bottomSheetText: {
     color: "#F9F9F9",
+  },
+  deleteBusyRoot: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  deleteBusyText: {
+    color: "#F9F9F9",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  errorCenter: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    color: "rgba(228, 228, 228, 0.85)",
+    textAlign: "center",
   },
 });

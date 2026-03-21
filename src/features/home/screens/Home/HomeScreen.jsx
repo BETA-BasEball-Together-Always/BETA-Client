@@ -86,7 +86,11 @@ const HomeScreen = () => {
           </AppText>
           <TouchableOpacity
             onPress={() =>
-              navigation.navigate("AllCommunity", { initialSort: "popular" })
+              navigation.navigate({
+                name: "AllCommunity",
+                params: { initialSort: "popular" },
+                merge: true,
+              })
             }
           >
             <AppText variant="middle" className="text-[#D4D4D4]">
@@ -96,14 +100,18 @@ const HomeScreen = () => {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {popularPosts.slice(0, 5).map((post) => (
+          {popularPosts.slice(0, 5).map((post, index) => (
             <PopularPostCard
-              key={post.postId}
+              key={`${post.postId}-${index}`}
               post={post}
               onPress={() =>
-                navigation.navigate("AllCommunity", {
-                  initialSort: "popular",
-                  initialPostId: post.postId,
+                navigation.navigate({
+                  name: "AllCommunity",
+                  params: {
+                    initialSort: "popular",
+                    initialPostId: post.postId,
+                  },
+                  merge: true,
                 })
               }
             />

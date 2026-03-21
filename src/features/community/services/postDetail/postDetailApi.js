@@ -1,15 +1,16 @@
 import api from "../../../../shared/libs/api";
 
+const COMMENT_PAGE_SIZE = 20;
+
 // 게시글 상세 + 첫 페이지 댓글
 export const fetchPostDetailApi = async (postId) => {
   const res = await api.get(`/api/v1/community/posts/${postId}`);
   return res.data;
 };
 
-// 추가 댓글 조회
-export const fetchPostCommentsApi = async ({ postId, cursor }) => {
-  const params = {};
-  if (cursor) params.cursor = cursor;
+export const fetchPostCommentsApi = async ({ postId, cursorId, size }) => {
+  const params = { size: size ?? COMMENT_PAGE_SIZE };
+  if (cursorId != null && cursorId !== "") params.cursorId = cursorId;
   const res = await api.get(`/api/v1/community/posts/${postId}/comments`, {
     params,
   });

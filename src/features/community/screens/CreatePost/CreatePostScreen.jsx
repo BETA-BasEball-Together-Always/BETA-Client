@@ -32,6 +32,7 @@ import {
   invalidateCommunityPostLists,
   useCreatePostMutation,
 } from "../../services/post/createPostMutation";
+import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
 import { useUpdatePostMutation } from "../../services/post/updatePostMutation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -105,7 +106,6 @@ const CreatePostScreen = () => {
     };
   }, [editPost?.postId]);
 
-  /** 수정 모드: 서버 channel(ALL / TEAM)에 맞춰 게시판 선택 UI 동기화 */
   useEffect(() => {
     if (!editPost?.postId) return;
     const ch = editPost.channel;
@@ -200,7 +200,7 @@ const CreatePostScreen = () => {
     return boards.find((b) => b.id === selectedBoardId)?.label ?? "";
   }, [boards, selectedBoardId]);
 
-  /** 백엔드 channel: 게시판 구분은 항상 "ALL" | "TEAM" (팀 코드 아님) */
+
   const createPostChannel = useMemo(() => {
     if (selectedBoardId === "ALL") return "ALL";
     return "TEAM";
@@ -483,6 +483,11 @@ const CreatePostScreen = () => {
       return;
     }
 
+    if (!isEditMode && selectedBoardId === "TEAM" && !author?.favoriteTeamCode) {
+      openLimitModal("응원팀을 설정한 뒤 팀 게시판에 글을 작성할 수 있습니다.");
+      return;
+    }
+
     if (isEditMode) {
       const formData = new FormData();
       formData.append("content", content);
@@ -549,10 +554,20 @@ const CreatePostScreen = () => {
       },
       onError: (e) => {
         const status = e?.response?.status;
+        const data = e?.response?.data;
         if (status === 413) {
           openLimitModal(
             "게시글 용량이 너무 큽니다.\n이미지 크기나 개수를 줄여 다시 시도해 주세요.",
           );
+          return;
+        }
+        if (status === 400 && Array.isArray(data?.errors) && data.errors[0]?.message) {
+          openLimitModal(data.errors[0].message);
+          return;
+        }
+        if (status === 400) {
+          openLimitModal(getApiErrorMessage(e, "입력값을 확인해 주세요."));
+          return;
         }
         console.log("게시글 업로드 실패:", e?.response?.data ?? e);
       },

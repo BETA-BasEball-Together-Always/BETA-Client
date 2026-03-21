@@ -3,6 +3,8 @@ import { postKeys } from "./postKeys";
 import api from "../../../../shared/libs/api";
 import postDetailKeys from "../postDetail/postDetailKeys";
 import communityKeys from "../communityKeys";
+import { clearUserEmotionSelection } from "../../store/userEmotionSelectionStore";
+import { useSoftDeletedPostStore } from "../../store/softDeletedPostStore";
 
 // 게시글 삭제
 const deletePostApi = async (postId) => {
@@ -10,6 +12,17 @@ const deletePostApi = async (postId) => {
 
   return res.data;
 };
+
+function removePostFromInfiniteData(prev, postId) {
+  if (!prev?.pages) return prev;
+  return {
+    ...prev,
+    pages: prev.pages.map((page) => ({
+      ...page,
+      posts: (page.posts ?? []).filter((p) => p.postId !== postId),
+    })),
+  };
+}
 
 export const useDeletePostMutation = () => {
   const queryClient = useQueryClient();
@@ -19,45 +32,56 @@ export const useDeletePostMutation = () => {
 
     mutationFn: (postId) => deletePostApi(postId),
 
-    onSuccess: (data, postId) => {
-      if (postId != null) {
-        queryClient.removeQueries({ queryKey: postDetailKeys.detail(postId) });
-      }
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: communityKeys.posts() });
+      await queryClient.cancelQueries({ queryKey: ["mypage"] });
+      await queryClient.cancelQueries({ queryKey: ["userPosts"] });
 
-      queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
-
-      // 마이페이지 / 타인 프로필 피드 infinite 목록에서 즉시 제거 + 재검증
-      queryClient.setQueriesData({ queryKey: ["mypage"] }, (prev) => {
-        if (!prev?.pages) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page) => ({
-            ...page,
-            posts: (page.posts ?? []).filter((p) => p.postId !== postId),
-          })),
-        };
+      const snapCommunity = queryClient.getQueriesData({
+        queryKey: communityKeys.posts(),
       });
-      queryClient.setQueriesData({ queryKey: ["userPosts"] }, (prev) => {
-        if (!prev?.pages) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page) => ({
-            ...page,
-            posts: (page.posts ?? []).filter((p) => p.postId !== postId),
-          })),
-        };
+      const snapMypage = queryClient.getQueriesData({ queryKey: ["mypage"] });
+      const snapUserPosts = queryClient.getQueriesData({
+        queryKey: ["userPosts"],
       });
 
-      queryClient.invalidateQueries({ queryKey: ["mypage"] });
-      queryClient.invalidateQueries({ queryKey: ["userPosts"] });
+      queryClient.setQueriesData({ queryKey: communityKeys.posts() }, (prev) =>
+        removePostFromInfiniteData(prev, postId),
+      );
+      queryClient.setQueriesData({ queryKey: ["mypage"] }, (prev) =>
+        removePostFromInfiniteData(prev, postId),
+      );
+      queryClient.setQueriesData({ queryKey: ["userPosts"] }, (prev) =>
+        removePostFromInfiniteData(prev, postId),
+      );
 
-      console.log("게시글 삭제 성공: ", data);
+      return { snapCommunity, snapMypage, snapUserPosts };
     },
 
-    onError: (error) => {
-      console.log("게시글 삭제 실패: ", error);
-      console.log("게시글 삭제 실패 response: ", error.response);
-      console.log("게시글 삭제 실패 data: ", error.data);
+    onError: (_error, _postId, context) => {
+      context?.snapCommunity?.forEach(([key, data]) =>
+        queryClient.setQueryData(key, data),
+      );
+      context?.snapMypage?.forEach(([key, data]) =>
+        queryClient.setQueryData(key, data),
+      );
+      context?.snapUserPosts?.forEach(([key, data]) =>
+        queryClient.setQueryData(key, data),
+      );
+    },
+
+    onSuccess: (_data, postId) => {
+      if (postId != null) useSoftDeletedPostStore.getState().markDeleted(postId);
+    },
+
+    onSettled: (_data, error, postId) => {
+      if (error == null && postId != null) {
+        queryClient.removeQueries({ queryKey: postDetailKeys.detail(postId) });
+        clearUserEmotionSelection(postId);
+      }
+      queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
+      queryClient.invalidateQueries({ queryKey: ["mypage"] });
+      queryClient.invalidateQueries({ queryKey: ["userPosts"] });
     },
   });
 };

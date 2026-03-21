@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, SafeAreaView } from "react-native";
 import useCommunityPosts from "../hooks/useCommunityPosts";
 import PostList from "../component/communityMain/PostList";
@@ -9,9 +9,15 @@ import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
 
 const AllCommunityScreen = ({ route }) => {
-  const initialSort = route?.params?.initialSort || "latest";
-  const [sort, setSort] = useState(initialSort);
+  const paramSort = route?.params?.initialSort;
+  const [sort, setSort] = useState(() =>
+    paramSort === "popular" || paramSort === "latest" ? paramSort : "latest",
+  );
   const user = useUserStore((state) => state.user);
+
+  useEffect(() => {
+    if (paramSort === "popular" || paramSort === "latest") setSort(paramSort);
+  }, [paramSort]);
 
   // heart fill 복원을 위해, 유저가 감정을 남긴(=liked) 게시물 목록을 서버에서 hydrate
   useMyLikedPostsInfiniteQuery({
@@ -19,7 +25,6 @@ const AllCommunityScreen = ({ route }) => {
     hydrateSelection: true,
   });
 
-  // 전체 게시판: API/작성 시 channel 값과 동일하게 "ALL" (CreatePost의 전체 게시판 선택과 일치)
   const { posts, loadMore, isLoading } = useCommunityPosts({
     channel: "ALL",
     sort,

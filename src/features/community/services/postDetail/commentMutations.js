@@ -12,6 +12,34 @@ import { useCommentRemovalStore } from "../../store/commentRemovalStore";
 const DELETED_COMMENT_TEXT = "삭제된 댓글입니다";
 
 /**
+ * 방법 A: 작성/수정/삭제 API 성공 후 게시글 상세 캐시의 comments만 갱신 (별도 GET /comments 재조회 없음)
+ */
+
+/** parentId가 최상위 또는 중첩 답글인 경우 재귀적으로 replies에 추가 */
+function addReplyToCommentTree(list, parentId, newComment) {
+  if (!Array.isArray(list)) return list;
+  return list.map((c) => {
+    if (c.commentId === parentId) {
+      return {
+        ...c,
+        replies: [...(c.replies ?? []), newComment],
+      };
+    }
+    if (Array.isArray(c.replies) && c.replies.length > 0) {
+      const nextReplies = addReplyToCommentTree(
+        c.replies,
+        parentId,
+        newComment,
+      );
+      if (nextReplies !== c.replies) {
+        return { ...c, replies: nextReplies };
+      }
+    }
+    return c;
+  });
+}
+
+/**
  * 댓글 트리에서 commentId 삭제(소프트: 답글 있으면 문구만 변경, 없으면 제거)
  * @returns {{ list: Array, mode: 'soft'|'removed'|'none' }}
  */
@@ -59,17 +87,16 @@ export const useCreateCommentMutation = (postId, { currentUser } = {}) => {
     mutationFn: ({ content, parentId = null }) =>
       createCommentApi({ postId, content, parentId }),
     onSuccess: (data, variables) => {
-      // optimistic하게 detail 캐시 갱신
       queryClient.setQueryData(postDetailKeys.detail(postId), (prev) => {
         if (!prev) return prev;
         const isReply = variables.parentId != null;
 
         const newComment = {
           commentId: data.commentId,
-          userId: data.userId,
+          userId: data.userId ?? currentUser?.id ?? null,
           nickname: currentUser?.nickname ?? null,
           teamCode: currentUser?.favoriteTeamCode ?? null,
-          content: data.content,
+          content: data.content ?? variables.content,
           likeCount: 0,
           depth: data.depth,
           createdAt: data.createdAt,
@@ -88,13 +115,10 @@ export const useCreateCommentMutation = (postId, { currentUser } = {}) => {
 
         return {
           ...prev,
-          comments: (prev.comments ?? []).map((c) =>
-            c.commentId === variables.parentId
-              ? {
-                  ...c,
-                  replies: [...(c.replies ?? []), newComment],
-                }
-              : c,
+          comments: addReplyToCommentTree(
+            prev.comments ?? [],
+            variables.parentId,
+            newComment,
           ),
           commentCount: (prev.commentCount ?? 0) + 1,
         };
@@ -156,30 +180,70 @@ export const useDeleteCommentMutation = (postId) => {
 
   return useMutation({
     mutationFn: ({ commentId }) => deleteCommentApi({ commentId }),
-    onSuccess: (_data, { commentId }) => {
-      let removedLeaf = false;
 
-      queryClient.setQueryData(postDetailKeys.detail(postId), (prev) => {
-        if (!prev) return prev;
+    onMutate: async ({ commentId }) => {
+      await queryClient.cancelQueries({
+        queryKey: postDetailKeys.detail(postId),
+      });
+      const previous = queryClient.getQueryData(postDetailKeys.detail(postId));
+      if (!previous) {
+        return { optimisticDetailUpdated: false, commentId };
+      }
 
-        const { list: nextComments, mode } = mapCommentTreeAfterDelete(
-          prev.comments ?? [],
-          commentId,
-        );
+      const { list: nextComments, mode } = mapCommentTreeAfterDelete(
+        previous.comments ?? [],
+        commentId,
+      );
 
-        if (mode === "removed") {
-          removedLeaf = true;
-        }
-
-        return {
-          ...prev,
-          comments: nextComments,
-          commentCount: Math.max((prev.commentCount ?? 0) - 1, 0),
-        };
+      queryClient.setQueryData(postDetailKeys.detail(postId), {
+        ...previous,
+        comments: nextComments,
+        commentCount: Math.max((previous.commentCount ?? 0) - 1, 0),
       });
 
-      if (removedLeaf) {
+      if (mode === "removed") {
         useCommentRemovalStore.getState().hideComment(postId, commentId);
+      }
+
+      return {
+        previous,
+        commentId,
+        removedLeaf: mode === "removed",
+        optimisticDetailUpdated: true,
+      };
+    },
+
+    onError: (_err, variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(
+          postDetailKeys.detail(postId),
+          context.previous,
+        );
+      }
+      if (context?.removedLeaf && variables?.commentId != null) {
+        useCommentRemovalStore
+          .getState()
+          .unhideComment(postId, variables.commentId);
+      }
+    },
+
+    onSuccess: (_data, { commentId }, context) => {
+      if (!context?.optimisticDetailUpdated) {
+        queryClient.setQueryData(postDetailKeys.detail(postId), (prev) => {
+          if (!prev) return prev;
+          const { list: nextComments, mode } = mapCommentTreeAfterDelete(
+            prev.comments ?? [],
+            commentId,
+          );
+          if (mode === "removed") {
+            useCommentRemovalStore.getState().hideComment(postId, commentId);
+          }
+          return {
+            ...prev,
+            comments: nextComments,
+            commentCount: Math.max((prev.commentCount ?? 0) - 1, 0),
+          };
+        });
       }
 
       queryClient.setQueriesData(

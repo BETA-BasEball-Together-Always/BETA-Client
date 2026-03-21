@@ -1,6 +1,7 @@
 import React from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import PostCard from "../../../../community/component/communityMain/PostCard";
+import { isAllChannelPost } from "../../../../community/utils/communityChannel";
 
 const PostList = ({
   posts = [],
@@ -12,10 +13,12 @@ const PostList = ({
     <View style={styles.container}>
       <FlatList
         data={posts}
-        keyExtractor={(item) => item.postId.toString()}
+        keyExtractor={(item, index) =>
+          item?.postId != null ? `${item.postId}-${index}` : `post-${index}`
+        }
         renderItem={({ item }) => (
           <View style={styles.postCardWrap}>
-            <PostCard post={item} showTeam={item.channel === "ALL"} />
+            <PostCard post={item} showTeam={isAllChannelPost(item.channel)} />
           </View>
         )}
         contentContainerStyle={styles.listContainer}

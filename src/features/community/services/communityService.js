@@ -1,13 +1,44 @@
 import api from "../../../shared/libs/api";
 
+
+export const COMMUNITY_POST_LIST_PAGE_SIZE = 20;
+
+/** POPULAR 다음 페이지용 총 감정 수 (서버 totalEmotionCount 또는 emotions 합산) */
+export function totalEmotionCountFromPost(post) {
+  if (post == null) return 0;
+  if (typeof post.totalEmotionCount === "number") return post.totalEmotionCount;
+  const e = post.emotions ?? {};
+  return (
+    (e.likeCount ?? 0) +
+    (e.sadCount ?? 0) +
+    (e.funCount ?? 0) +
+    (e.hypeCount ?? 0)
+  );
+}
+
 // 게시글 목록 조회
-export const fetchPostsApi = async ({ channel, sort, cursor, offset }) => {
-  const params = { sort };
+export const fetchPostsApi = async ({
+  channel,
+  sort,
+  cursorId,
+  cursorEmotionCount,
+}) => {
+  const params = {
+    sortType: sort === "popular" ? "POPULAR" : "LATEST",
+    size: COMMUNITY_POST_LIST_PAGE_SIZE,
+  };
 
-  if (channel) params.channel = channel; //undefined면 파라미터 안 보내기!!(전체/팀 게시판 구별)
+  if (channel) params.channel = channel;
 
-  if (sort === "latest" && cursor) params.cursor = cursor;
-  if (sort === "popular") params.offset = offset ?? 0;
+  if (cursorId != null && cursorId !== "") params.cursorId = cursorId;
+
+  if (
+    sort === "popular" &&
+    cursorEmotionCount != null &&
+    cursorEmotionCount !== ""
+  ) {
+    params.cursorEmotionCount = cursorEmotionCount;
+  }
 
   const res = await api.get("/api/v1/community/posts", { params });
 

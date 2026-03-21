@@ -22,6 +22,16 @@ export const useCommentRemovalStore = create((set, get) => ({
     set((s) => ({ hiddenKeys: { ...s.hiddenKeys, [k]: true } }));
   },
 
+  unhideComment: (postId, commentId) => {
+    if (postId == null || commentId == null) return;
+    const k = keyOf(postId, commentId);
+    set((s) => {
+      const next = { ...s.hiddenKeys };
+      delete next[k];
+      return { hiddenKeys: next };
+    });
+  },
+
   isHidden: (postId, commentId) => !!get().hiddenKeys[keyOf(postId, commentId)],
 
   /** 서버가 내려준 댓글 트리에 존재하는 id 집합으로 동기화 */

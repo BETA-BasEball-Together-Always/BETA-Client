@@ -1,46 +1,89 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { fetchPostsApi } from "../services/communityService";
+import { useMemo } from "react";
+import {
+  fetchPostsApi,
+  totalEmotionCountFromPost,
+} from "../services/communityService";
 import communityKeys from "../services/communityKeys";
 
+function dedupePostsById(pages) {
+  const map = new Map();
+  for (const page of pages ?? []) {
+    for (const p of page?.posts ?? []) {
+      if (p?.postId != null && !map.has(p.postId)) map.set(p.postId, p);
+    }
+  }
+  return Array.from(map.values());
+}
+
 export default function useCommunityPosts({ channel, sort, enabled = true }) {
+  const channelForList = channel ?? null;
+
   const query = useInfiniteQuery({
-    queryKey: communityKeys.postList({ channel, sort }),
+    queryKey: communityKeys.postList({ channel: channelForList, sort }),
 
     queryFn: async ({ pageParam }) => {
+      if (sort === "popular") {
+        const p =
+          pageParam != null && typeof pageParam === "object"
+            ? pageParam
+            : null;
+        return fetchPostsApi({
+          channel: channelForList,
+          sort,
+          cursorId: p?.cursorId,
+          cursorEmotionCount: p?.cursorEmotionCount,
+        });
+      }
+
+      const cursorId =
+        typeof pageParam === "number" || typeof pageParam === "string"
+          ? pageParam
+          : undefined;
+
       return fetchPostsApi({
-        channel,
+        channel: channelForList,
         sort,
-        cursor: sort === "latest" ? pageParam : null,
-        offset: sort === "popular" ? pageParam : null,
+        cursorId,
       });
     },
     enabled,
-    /** v5 infiniteQuery 필수 — 최신글 다음 페이지 커서 */
-    initialPageParam: sort === "popular" ? 0 : null,
-    getNextPageParam: (lastPage, allPages) => {
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => {
       if (!lastPage?.hasNext) return undefined;
 
-      if (sort === "latest") {
-        return (
-          lastPage.nextCursor ??
-          lastPage.cursor ??
-          lastPage.nextPageCursor ??
-          undefined
-        );
-      }
-
       if (sort === "popular") {
-        return allPages.reduce(
-          (acc, page) => acc + (page.posts?.length ?? 0),
-          0,
-        );
+        const posts = lastPage.posts ?? [];
+        const lastPost = posts[posts.length - 1];
+        const cursorId =
+          lastPage.nextCursorId ??
+          lastPage.nextCursor ??
+          lastPage.cursorId ??
+          lastPage.cursor ??
+          lastPost?.postId;
+        const cursorEmotionCount =
+          lastPage.nextCursorEmotionCount ??
+          lastPage.cursorEmotionCount ??
+          (lastPost != null ? totalEmotionCountFromPost(lastPost) : undefined);
+        if (cursorId == null || cursorEmotionCount == null) return undefined;
+        return { cursorId, cursorEmotionCount };
       }
 
-      return undefined;
+      return (
+        lastPage.nextCursorId ??
+        lastPage.nextCursor ??
+        lastPage.cursorId ??
+        lastPage.cursor ??
+        lastPage.nextPageCursor ??
+        undefined
+      );
     },
   });
 
-  const posts = query.data?.pages.flatMap((page) => page.posts) ?? [];
+  const posts = useMemo(
+    () => dedupePostsById(query.data?.pages),
+    [query.data?.pages],
+  );
 
   return {
     posts,

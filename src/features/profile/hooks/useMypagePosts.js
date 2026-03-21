@@ -18,7 +18,7 @@ const normalizeEmotionType = (t) =>
   ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
 
 const resolveMyEmotionTypeForPost = (post) => {
-  // 백엔드 응답에 필드 이름이 명확히 제공되지 않아, 가능한 후보를 넓게 허용합니다.
+  // 백엔드 응답에 필드 이름이 명확히 제공되지 않아, 가능한 후보를 넓게 허용
   const t =
     post?.myEmotionType ??
     post?.myEmotion ??
@@ -26,7 +26,7 @@ const resolveMyEmotionTypeForPost = (post) => {
     post?.userEmotionType ??
     null;
 
-  // 최소한 heart fill(존재 여부)만 보이려면 null 대신 LIKE를 fallback으로 둡니다.
+  // 최소한 heart fill(존재 여부)만 보이려면 null 대신 LIKE를 fallback으로 둠
   return normalizeEmotionType(t) ?? "LIKE";
 };
 
@@ -109,7 +109,14 @@ export const useUserFromUserPostsQuery = (userPostsQuery) => {
 export const useFlattenMypagePosts = (queryData) => {
   return useMemo(() => {
     const pages = queryData?.pages ?? [];
-    return pages.flatMap((p) => p?.posts ?? []);
+    const map = new Map();
+    for (const p of pages) {
+      for (const post of p?.posts ?? []) {
+        if (post?.postId != null && !map.has(post.postId))
+          map.set(post.postId, post);
+      }
+    }
+    return Array.from(map.values());
   }, [queryData]);
 };
 

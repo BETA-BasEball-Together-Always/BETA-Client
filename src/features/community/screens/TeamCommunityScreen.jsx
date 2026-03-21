@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, SafeAreaView, Dimensions } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
 import PostList from "../component/communityMain/PostList";
@@ -12,9 +12,15 @@ import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts
 const { width } = Dimensions.get("window");
 
 const TeamCommunityScreen = ({ route }) => {
-  const initialSort = route?.params?.initialSort || "latest";
-  const [sort, setSort] = useState(initialSort);
+  const paramSort = route?.params?.initialSort;
+  const [sort, setSort] = useState(() =>
+    paramSort === "popular" || paramSort === "latest" ? paramSort : "latest",
+  );
   const user = useUserStore((state) => state.user);
+
+  useEffect(() => {
+    if (paramSort === "popular" || paramSort === "latest") setSort(paramSort);
+  }, [paramSort]);
   const favoriteTeamCode = user?.favoriteTeamCode;
   const favoriteTeamName = user?.favoriteTeamName;
 
@@ -26,9 +32,8 @@ const TeamCommunityScreen = ({ route }) => {
 
   const MainIcon = TEAM_DATA[favoriteTeamCode]?.MainIcon;
 
-  /** 게시판 구분은 API에서 TEAM / ALL 고정 (팀 코드 아님) */
   const { posts, loadMore, isLoading } = useCommunityPosts({
-    channel: "TEAM",
+    channel: null,
     sort,
   });
 
