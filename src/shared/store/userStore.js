@@ -1,6 +1,7 @@
 // src/shared/store/userStore.js
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
+import { clearPersistedUserEmotionSelections } from "../../features/community/store/userEmotionSelectionStore";
 
 const USER_JSON_KEY = "userJson";
 
@@ -51,5 +52,6 @@ export const useUserStore = create((set) => ({
     } catch {
       /* ignore */
     }
+    await clearPersistedUserEmotionSelections();
   },
 }));

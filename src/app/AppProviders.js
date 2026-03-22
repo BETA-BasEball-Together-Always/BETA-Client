@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
@@ -13,6 +13,7 @@ import {
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { initializeNaver } from "../features/auth/libs/Login/naverInit";
+import { hydrateUserEmotionSelectionsFromStorage } from "../features/community/store/userEmotionSelectionStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +29,19 @@ const queryClient = new QueryClient({
 });
 
 const AppProviders = ({ children }) => {
+  const [emotionHydrated, setEmotionHydrated] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await hydrateUserEmotionSelectionsFromStorage();
+      if (!cancelled) setEmotionHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // 1) 전역 폰트 로드 (NotoSansKR 3종)
   const [fontsLoaded] = useFonts({
     NotoSansKR_Light: require("@shared/assets/fonts/NotoSansKR-Light.ttf"),
@@ -69,7 +83,7 @@ const AppProviders = ({ children }) => {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !emotionHydrated) {
     return null;
   }
 

@@ -14,6 +14,8 @@ import { LinearGradient } from "expo-linear-gradient";
 const HEART_SIZE = 20;
 
 const DELETED_COMMENT_TEXT = "삭제된 댓글입니다";
+const DELETED_USER_NICKNAME = "(삭제된 사용자)";
+const DELETED_USER_AVATAR_INITIAL = "삭";
 
 // 댓글 + 답글 ui 공통 컴포넌트!!
 
@@ -35,23 +37,26 @@ export default function ThreadItem({
 }) {
   const [heartPressed, setHeartPressed] = useState(false);
   const author = item?.author ?? {};
+  const isDeleted =
+    item?.deleted === true ||
+    (typeof item?.content === "string" &&
+      item.content.trim() === DELETED_COMMENT_TEXT);
+
   const displayNickname =
     author.nickName ??
     author.nickname ??
     item?.nickname ??
     item?.authorNickname ??
     "";
-  const nicknameFirstChar = displayNickname?.[0] ?? "유";
+  const avatarLetter =
+    displayNickname === DELETED_USER_NICKNAME
+      ? DELETED_USER_AVATAR_INITIAL
+      : (displayNickname?.[0] ?? (isDeleted ? "?" : "유")).toUpperCase();
   const teamCode = author.teamCode ?? item.teamCode;
   const team = teamCode ? TEAM_DATA[teamCode] : null;
   const ProfileIcon = team?.ProfileIcon;
   const profileUserId = author.userId ?? item.userId ?? null;
   const avatarSize = variant === "reply" ? 32 : 38;
-
-  const isDeleted =
-    item?.deleted === true ||
-    (typeof item?.content === "string" &&
-      item.content.trim() === DELETED_COMMENT_TEXT);
 
   return (
     <View
@@ -83,9 +88,7 @@ export default function ThreadItem({
           {ProfileIcon ? (
             <ProfileIcon width={avatarSize * 0.74} height={avatarSize * 0.74} />
           ) : (
-            <AppText style={styles.avatarInitial}>
-              {nicknameFirstChar.toUpperCase()}
-            </AppText>
+            <AppText style={styles.avatarInitial}>{avatarLetter}</AppText>
           )}
         </LinearGradient>
 

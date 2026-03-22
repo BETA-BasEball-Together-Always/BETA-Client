@@ -15,6 +15,8 @@ const PostList = ({
   /** 첫 로딩·리패치 등 목록 데이터 갱신 중 (인기 탭 빈 화면 문구와 구분) */
   isFeedBusy = false,
   showTeam = false,
+  removeClippedSubviews,
+  stabilizePostBodyMeasure = false,
   sort,
   onSortChange,
   user,
@@ -31,6 +33,7 @@ const PostList = ({
     <View style={styles.container}>
       <FlatList
         data={posts}
+        removeClippedSubviews={removeClippedSubviews}
         keyExtractor={(item, index) =>
           item?.postId != null ? `${item.postId}-${index}` : `post-${index}`
         }
@@ -42,7 +45,11 @@ const PostList = ({
         }
         renderItem={({ item }) => (
           <View style={styles.postListCard}>
-            <PostCard post={item} showTeam={showTeam} />
+            <PostCard
+              post={item}
+              showTeam={showTeam}
+              stabilizeBodyMeasure={stabilizePostBodyMeasure}
+            />
           </View>
         )}
         onEndReached={onEndReached}

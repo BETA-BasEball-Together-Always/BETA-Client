@@ -1,7 +1,144 @@
 /**
- * API 가이드: 삭제된 댓글은 표시하되, 답글이 없는 삭제 댓글은 목록에 두지 않음.
- * 답글은 UI상 오래된 순 → 최신 순(위에서 아래로 대화 흐름).
+ * 일부 API는 author를 중첩 객체로, 일부는 nickname/userId를 루트에 둠
+ * 삭제된 댓글은 author가 비어 reload 후 프로필이 사라지는 경우가 있어 병합!
  */
+export function mergeFlatAuthor(c) {
+  if (!c) return {};
+  const a = c.author;
+  const nickFromA = a?.nickname ?? a?.nickName;
+  const hasAuth =
+    a &&
+    (nickFromA ||
+      a.userId != null ||
+      (a.teamCode != null && a.teamCode !== ""));
+
+  if (hasAuth) {
+    return {
+      ...a,
+      nickname: nickFromA ?? c.nickname ?? c.nickName ?? c.authorNickname,
+      nickName: a.nickName ?? a.nickname ?? c.nickName ?? c.nickname,
+      userId: a.userId ?? c.userId,
+      teamCode: a.teamCode ?? c.teamCode,
+    };
+  }
+
+  const flatNick = c.nickname ?? c.nickName ?? c.authorNickname;
+  if (flatNick || c.userId != null || (c.teamCode != null && c.teamCode !== "")) {
+    return {
+      nickname: flatNick,
+      nickName: flatNick,
+      userId: c.userId,
+      teamCode: c.teamCode,
+    };
+  }
+
+  return a && typeof a === "object" ? { ...a } : {};
+}
+
+function authorNeedsFallback(author) {
+  if (!author || typeof author !== "object") return true;
+  return !(
+    author.nickname ||
+    author.nickName ||
+    author.userId != null ||
+    (author.teamCode != null && author.teamCode !== "")
+  );
+}
+
+
+function inferAuthorFromDeletedParentFirstReply(c) {
+  const replies = c.replies ?? [];
+  if (replies.length === 0) return null;
+
+  const isDeleted =
+    c.deleted === true ||
+    (typeof c.content === "string" &&
+      c.content.trim() === "삭제된 댓글입니다");
+  if (!isDeleted) return null;
+
+  const parentAuth = mergeFlatAuthor(c);
+  const parentUid = c.userId ?? parentAuth.userId;
+  if (parentUid == null) {
+    return null;
+  }
+
+  const first = replies[0];
+  const childAuth = mergeFlatAuthor(first);
+  if (authorNeedsFallback(childAuth)) return null;
+
+  const childUid = first.userId ?? childAuth.userId;
+
+  if (parentUid != null && childUid != null) {
+    if (String(parentUid) !== String(childUid)) return null;
+  }
+
+  return childAuth;
+}
+
+function mergeAuthorWithFallback(c, fallbackMap) {
+  let author = mergeFlatAuthor(c);
+  const id = c?.commentId;
+  if (id != null && authorNeedsFallback(author) && fallbackMap) {
+    const snap = fallbackMap[String(id)];
+    if (snap && typeof snap === "object") {
+      author = {
+        ...author,
+        ...snap,
+        nickname: snap.nickname ?? snap.nickName ?? author.nickname,
+        nickName: snap.nickName ?? snap.nickname ?? author.nickName,
+        userId: snap.userId ?? author.userId,
+        teamCode: snap.teamCode ?? author.teamCode,
+      };
+    }
+  }
+  if (authorNeedsFallback(author)) {
+    const inferred = inferAuthorFromDeletedParentFirstReply(c);
+    if (inferred) {
+      author = {
+        ...author,
+        ...inferred,
+        nickname: inferred.nickname ?? inferred.nickName ?? author.nickname,
+        nickName: inferred.nickName ?? inferred.nickname ?? author.nickName,
+        userId: inferred.userId ?? author.userId,
+        teamCode: inferred.teamCode ?? author.teamCode,
+      };
+    }
+  }
+  if (authorNeedsFallback(author)) {
+    const isDeleted =
+      c.deleted === true ||
+      (typeof c.content === "string" &&
+        c.content.trim() === "삭제된 댓글입니다");
+    const hasReplies = (c.replies?.length ?? 0) > 0;
+    const parentUid = c.userId ?? mergeFlatAuthor(c).userId;
+    if (isDeleted && hasReplies && parentUid == null) {
+      author = {
+        ...author,
+        nickname: "(삭제된 사용자)",
+        nickName: "(삭제된 사용자)",
+        userId: null,
+        teamCode: undefined,
+      };
+    }
+  }
+  return author;
+}
+
+/** @param {Record<string, object>} [fallbackMap] commentAuthorFallbackStore.map */
+export function normalizeCommentAuthorFields(comments, fallbackMap = {}) {
+  if (!Array.isArray(comments)) return [];
+
+  const mapNode = (c) => {
+    if (!c) return c;
+    return {
+      ...c,
+      author: mergeAuthorWithFallback(c, fallbackMap),
+      replies: (c.replies ?? []).map(mapNode),
+    };
+  };
+
+  return comments.map(mapNode);
+}
 
 const replyTime = (r) => new Date(r?.createdAt || 0).getTime();
 

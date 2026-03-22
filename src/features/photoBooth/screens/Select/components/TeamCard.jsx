@@ -62,5 +62,7 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     maxWidth: 96,
     textAlign: "center",
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

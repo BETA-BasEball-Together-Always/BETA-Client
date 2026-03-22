@@ -13,7 +13,10 @@ const Stack = createNativeStackNavigator();
 const CommunityStack = () => {
   return (
     <Stack.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        detachInactiveScreens: false,
+      }}
       initialRouteName="AllCommunity"
     >
       <Stack.Screen name="TeamCommunity" component={TeamCommunityScreen} />

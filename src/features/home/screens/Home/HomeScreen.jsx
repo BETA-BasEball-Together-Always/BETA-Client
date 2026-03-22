@@ -5,9 +5,10 @@ import {
   TouchableOpacity,
   ScrollView,
   ImageBackground,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React from "react";
+import React, { useMemo } from "react";
 import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
 import SearchIcon from "../../../community/assets/svg/TopBar/searchIcon.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -17,29 +18,101 @@ import AllCommunityBackgroundLayer from "../../../community/component/AllCommuni
 import Banner from "../../assets/png/banner.png";
 import { useUserStore } from "../../../../shared/store/userStore";
 import PopularPostCard from "./component/PopularPostCard";
+import KboRankCard from "./component/KboRankCard";
 
 import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
-import useHomePopularFeed from "../../hooks/useHomePopularFeed";
+import useHomeQuery from "../../hooks/useHomeQuery";
 import FetchStateView from "../../../../shared/components/FetchStateView";
 
 const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const navigation = useNavigation();
 
+  const year = useMemo(() => new Date().getFullYear(), []);
+
+  const {
+    data: homeData,
+    isPending: isHomePending,
+    isError: isHomeError,
+    refetch: refetchHome,
+  } = useHomeQuery({ enabled: !!user });
+
+  const allTeamRankings = useMemo(() => {
+    const list = homeData?.teamRankings;
+    return Array.isArray(list) ? list : [];
+  }, [homeData?.teamRankings]);
+
+  const popularPosts = useMemo(() => {
+    const list = homeData?.popularPosts;
+    return Array.isArray(list) ? list : [];
+  }, [homeData?.popularPosts]);
+
   useMyLikedPostsInfiniteQuery({
     enabled: !!user,
     hydrateSelection: true,
   });
 
-  const {
-    dailyPopular,
-    refetch,
-    isError: popularError,
-    isPopularFeedBusy,
-  } = useHomePopularFeed();
-
   const showPopularEmptyMessage =
-    !popularError && !isPopularFeedBusy && dailyPopular.length === 0;
+    !isHomeError && !isHomePending && popularPosts.length === 0;
+
+  const homeBody =
+    isHomePending || isHomeError ? null : (
+      <>
+        <KboRankCard
+          year={year}
+          rows={allTeamRankings}
+          favoriteTeamCode={user?.favoriteTeamCode ?? null}
+        />
+
+        <View style={styles.bannerWrapper}>
+          <ImageBackground
+            source={Banner}
+            style={styles.bannerImage}
+            imageStyle={{ borderRadius: 10 }}
+          >
+            <TouchableOpacity
+              style={styles.bannerButton}
+              onPress={() => navigation.navigate("PhotoBooth")}
+            >
+              <Text style={styles.bannerButtonText}>직관 추억 남기기</Text>
+            </TouchableOpacity>
+          </ImageBackground>
+        </View>
+
+        <View style={styles.popularHeader}>
+          <AppText variant="semi18" style={styles.popularHeading}>
+            인기 피드 ✨️
+          </AppText>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate({
+                name: "AllCommunity",
+                params: { initialSort: "popular" },
+                merge: true,
+              })
+            }
+          >
+            <AppText variant="middle" className="text-[#D4D4D4]">
+              더보기
+            </AppText>
+          </TouchableOpacity>
+        </View>
+
+        {popularPosts.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {popularPosts.map((post) => (
+              <PopularPostCard key={String(post.postId)} post={post} />
+            ))}
+          </ScrollView>
+        ) : showPopularEmptyMessage ? (
+          <View style={styles.popularEmpty}>
+            <AppText variant="caption" style={styles.popularEmptyText}>
+              오늘 등록된 인기 게시물이 없어요
+            </AppText>
+          </View>
+        ) : null}
+      </>
+    );
 
   return (
     <View style={styles.screenRoot}>
@@ -65,7 +138,10 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <AppText variant="displayTitle" style={styles.header}>
             {user?.nickname} 님
           </AppText>
@@ -73,59 +149,21 @@ const HomeScreen = () => {
             오늘도 BETA와 함께 응원해봐요 🔥
           </AppText>
 
-          <View style={styles.bannerWrapper}>
-            <ImageBackground
-              source={Banner}
-              style={styles.bannerImage}
-              imageStyle={{ borderRadius: 10 }}
-            >
-              <TouchableOpacity
-                style={styles.bannerButton}
-                onPress={() => navigation.navigate("PhotoBooth")}
-              >
-                <Text style={styles.bannerButtonText}>직관 추억 남기기</Text>
-              </TouchableOpacity>
-            </ImageBackground>
-          </View>
+          {isHomePending ? (
+            <View style={styles.homeLoading}>
+              <ActivityIndicator color="#F9F9F9" size="large" />
+            </View>
+          ) : null}
 
-          <View style={styles.popularHeader}>
-            <AppText variant="semi18" style={styles.popularHeading}>
-              인기 피드 ✨️
-            </AppText>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate({
-                  name: "AllCommunity",
-                  params: { initialSort: "popular" },
-                  merge: true,
-                })
-              }
-            >
-              <AppText variant="middle" className="text-[#D4D4D4]">
-                더보기
-              </AppText>
-            </TouchableOpacity>
-          </View>
+          {isHomeError ? (
+            <FetchStateView
+              style={styles.homeErrorFetch}
+              isError
+              onRetry={() => refetchHome()}
+            />
+          ) : null}
 
-          <FetchStateView
-            style={styles.popularFetch}
-            isError={popularError}
-            onRetry={() => refetch()}
-          >
-            {dailyPopular.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {dailyPopular.map((post) => (
-                  <PopularPostCard key={String(post.postId)} post={post} />
-                ))}
-              </ScrollView>
-            ) : showPopularEmptyMessage ? (
-              <View style={styles.popularEmpty}>
-                <AppText variant="caption" style={styles.popularEmptyText}>
-                  오늘 등록된 인기 게시물이 없어요
-                </AppText>
-              </View>
-            ) : null}
-          </FetchStateView>
+          {homeBody}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -183,11 +221,12 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     lineHeight: 24.5,
     marginTop: 13,
+    marginBottom: 16,
   },
 
   //배너
   bannerWrapper: {
-    marginTop: 30,
+    marginTop: 31,
     alignItems: "center",
   },
   bannerImage: {
@@ -221,14 +260,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 45,
-    marginBlock: 7,
+    marginBlock: 10,
   },
   popularHeading: {
     color: "#F9F9F9",
-  },
-  popularFetch: {
-    minHeight: 120,
-    marginTop: 40,
   },
   popularEmpty: {
     minHeight: 120,

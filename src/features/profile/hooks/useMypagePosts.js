@@ -8,22 +8,11 @@ import {
 } from "../services/mypageService";
 import { mypageQueryKeys } from "../mypageQueryKeys";
 import { useUserEmotionSelectionStore } from "../../community/store/userEmotionSelectionStore";
+import { pickEmotionTypeFromPostCoalesced } from "../../community/constants/communityReactions";
 
-const normalizeEmotionType = (t) =>
-  ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
-
-const resolveMyEmotionTypeForPost = (post) => {
-  // 백엔드 응답에 필드 이름이 명확히 제공되지 않아, 가능한 후보를 넓게 허용
-  const t =
-    post?.myEmotionType ??
-    post?.myEmotion ??
-    post?.emotionType ??
-    post?.userEmotionType ??
-    null;
-
-  // 최소한 heart fill(존재 여부)만 보이려면 null 대신 LIKE를 fallback으로 둠
-  return normalizeEmotionType(t) ?? "LIKE";
-};
+/** /mypage/liked 응답에 post.emotionType이 없을 수 있음 → 목록에 포함된 글은 반응한 글이므로 hydrate 시 기본값 보정 */
+const resolveMyEmotionTypeForPost = (post) =>
+  pickEmotionTypeFromPostCoalesced(post);
 
 export const useMyPostsInfiniteQuery = ({ enabled } = {}) => {
   return useInfiniteQuery({
@@ -65,18 +54,33 @@ export const useMyLikedPostsInfiniteQuery = ({
     (s) => s.setUserEmotionSelectionsBulk,
   );
 
-  // liked 목록을 모두 받아온 뒤, postId -> emotionType을 store에 반영
+  // liked 목록 = 내가 반응한 글만 옴. API에 emotionType이 없으면 pick이 null이라 예전엔 스토어가 비어 하트가 빈 아이콘으로 남음.
+  // 서버가 타입을 주면 그걸 쓰고, 없으면 기존 스토어(SAD 등)를 유지하며, 둘 다 없으면 하트 표시용으로 LIKE를 둔다.
   useEffect(() => {
     if (!hydrateSelection) return;
 
     const pages = query.data?.pages ?? [];
+    const selections =
+      useUserEmotionSelectionStore.getState().selectionsByPostId;
+
     const entries = pages
       .flatMap((p) => p?.posts ?? [])
-      .map((post) => [post?.postId, resolveMyEmotionTypeForPost(post)]);
+      .map((post) => {
+        const postId = post?.postId;
+        if (postId == null) return null;
+        const key = String(postId);
 
-    // postId 없는 데이터는 skip
-    const cleaned = entries.filter(([postId]) => postId != null);
-    setBulk(cleaned);
+        const fromApi = resolveMyEmotionTypeForPost(post);
+        if (fromApi) return [postId, fromApi];
+
+        const existing = selections[key];
+        if (existing != null) return [postId, existing];
+
+        return [postId, "LIKE"];
+      })
+      .filter(Boolean);
+
+    setBulk(entries);
   }, [hydrateSelection, query.data, setBulk]);
 
   return query;

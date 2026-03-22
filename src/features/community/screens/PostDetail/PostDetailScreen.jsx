@@ -37,9 +37,19 @@ import {
   useTogglePostEmotionMutation,
   useUpdateCommentMutation,
 } from "../../services/postDetail/postDetailService";
-import { normalizeCommentsForDisplay } from "../../utils/communityComments";
+import {
+  normalizeCommentsForDisplay,
+  normalizeCommentAuthorFields,
+} from "../../utils/communityComments";
+import { stripPhotoOnlyPlaceholderForDisplay } from "../../utils/photoOnlyPostPlaceholder";
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
+import { useCommentAuthorFallbackStore } from "../../store/commentAuthorFallbackStore";
 import { useUserEmotionSelection } from "../../store/userEmotionSelectionStore";
+import {
+  normalizeCommunityEmotionType,
+  pickEmotionTypeFromPostCoalesced,
+  resolveSelectedEmotionForPost,
+} from "../../constants/communityReactions";
 import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 import { isAllChannelPost } from "../../utils/communityChannel";
 import {
@@ -48,6 +58,7 @@ import {
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 import FetchStateView from "../../../../shared/components/FetchStateView";
 
 const { width } = Dimensions.get("window");
@@ -75,6 +86,11 @@ const PostDetailScreen = ({ route, navigation }) => {
   const syncCommentRemovalWithServer = useCommentRemovalStore(
     (s) => s.syncWithServerTree,
   );
+  const commentAuthorFallbackMap = useCommentAuthorFallbackStore((s) => s.map);
+
+  useEffect(() => {
+    useCommentAuthorFallbackStore.getState().hydrate();
+  }, []);
 
   useEffect(() => {
     if (postId == null || detail?.comments == null) return;
@@ -86,7 +102,10 @@ const PostDetailScreen = ({ route, navigation }) => {
   const author = detail?.author ?? post?.author ?? {};
 
   const contentWithoutHashtags =
-    detail?.content?.replace(/(^|\s)#[^\s#]+/g, " ") ?? "";
+    stripPhotoOnlyPlaceholderForDisplay(detail?.content ?? "").replace(
+      /(^|\s)#[^\s#]+/g,
+      " ",
+    );
   const hashtags = detail?.hashtags ?? [];
 
   const scrollRef = useRef(null);
@@ -110,38 +129,21 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetId: null,
   });
 
-  const normalizeEmotionType = (t) =>
-    ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
-
-  const [selectedEmotionType, setSelectedEmotionType] = useState(() =>
-    normalizeEmotionType(initialSelectedEmotionType),
-  );
   const myEmotionTypeFromStore = useUserEmotionSelection(postId);
 
-  // PostCard에서 넘어오지 않는 케이스(또는 앱 재실행 직후)에서도
-  // store hydration 결과로 heart fill이 복원되도록 동기화합니다.
-  useEffect(() => {
-    if (myEmotionTypeFromStore === undefined) return;
-    setSelectedEmotionType(myEmotionTypeFromStore);
-  }, [postId, myEmotionTypeFromStore]);
+  /** 상세 GET + 목록에서 넘어온 post + 라우트 initialSelectedEmotionType — 서버 값 우선 근거 */
+  const reactionSource = useMemo(() => {
+    const base = detail ?? initialPostParam ?? {};
+    const fromRoute = normalizeCommunityEmotionType(initialSelectedEmotionType);
+    if (!fromRoute) return base;
+    if (pickEmotionTypeFromPostCoalesced(base)) return base;
+    return { ...base, emotionType: fromRoute };
+  }, [detail, initialPostParam, initialSelectedEmotionType]);
 
-  useEffect(() => {
-    if (myEmotionTypeFromStore !== undefined) return;
-    const raw =
-      detail?.myEmotion ??
-      detail?.myEmotionType ??
-      initialPostParam?.myEmotion ??
-      initialPostParam?.myEmotionType;
-    const normalized = normalizeEmotionType(raw);
-    if (normalized != null) setSelectedEmotionType(normalized);
-  }, [
-    detail?.myEmotion,
-    detail?.myEmotionType,
-    initialPostParam?.myEmotion,
-    initialPostParam?.myEmotionType,
-    myEmotionTypeFromStore,
-    postId,
-  ]);
+  const selectedEmotionType = useMemo(
+    () => resolveSelectedEmotionForPost(reactionSource, myEmotionTypeFromStore),
+    [reactionSource, myEmotionTypeFromStore],
+  );
 
   const [editTarget, setEditTarget] = useState(null); // { commentId, content }
 
@@ -158,37 +160,54 @@ const PostDetailScreen = ({ route, navigation }) => {
     : "댓글을 삭제하고 있어요";
 
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
-  const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
-    onSuccess: (data) => {
-      setSelectedEmotionType(data.toggled ? data.emotionType : null);
-    },
-  });
+  const toggleEmotionMutation = useTogglePostEmotionMutation(postId);
   const blockUserMutation = useBlockUserMutation();
 
   const imageList = useMemo(() => {
     const source = detail ?? initialPostParam;
     const imgs = getActivePostImages(source);
-    const urls = imgs
-      .map((img) =>
-        typeof img === "string" ? img : img.imageUrl || img.url,
-      )
-      .filter(Boolean);
-    if (urls.length > 0) return urls;
-    if (source?.image) return [source.image];
+    const rows = [];
+    for (let idx = 0; idx < imgs.length; idx++) {
+      const img = imgs[idx];
+      const u =
+        typeof img === "string" ? img : img?.imageUrl || img?.url;
+      if (!u) continue;
+      const id =
+        typeof img === "object" && img != null
+          ? (img.imageId ?? img.id ?? idx)
+          : idx;
+      rows.push({
+        url: u,
+        rowKey: `${postId}-${String(id)}-${idx}`,
+      });
+    }
+    if (rows.length > 0) return rows;
+    if (source?.image) {
+      return [{ url: source.image, rowKey: `${postId}-legacy-0` }];
+    }
     return [];
-  }, [detail, initialPostParam]);
+  }, [detail, initialPostParam, postId]);
 
   const displayComments = useMemo(
     () =>
       normalizeCommentsForDisplay(
-        detail?.comments ?? initialPostParam?.comments ?? [],
+        normalizeCommentAuthorFields(
+          detail?.comments ?? initialPostParam?.comments ?? [],
+          commentAuthorFallbackMap,
+        ),
         {
           postId,
           isHidden: (pid, commentId) =>
             useCommentRemovalStore.getState().isHidden(pid, commentId),
         },
       ),
-    [detail?.comments, initialPostParam?.comments, postId, hiddenCommentKeys],
+    [
+      detail?.comments,
+      initialPostParam?.comments,
+      postId,
+      hiddenCommentKeys,
+      commentAuthorFallbackMap,
+    ],
   );
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
@@ -479,12 +498,16 @@ const PostDetailScreen = ({ route, navigation }) => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.imageScroll}
               >
-                {imageList.map((img, index) => {
+                {imageList.map((entry, index) => {
                   const isSingle = imageList.length === 1;
+                  const displayUri = withImageDisplayCacheKey(
+                    entry.url,
+                    entry.rowKey,
+                  );
 
                   return (
                     <View
-                      key={index}
+                      key={entry.rowKey}
                       style={[
                         styles.imageWrapper,
                         {
@@ -493,7 +516,7 @@ const PostDetailScreen = ({ route, navigation }) => {
                       ]}
                     >
                       <Image
-                        source={{ uri: img }}
+                        source={{ uri: displayUri }}
                         style={styles.postImage}
                         resizeMode="cover"
                       />

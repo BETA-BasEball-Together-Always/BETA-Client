@@ -70,6 +70,8 @@ const TeamCommunityScreen = ({ route }) => {
           onEndReached={loadMore}
           isLoading={isFetchingNextPage}
           isFeedBusy={isLoading || isFetching}
+          removeClippedSubviews={false}
+          stabilizePostBodyMeasure
           sort={sort}
           onSortChange={setSort}
           user={user}

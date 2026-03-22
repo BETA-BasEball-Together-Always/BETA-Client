@@ -1,5 +1,5 @@
 import { StyleSheet, View, TouchableOpacity } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import SettingsIcon from "../../assets/svg/Settings.svg";
@@ -18,6 +18,11 @@ import {
   useUserPostsInfiniteQuery,
 } from "../../hooks/useMypagePosts";
 import TeamLabel from "../../../community/component/communityMain/TeamLabel";
+import {
+  pickEmotionTypeFromPostCoalesced,
+  resolveSelectedEmotionForPost,
+} from "../../../community/constants/communityReactions";
+import { getUserEmotionSelection } from "../../../community/store/userEmotionSelectionStore";
 
 const BIO_PLACEHOLDER = "한 줄 소개를 작성해 보세요 :)";
 
@@ -68,6 +73,63 @@ const ProfileScreen = ({ navigation, route }) => {
   const myCommentedPosts = useFlattenMypagePosts(myCommentedQuery.data);
 
   const userPosts = useFlattenMypagePosts(userPostsQuery.data);
+
+  const prevActiveTabRef = useRef(activeTab);
+
+  /** 좋아요 탭: API vs 스토어 vs UI 병합 — 빈 하트 원인 추적용 */
+  useEffect(() => {
+    if (!isSelf || activeTab !== "like") {
+      prevActiveTabRef.current = activeTab;
+      return;
+    }
+
+    const justSwitchedToLike = prevActiveTabRef.current !== "like";
+    prevActiveTabRef.current = activeTab;
+
+    const rows = myLikedPosts.map((post) => {
+      const id = post?.postId;
+      const store = getUserEmotionSelection(id);
+      return {
+        postId: id,
+        rawPostEmotionType: post?.emotionType,
+        rawEmotionsEmotionType: post?.emotions?.emotionType,
+        pickEmotionTypeFromPost: pickEmotionTypeFromPostCoalesced(post),
+        storeSelection: store,
+        resolveForUiHeart: resolveSelectedEmotionForPost(post, store),
+      };
+    });
+
+    const payload = {
+      trigger: justSwitchedToLike ? "tab_switch_to_like" : "data_update_while_like",
+      postCount: rows.length,
+      query: {
+        isLoading: myLikedQuery.isLoading,
+        isFetching: myLikedQuery.isFetching,
+        isFetched: myLikedQuery.isFetched,
+        isError: myLikedQuery.isError,
+      },
+      posts: rows,
+      rawFirstPageKeys:
+        myLikedQuery.data?.pages?.[0] != null
+          ? Object.keys(myLikedQuery.data.pages[0])
+          : [],
+      sampleFirstPostFromApi:
+        myLikedQuery.data?.pages?.[0]?.posts?.[0] ?? null,
+    };
+
+    if (__DEV__) {
+      console.log("[Profile liked tab] 감정 반응 게시글 스냅샷", payload);
+    }
+  }, [
+    isSelf,
+    activeTab,
+    myLikedPosts,
+    myLikedQuery.data,
+    myLikedQuery.isLoading,
+    myLikedQuery.isFetching,
+    myLikedQuery.isFetched,
+    myLikedQuery.isError,
+  ]);
 
   const renderTabContent = () => {
     switch (safeActiveTab) {

@@ -19,6 +19,7 @@ const ImagePreviewList = ({ images, onRemove }) => {
           <View key={itemKey} style={styles.previewWrap}>
             <View style={styles.previewImageClip}>
               <Image
+                key={itemKey}
                 source={{ uri: asset.uri }}
                 style={[styles.previewImage, { aspectRatio }]}
                 resizeMode="cover"
