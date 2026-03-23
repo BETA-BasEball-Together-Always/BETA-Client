@@ -31,9 +31,23 @@ export async function writeDataUrlPngToCache(dataUrl) {
 export async function copyFrameToUniqueUploadFile(sourceUri, uploadKey = null) {
   if (!sourceUri) return null;
   const keyPart = uploadKey != null ? String(uploadKey) : randomUploadKey();
-  // 업로드 단위 키(예: photoBooth nonce)가 포함된 고유 파일명.
-  // 서버/업로더가 multipart `name` 대신 uri base name을 참조하는 경우를 대비한다.
-  const name = `beta-frame-${keyPart}-${randomUploadKey()}.png`;
+  // 업로드 단위 키(예: photoBooth nonce)가 포함된 고유 파일명
+  // 서버/업로더가 multipart `name` 대신 uri base name을 참조하는 경우를 대비
+  const extMatch = String(sourceUri)
+    .split("?")[0]
+    .match(/\.([a-zA-Z0-9]+)$/);
+  const srcExtRaw = extMatch?.[1]?.toLowerCase() ?? "";
+
+  const extMap = {
+    jpg: "jpg",
+    jpeg: "jpg",
+    png: "png",
+    gif: "gif",
+    webp: "webp",
+  };
+  const destExt = extMap[srcExtRaw] ?? "png";
+
+  const name = `beta-frame-${keyPart}-${randomUploadKey()}.${destExt}`;
   const dest = `${FileSystem.cacheDirectory}${name}`;
   const from = sourceUri.startsWith("file://")
     ? sourceUri

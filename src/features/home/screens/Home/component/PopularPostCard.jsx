@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -127,6 +128,47 @@ const PopularPostCard = ({ post }) => {
     }),
     [post, resolvedPostId],
   );
+
+  // Home 인기 카드에서도 "해시태그만" 초록색으로 강조 표시합니다.
+  const renderContentWithHighlightedHashtags = (content) => {
+    if (typeof content !== "string") return content;
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(content)) != null) {
+      const start = match.index;
+      const token = match[0]; // includes '#'
+
+      if (start > lastIndex) {
+        nodes.push(
+          <Text key={`c-${segIdx++}-${lastIndex}`}>
+            {content.slice(lastIndex, start)}
+          </Text>,
+        );
+      }
+
+      nodes.push(
+        <Text key={`h-${segIdx++}-${start}`} style={styles.inlineHashtagText}>
+          {token}
+        </Text>,
+      );
+
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < content.length) {
+      nodes.push(
+        <Text key={`c-${segIdx++}-${lastIndex}`}>
+          {content.slice(lastIndex)}
+        </Text>,
+      );
+    }
+
+    return nodes;
+  };
 
   const primaryImageUri = useMemo(() => {
     const first = getActivePostImages(post)[0];
@@ -343,7 +385,7 @@ const PopularPostCard = ({ post }) => {
           >
             {showAsUnavailable
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
-              : post.content}
+              : renderContentWithHighlightedHashtags(post.content)}
           </AppText>
 
           {!showAsUnavailable && showMore ? (
@@ -540,6 +582,10 @@ const styles = StyleSheet.create({
   content: {
     color: "#F9F9F9",
     lineHeight: 13.6,
+  },
+  // Inline "#태그" 강조용 (Home 인기 카드)
+  inlineHashtagText: {
+    color: "#6F9D48",
   },
   moreText: {
     color: "rgba(228, 228, 228, 0.50)",

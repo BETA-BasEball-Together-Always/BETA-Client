@@ -47,19 +47,30 @@ export function mapCommentTreeAfterDelete(list, commentId) {
   const out = [];
   let mode = "none";
 
+  const DELETED_USER_NICKNAME = "(삭제된 사용자)";
+
   for (const c of list) {
     if (c.commentId === commentId) {
       const hasReplies = (c.replies?.length ?? 0) > 0;
       if (hasReplies) {
-        const authorSnap = mergeFlatAuthor(c);
+        const deletedUserAuthor = {
+          nickname: DELETED_USER_NICKNAME,
+          nickName: DELETED_USER_NICKNAME,
+          userId: null,
+          teamCode: undefined,
+        };
         useCommentAuthorFallbackStore
           .getState()
-          .saveAuthorSnapshot(c.commentId, authorSnap);
+          .saveAuthorSnapshot(c.commentId, deletedUserAuthor);
         out.push({
           ...c,
           deleted: true,
           content: DELETED_COMMENT_TEXT,
-          author: authorSnap,
+          author: deletedUserAuthor,
+          userId: null,
+          nickname: DELETED_USER_NICKNAME,
+          nickName: DELETED_USER_NICKNAME,
+          teamCode: undefined,
         });
         mode = "soft";
       } else {

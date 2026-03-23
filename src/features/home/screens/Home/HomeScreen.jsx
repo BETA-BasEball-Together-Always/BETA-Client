@@ -101,6 +101,7 @@ const HomeScreen = () => {
         {popularPosts.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {popularPosts.map((post) => (
+              // PopularPostCard에서 본문 내 "#태그" 토큰만 초록색으로 강조 표시합니다.
               <PopularPostCard key={String(post.postId)} post={post} />
             ))}
           </ScrollView>
