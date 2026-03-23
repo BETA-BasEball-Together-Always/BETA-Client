@@ -39,15 +39,18 @@ export default function ThreadItem({
   const author = item?.author ?? {};
   const isDeleted =
     item?.deleted === true ||
+    item?.deleted === "true" ||
     (typeof item?.content === "string" &&
       item.content.trim() === DELETED_COMMENT_TEXT);
 
-  const displayNickname =
+  const rawDisplayNickname =
     author.nickName ??
     author.nickname ??
     item?.nickname ??
     item?.authorNickname ??
     "";
+
+  const displayNickname = isDeleted ? DELETED_USER_NICKNAME : rawDisplayNickname;
   const avatarLetter =
     displayNickname === DELETED_USER_NICKNAME
       ? DELETED_USER_AVATAR_INITIAL
@@ -132,7 +135,7 @@ export default function ThreadItem({
                 variant="caption"
                 style={[styles.content, isDeleted && styles.deletedContent]}
               >
-                {item.content}
+                {isDeleted ? DELETED_COMMENT_TEXT : item.content}
               </AppText>
 
               {showReplyActions && !isDeleted && (

@@ -177,20 +177,6 @@ const ProfileSettingScreen = () => {
         >
           계정
         </AppText>
-        <AppText
-          variant="bodyMedium"
-          className="text-gray-400"
-          style={{ lineHeight: 21.8 }}
-        >
-          프로필 수정
-        </AppText>
-        <AppText
-          variant="bodyMedium"
-          className="text-gray-400"
-          style={{ lineHeight: 21.8 }}
-        >
-          비밀번호 변경
-        </AppText>
 
         <Pressable
           onPress={() => setLogoutModalVisible(true)}

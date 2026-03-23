@@ -33,10 +33,44 @@ function hasOnlyInactiveImageAttachments(post) {
  */
 export function isPostDeletedOrHiddenInFeed(post) {
   if (!post) return true;
-  if (post.deleted === true || post.isDeleted === true) return true;
-  if (post.available === false || post.visible === false) return true;
+  if (
+    post.deleted === true ||
+    post.deleted === 1 ||
+    post.deleted === "1" ||
+    post.deleted === "true" ||
+    post.isDeleted === true ||
+    post.isDeleted === 1 ||
+    post.isDeleted === "1" ||
+    post.isDeleted === "true"
+  ) {
+    return true;
+  }
+  if (
+    post.available === false ||
+    post.available === 0 ||
+    post.available === "false" ||
+    post.available === "0" ||
+    post.visible === false ||
+    post.visible === 0 ||
+    post.visible === "false" ||
+    post.visible === "0"
+  ) {
+    return true;
+  }
 
   const st = normalizeStatus(post.status ?? post.postStatus ?? post.postState);
+  // 서버가 어떤 enum/문구를 쓰든 "삭제/제거" 계열이면 숨김 처리
+  if (
+    typeof st === "string" &&
+    (st.includes("DELETE") ||
+      st.includes("DELETED") ||
+      st.includes("REMOVE") ||
+      st.includes("REMOVED") ||
+      st.includes("TOMBSTON") ||
+      st.includes("INACTIVE"))
+  ) {
+    return true;
+  }
   if (
     st === "DELETED" ||
     st === "DELETE" ||

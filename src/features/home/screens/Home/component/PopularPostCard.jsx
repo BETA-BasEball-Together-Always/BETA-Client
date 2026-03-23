@@ -37,8 +37,8 @@ import {
 import { useSoftDeletedPostStore } from "../../../../community/store/softDeletedPostStore";
 import { useNavigation } from "@react-navigation/native";
 
-const AVATAR_SIZE = 32;
-const AVATAR_ICON = 20;
+const AVATAR_SIZE = 35;
+const AVATAR_ICON = 23;
 /** 피그마 인기글 카드 고정 크기 */
 const POPULAR_CARD_WIDTH = 229;
 const POPULAR_CARD_HEIGHT = 285;
@@ -129,7 +129,6 @@ const PopularPostCard = ({ post }) => {
     [post, resolvedPostId],
   );
 
-  // Home 인기 카드에서도 "해시태그만" 초록색으로 강조 표시합니다.
   const renderContentWithHighlightedHashtags = (content) => {
     if (typeof content !== "string") return content;
     const regex = /#[^\s#]+/g;
@@ -140,7 +139,7 @@ const PopularPostCard = ({ post }) => {
 
     while ((match = regex.exec(content)) != null) {
       const start = match.index;
-      const token = match[0]; // includes '#'
+      const token = match[0];
 
       if (start > lastIndex) {
         nodes.push(
@@ -247,7 +246,7 @@ const PopularPostCard = ({ post }) => {
             {ProfileIcon ? (
               <ProfileIcon width={AVATAR_ICON} height={AVATAR_ICON} />
             ) : (
-              <AppText variant="smallRegular" style={styles.avatarFallback}>
+              <AppText variant="spaced" style={styles.avatarFallback}>
                 {post.author?.nickname?.[0]}
               </AppText>
             )}
@@ -256,7 +255,7 @@ const PopularPostCard = ({ post }) => {
           <View style={styles.profileText}>
             <View style={styles.nameRow}>
               <AppText
-                variant="smallRegular"
+                variant="spaced"
                 style={styles.profileNickname}
                 numberOfLines={1}
               >
@@ -372,7 +371,7 @@ const PopularPostCard = ({ post }) => {
           ]}
         >
           <AppText
-            variant="smallRegular"
+            variant="spaced"
             numberOfLines={3}
             ellipsizeMode="tail"
             style={[
@@ -390,7 +389,7 @@ const PopularPostCard = ({ post }) => {
 
           {!showAsUnavailable && showMore ? (
             <TouchableOpacity onPress={handlePressPost}>
-              <AppText variant="labelSmall" style={styles.moreText}>
+              <AppText variant="spaced" style={styles.moreText}>
                 ...더보기
               </AppText>
             </TouchableOpacity>
@@ -491,9 +490,8 @@ const styles = StyleSheet.create({
     maxWidth: 120,
   },
   compactTeamText: {
-    fontSize: 10,
-    lineHeight: 12,
-    fontWeight: "500",
+    fontSize: 11,
+    lineHeight: 13.5,
   },
   teamBadgeShadowIOS: {
     shadowColor: "#000",
@@ -586,6 +584,8 @@ const styles = StyleSheet.create({
   // Inline "#태그" 강조용 (Home 인기 카드)
   inlineHashtagText: {
     color: "#6F9D48",
+    fontSize: 13,
+    fontFamily: "NotoSansKR-Medium",
   },
   moreText: {
     color: "rgba(228, 228, 228, 0.50)",

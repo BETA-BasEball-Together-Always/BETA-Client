@@ -5,6 +5,7 @@ import {
   Image,
   StyleSheet,
   TouchableOpacity,
+  Text,
   View,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -23,7 +24,6 @@ import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
 import {
   DELETED_POST_MESSAGE,
-  getActiveHashtagLabels,
   getActivePostImages,
   getPostListUnavailableBody,
 } from "../../utils/communityPostVisibility";
@@ -98,11 +98,9 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     deletePostMutation.isPending &&
     deletePostMutation.variables === resolvedPostId;
 
-  const contentWithoutHashtags = useMemo(() => {
+  const displayContent = useMemo(() => {
     if (showAsUnavailable) return "";
-    const raw = stripPhotoOnlyPlaceholderForDisplay(post?.content ?? "");
-    const removed = raw.replace(/(^|\s)#[^\s#]+/g, " ");
-    return removed.replace(/\s+/g, " ").trim();
+    return stripPhotoOnlyPlaceholderForDisplay(post?.content ?? "");
   }, [post?.content, showAsUnavailable]);
 
   const activeImages = useMemo(() => getActivePostImages(post), [post]);
@@ -125,7 +123,42 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     [primaryImageUri, resolvedPostId, primaryImageStableKey],
   );
 
-  const hashtagLabels = useMemo(() => getActiveHashtagLabels(post), [post]);
+  const renderContentWithHighlightedHashtags = useMemo(() => {
+    if (typeof displayContent !== "string" || displayContent.length === 0) {
+      return displayContent;
+    }
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(displayContent)) != null) {
+      const start = match.index;
+      const token = match[0];
+      if (start > lastIndex) {
+        nodes.push(
+          <Text key={`t-${segIdx++}-${lastIndex}`}>{displayContent.slice(lastIndex, start)}</Text>,
+        );
+      }
+      nodes.push(
+        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+          {token}
+        </Text>,
+      );
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < displayContent.length) {
+      nodes.push(
+        <Text key={`t-${segIdx++}-${lastIndex}`}>
+          {displayContent.slice(lastIndex)}
+        </Text>,
+      );
+    }
+
+    return nodes;
+  }, [displayContent]);
 
   /** numberOfLines={3}만 쓰면 onTextLayout에서 실제 줄 수를 알 수 없어 1회 측정 */
   const [bodyLineCount, setBodyLineCount] = useState(null);
@@ -136,7 +169,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
   useEffect(() => {
     bodySectionWidthRef.current = null;
     setBodyLineCount(null);
-  }, [post?.postId, contentWithoutHashtags]);
+  }, [post?.postId, displayContent]);
 
   const reactionCounts = useMemo(() => {
     const emotions = post.emotions ?? {};
@@ -266,7 +299,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
           >
             {showAsUnavailable
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
-              : contentWithoutHashtags}
+              : renderContentWithHighlightedHashtags}
           </AppText>
 
           {bodyNeedsMore ? (
@@ -281,13 +314,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
             </TouchableOpacity>
           ) : null}
 
-          {!showAsUnavailable && hashtagLabels.length > 0 && (
-            <View style={styles.hashRow}>
-              <AppText variant="caption" style={styles.hashText}>
-                {hashtagLabels.map((tag) => `#${tag}`).join(" ")}
-              </AppText>
-            </View>
-          )}
+          {/* 해시태그는 본문 내에서 inline으로 초록색 처리 */}
 
           {!showAsUnavailable && primaryImageDisplayUri ? (
             <Image

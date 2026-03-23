@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  Text,
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -55,7 +56,6 @@ import { isAllChannelPost } from "../../utils/communityChannel";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
-  getActiveHashtagLabels,
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
@@ -102,12 +102,53 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const author = detail?.author ?? post?.author ?? {};
 
-  const contentWithoutHashtags =
-    stripPhotoOnlyPlaceholderForDisplay(detail?.content ?? "").replace(
-      /(^|\s)#[^\s#]+/g,
-      " ",
-    );
-  const hashtags = getActiveHashtagLabels(detail ?? post);
+  const displayContent = useMemo(() => {
+    return stripPhotoOnlyPlaceholderForDisplay(detail?.content ?? post?.content ?? "");
+  }, [detail?.content, post?.content]);
+
+  const renderContentWithHighlightedHashtags = useMemo(() => {
+    if (typeof displayContent !== "string" || displayContent.length === 0) {
+      return displayContent;
+    }
+
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(displayContent)) != null) {
+      const start = match.index;
+      const token = match[0];
+
+      if (start > lastIndex) {
+        nodes.push(
+          <Text key={`t-${segIdx++}-${lastIndex}`}>{displayContent.slice(lastIndex, start)}</Text>,
+        );
+      }
+
+      nodes.push(
+        <Text
+          key={`h-${segIdx++}-${start}`}
+          style={styles.hashText}
+        >
+          {token}
+        </Text>,
+      );
+
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < displayContent.length) {
+      nodes.push(
+        <Text key={`t-${segIdx++}-${lastIndex}`}>
+          {displayContent.slice(lastIndex)}
+        </Text>,
+      );
+    }
+
+    return nodes;
+  }, [displayContent]);
 
   const scrollRef = useRef(null);
 
@@ -529,14 +570,8 @@ const PostDetailScreen = ({ route, navigation }) => {
             {detail?.content && (
               <View style={styles.textWrapper}>
                 <AppText variant="middle" style={styles.content}>
-                  {contentWithoutHashtags}
+                  {renderContentWithHighlightedHashtags}
                 </AppText>
-
-                {hashtags.length > 0 && (
-                  <AppText style={styles.hashText}>
-                    {hashtags.map((tag) => `#${tag}`).join(" ")}
-                  </AppText>
-                )}
               </View>
             )}
 

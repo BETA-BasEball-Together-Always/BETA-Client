@@ -52,6 +52,9 @@ function inferAuthorFromDeletedParentFirstReply(c) {
 
   const isDeleted =
     c.deleted === true ||
+    c.deleted === 1 ||
+    c.deleted === "1" ||
+    c.deleted === "true" ||
     (typeof c.content === "string" &&
       c.content.trim() === "삭제된 댓글입니다");
   if (!isDeleted) return null;
@@ -107,6 +110,9 @@ function mergeAuthorWithFallback(c, fallbackMap) {
   if (authorNeedsFallback(author)) {
     const isDeleted =
       c.deleted === true ||
+      c.deleted === 1 ||
+      c.deleted === "1" ||
+      c.deleted === "true" ||
       (typeof c.content === "string" &&
         c.content.trim() === "삭제된 댓글입니다");
     const hasReplies = (c.replies?.length ?? 0) > 0;
@@ -144,7 +150,13 @@ const replyTime = (r) => new Date(r?.createdAt || 0).getTime();
 
 function isMarkedDeleted(c) {
   if (!c) return false;
-  if (c.deleted === true) return true;
+  if (
+    c.deleted === true ||
+    c.deleted === 1 ||
+    c.deleted === "1" ||
+    c.deleted === "true"
+  )
+    return true;
   if (typeof c.content === "string" && c.content.trim() === "삭제된 댓글입니다") {
     return true;
   }

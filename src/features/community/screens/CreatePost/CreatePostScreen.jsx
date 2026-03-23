@@ -469,6 +469,10 @@ const CreatePostScreen = () => {
     return Array.from(set);
   }, [content]);
 
+  // 업로드용 content는 사용자가 입력한 원문 그대로 전송
+  // (서버가 hashtags를 따로 받더라도 content 내의 해시태그 위치/순서를 보존하기 위해)
+  const contentForUpload = content;
+
   const acceptedHashTags = useMemo(
     () => extractedHashTags.slice(0, MAX_HASHTAGS),
     [extractedHashTags],
@@ -780,7 +784,7 @@ const CreatePostScreen = () => {
       "image/jpeg": "jpg",
     };
     const ext = extMap[mimeType] ?? "jpg";
-    // 서버가 업로드 multipart의 file name(또는 uri base name)을 저장 키 생성에 반영한다고 가정.
+    // 서버가 업로드 multipart의 file name(또는 uri base name)을 저장 키 생성에 반영한다고 가정
     const uniqueName = `image-${photoBoothAttachNonce ?? "upload"}-${randomUploadKey()}-${idx}.${ext}`;
 
     if (__DEV__) {
@@ -829,7 +833,7 @@ const CreatePostScreen = () => {
 
     if (isEditMode) {
       const formData = new FormData();
-      formData.append("content", content);
+      formData.append("content", contentForUpload);
       acceptedHashTags.forEach((tag) => {
         formData.append("hashtags", tag);
       });
@@ -863,7 +867,7 @@ const CreatePostScreen = () => {
     }
 
     const now = Date.now();
-    const normalizedContent = content.trim();
+    const normalizedContent = contentForUpload.trim();
     if (
       normalizedContent &&
       normalizedContent === lastUploadRef.current.content &&
@@ -894,7 +898,7 @@ const CreatePostScreen = () => {
     }
 
     const formData = new FormData();
-    formData.append("content", content);
+    formData.append("content", contentForUpload);
     formData.append("channel", createPostChannel);
     acceptedHashTags.forEach((tag) => {
       formData.append("hashtags", tag);
