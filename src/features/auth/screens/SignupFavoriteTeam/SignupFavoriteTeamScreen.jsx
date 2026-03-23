@@ -92,7 +92,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
           );
         }
 
-        navigation.replace("SignupGenderAge", {
+        navigation.navigate("SignupGenderAge", {
           signup: {
             ...signup,
             favoriteTeamCode: selectedTeam,
@@ -118,7 +118,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
             selectedTeamLabel ?? "",
           );
 
-          navigation.replace("SignupGenderAge", {
+          navigation.navigate("SignupGenderAge", {
             signup: {
               ...signup,
               favoriteTeamCode: selectedTeam,
@@ -138,6 +138,23 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
+            {/* 헤더 */}
+            <View style={styles.header}>
+              <View style={styles.headerRow}>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.backButton}
+                >
+                  <BackIcon />
+                </TouchableOpacity>
+                <View style={styles.stepWrapper}>
+                  <SignupStepIndicator currentStep={2} />
+                </View>
+
+                <View style={styles.rightPlaceholder} />
+              </View>
+            </View>
+
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
@@ -145,21 +162,6 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
               {/* <SelectTeamBackground /> */}
 
               <View style={styles.inner}>
-                {/* 헤더 */}
-                <View style={styles.headerRow}>
-                  <TouchableOpacity
-                    onPress={handleBack}
-                    style={styles.backButton}
-                  >
-                    <BackIcon />
-                  </TouchableOpacity>
-                  <View style={styles.stepWrapper}>
-                    <SignupStepIndicator currentStep={2} />
-                  </View>
-
-                  <View style={styles.rightPlaceholder} />
-                </View>
-
                 {/* 타이틀 */}
                 <AppText variant="displayTitle" style={styles.title}>
                   회원님의 팬심을 보여줄 구단을 선택해주세요!
@@ -234,40 +236,44 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 export default SignupFavoriteTeamScreen;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000000" },
-  safeArea: { flex: 1, backgroundColor: "transparent" },
+  root: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
   container: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   inner: {
     maxWidth: 390,
     width: "100%",
     alignSelf: "center",
   },
-
+  header: {
+    maxWidth: 390,
+    width: "100%",
+    alignSelf: "center",
+  },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     height: height * 0.1,
-    marginBottom: 12,
+    paddingHorizontal: 20,
   },
   backButton: {
     width: 32,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    // borderWidth: 1,
-  },
-  backButtonText: {
-    fontSize: 30,
-    // borderWidth: 1,
-    lineHeight: 15,
-    color: "#FFFFFF",
   },
   stepWrapper: {
     alignItems: "center",

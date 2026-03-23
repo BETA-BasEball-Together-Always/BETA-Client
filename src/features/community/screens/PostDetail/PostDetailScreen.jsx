@@ -22,9 +22,6 @@ import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
 import PostReactions from "../../component/PostReactions";
 import CommunityUserProfile from "../../component/CommunityUserProfile";
-// import { LinearGradient } from "expo-linear-gradient";
-// import { TEAM_DATA } from "../../../../shared/constants/teams";
-// import TeamLabel from "../../component/communityMain/TeamLabel";
 
 import CommentList from "./components/CommentList";
 import CommentInput from "./components/CommentInput";
@@ -103,7 +100,9 @@ const PostDetailScreen = ({ route, navigation }) => {
   const author = detail?.author ?? post?.author ?? {};
 
   const displayContent = useMemo(() => {
-    return stripPhotoOnlyPlaceholderForDisplay(detail?.content ?? post?.content ?? "");
+    return stripPhotoOnlyPlaceholderForDisplay(
+      detail?.content ?? post?.content ?? "",
+    );
   }, [detail?.content, post?.content]);
 
   const renderContentWithHighlightedHashtags = useMemo(() => {
@@ -123,15 +122,14 @@ const PostDetailScreen = ({ route, navigation }) => {
 
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`}>{displayContent.slice(lastIndex, start)}</Text>,
+          <Text key={`t-${segIdx++}-${lastIndex}`}>
+            {displayContent.slice(lastIndex, start)}
+          </Text>,
         );
       }
 
       nodes.push(
-        <Text
-          key={`h-${segIdx++}-${start}`}
-          style={styles.hashText}
-        >
+        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
           {token}
         </Text>,
       );
@@ -211,8 +209,7 @@ const PostDetailScreen = ({ route, navigation }) => {
     const rows = [];
     for (let idx = 0; idx < imgs.length; idx++) {
       const img = imgs[idx];
-      const u =
-        typeof img === "string" ? img : img?.imageUrl || img?.url;
+      const u = typeof img === "string" ? img : img?.imageUrl || img?.url;
       if (!u) continue;
       const id =
         typeof img === "object" && img != null
@@ -253,7 +250,6 @@ const PostDetailScreen = ({ route, navigation }) => {
   );
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
-
   const openThreadActionModal = ({ targetType, targetId }) => {
     setPressedThread({ targetType, targetId });
 
@@ -317,7 +313,7 @@ const PostDetailScreen = ({ route, navigation }) => {
       commentId: targetId,
       content: target?.content ?? "",
     });
-    setReplyTarget(null); // edit 모드면 답글 작성 모드를 끈다.
+    setReplyTarget(null);
     closeThreadActionModal();
   };
 
@@ -393,9 +389,9 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const handleBack = () => {
     if (from === "upload") {
-      // 커스텀 탭바(customTabBar)는 MainTabNavigator에만 존재합니다.
-      // 따라서 CommunityStack 내부(AllCommunity/TeamCommunity)로 이동하면 탭바가 사라지므로,
-      // Root의 `Main`으로 이동시켜 탭바가 유지되도록 합니다.
+      // 커스텀 탭바(customTabBar)는 MainTabNavigator에만 존재
+      // 따라서 CommunityStack 내부(AllCommunity/TeamCommunity)로 이동하면 탭바가 사라지므로
+      // Root의 `Main`으로 이동시켜 탭바가 유지되도록!
       if (isAllChannelPost(post.channel)) {
         navigation.replace("Main", {
           screen: "AllCommunity",
@@ -445,7 +441,10 @@ const PostDetailScreen = ({ route, navigation }) => {
   }
 
   const mergedForDeletedCheck = detail ?? initialPostParam ?? null;
-  if (mergedForDeletedCheck && isPostDeletedOrHiddenInFeed(mergedForDeletedCheck)) {
+  if (
+    mergedForDeletedCheck &&
+    isPostDeletedOrHiddenInFeed(mergedForDeletedCheck)
+  ) {
     return (
       <SafeAreaView
         style={styles.safeArea}
@@ -766,7 +765,7 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: "100%",
-    height: 199,
+    height: 557,
   },
 
   /* 텍스트 */

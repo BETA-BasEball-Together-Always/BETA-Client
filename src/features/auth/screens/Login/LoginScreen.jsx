@@ -126,12 +126,12 @@ const LoginScreen = ({ navigation, route }) => {
     switch (signupStep) {
       case "SOCIAL_AUTHENTICATED":
         // 약관 동의 페이지로
-        navigation.replace("TermsDetail");
+        navigation.navigate("TermsDetail");
         break;
 
       case "CONSENT_AGREED":
         // 1단계: 이메일(읽기 전용) + 닉네임
-        navigation.replace("SocialSignup", {
+        navigation.navigate("SocialSignup", {
           signup: {
             email: emailFromServer || userResponse.email,
           },
@@ -140,7 +140,7 @@ const LoginScreen = ({ navigation, route }) => {
 
       case "PROFILE_COMPLETED":
         // 2단계: 팀 선택 (teamList 필요)
-        navigation.replace("SignupFavoriteTeam", {
+        navigation.navigate("SignupFavoriteTeam", {
           signup: {},
           teamList: teamListFromServer || [],
         });
@@ -148,12 +148,12 @@ const LoginScreen = ({ navigation, route }) => {
 
       case "TEAM_SELECTED":
         // 3단계: 성별/나이 입력
-        navigation.replace("SignupGenderAge", { signup: {} });
+        navigation.navigate("SignupGenderAge", { signup: {} });
         break;
 
       default:
         // 알 수 없는 상태면 약관부터 시작
-        navigation.replace("TermsDetail");
+        navigation.navigate("TermsDetail");
         break;
     }
   };

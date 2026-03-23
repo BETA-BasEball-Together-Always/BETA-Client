@@ -39,10 +39,8 @@ import { useNavigation } from "@react-navigation/native";
 
 const AVATAR_SIZE = 35;
 const AVATAR_ICON = 23;
-/** 피그마 인기글 카드 고정 크기 */
 const POPULAR_CARD_WIDTH = 229;
 const POPULAR_CARD_HEIGHT = 285;
-/** 수정/삭제 메뉴 너비(postMoreMenu minWidth)와 맞춤 — 오른쪽을 트리거에 붙이고 왼쪽으로 펼침 */
 const POST_MENU_WIDTH = 170;
 
 const PopularPostCard = ({ post }) => {

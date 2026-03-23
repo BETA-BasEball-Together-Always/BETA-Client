@@ -108,9 +108,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
   const primaryImageUri =
     primaryImageRow?.imageUrl || primaryImageRow?.url || null;
   const primaryImageStableKey =
-    primaryImageRow?.imageId ??
-    primaryImageRow?.id ??
-    primaryImageUri;
+    primaryImageRow?.imageId ?? primaryImageRow?.id ?? primaryImageUri;
 
   const primaryImageDisplayUri = useMemo(
     () =>
@@ -138,7 +136,9 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
       const token = match[0];
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`}>{displayContent.slice(lastIndex, start)}</Text>,
+          <Text key={`t-${segIdx++}-${lastIndex}`}>
+            {displayContent.slice(lastIndex, start)}
+          </Text>,
         );
       }
       nodes.push(
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    height: 200,
+    height: 500,
     marginTop: 10,
     borderRadius: 10,
   },

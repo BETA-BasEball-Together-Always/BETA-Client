@@ -68,22 +68,6 @@ export default function KboRankCard({ year, rows, favoriteTeamCode }) {
   );
 }
 
-/**
- * ── 카드 전체 높이·내부 간격을 줄이고 싶을 때 (수정 위치 안내) ──
- *
- * • 이 파일(styles): 카드 바깥·안쪽 여백과 블록 사이 간격
- *   - `card`: paddingTop / paddingBottom / paddingHorizontal → 카드 테두리 안쪽 전체 패딩
- *   - `card.marginTop` → 위쪽 콘텐츠(인사 문구 등)와 카드 사이
- *   - `title.lineHeight` → 제목 줄 높이
- *   - `dateRange`: marginTop / marginBottom → 제목↔날짜↔표 사이
- *   - `tableWrap.marginTop` → 날짜↔순위 표 사이
- *   - `footer`: paddingTop / paddingBottom → 표↔전체보기 버튼 사이
- *
- * • `KboRankTable.jsx`: 표 한 줄 높이·로고 크기
- *   - 상단 `LOGO_SIZE`, 행 `dataRow.paddingVertical`, 헤더 `headerRow.paddingBottom`
- *
- * • 홈에서 카드와 배너 사이: `HomeScreen.jsx` 의 `KboRankCard` 위쪽 레이아웃(margin 등)
- */
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",

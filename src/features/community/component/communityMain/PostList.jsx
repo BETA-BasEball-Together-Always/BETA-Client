@@ -12,7 +12,6 @@ const PostList = ({
   posts,
   onEndReached,
   isLoading,
-  /** 첫 로딩·리패치 등 목록 데이터 갱신 중 (인기 탭 빈 화면 문구와 구분) */
   isFeedBusy = false,
   showTeam = false,
   removeClippedSubviews,
@@ -23,11 +22,17 @@ const PostList = ({
 }) => {
   const navigation = useNavigation();
 
+  // const handleEndReached = () => {
+  //   // sort 탭 변경/리렌더 직후 FlatList가 바로 endReached를 트리거하는 경우가 있어
+  //   // 그때 불필요한 fetchNextPage가 연쇄로 발생하며 스피너가 깜빡일 수 있습니다.
+  //   if (typeof onEndReached !== "function") return;
+  //   if (isFeedBusy || isLoading) return;
+  //   if (!posts || posts.length === 0) return;
+  //   onEndReached();
+  // };
+
   const showPopularEmpty =
-    sort === "popular" &&
-    posts.length === 0 &&
-    !isFeedBusy &&
-    !isLoading;
+    sort === "popular" && posts.length === 0 && !isFeedBusy && !isLoading;
 
   return (
     <View style={styles.container}>
@@ -54,10 +59,7 @@ const PostList = ({
         )}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
-        contentContainerStyle={[
-          styles.listContent,
-          showPopularEmpty && styles.listContentEmpty,
-        ]}
+        contentContainerStyle={[styles.listContent]}
         ListEmptyComponent={
           showPopularEmpty ? (
             <View style={styles.popularEmpty}>
@@ -68,8 +70,6 @@ const PostList = ({
           ) : null
         }
       />
-
-      {/* 다음 페이지 로딩: ListFooter에 넣으면 리스트 높이가 늘어 스크롤이 밀림 → 오버레이 */}
       {isLoading ? (
         <View style={styles.footerLoadingOverlay} pointerEvents="none">
           <CommunityLoadingSpinner size={36} />
@@ -99,10 +99,8 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     flexGrow: 1,
   },
-  listContentEmpty: {
-    justifyContent: "center",
-  },
   popularEmpty: {
+    flex: 1,
     paddingVertical: 48,
     alignItems: "center",
     justifyContent: "center",

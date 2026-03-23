@@ -65,7 +65,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
             setUser(userDto);
           }
 
-          navigation.replace("SignupComplete", {
+            navigation.navigate("SignupComplete", {
             signup: {
               ...(signupData || {}),
               favoriteTeamLabel:
