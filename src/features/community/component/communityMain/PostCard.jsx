@@ -317,11 +317,14 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
           {/* 해시태그는 본문 내에서 inline으로 초록색 처리 */}
 
           {!showAsUnavailable && primaryImageDisplayUri ? (
-            <Image
-              key={`${resolvedPostId}-${primaryImageStableKey}`}
-              source={{ uri: primaryImageDisplayUri }}
-              style={styles.image}
-            />
+            <View style={styles.imageFrame}>
+              <Image
+                key={`${resolvedPostId}-${primaryImageStableKey}`}
+                source={{ uri: primaryImageDisplayUri }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            </View>
           ) : null}
         </View>
 
@@ -371,11 +374,16 @@ const styles = StyleSheet.create({
   bodyPressable: {
     flex: 1,
   },
-  image: {
+  imageFrame: {
     width: "100%",
-    height: 500,
+    height: 200,
     marginTop: 10,
     borderRadius: 10,
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
   },
   contentSection: {
     paddingVertical: 2,

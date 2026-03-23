@@ -58,8 +58,32 @@ import {
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
 import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 import FetchStateView from "../../../../shared/components/FetchStateView";
+import { useRemoteImageAspectRatio } from "../../utils/useRemoteImageAspectRatio";
 
 const { width } = Dimensions.get("window");
+const DETAIL_IMAGE_HEIGHT = 450;
+
+function PostDetailImageItem({ uri, maxWidth, imageStyle }) {
+  const aspectRatio = useRemoteImageAspectRatio(uri, 1);
+  if (!uri) return null;
+
+  const safeAspectRatio =
+    typeof aspectRatio === "number" && Number.isFinite(aspectRatio) && aspectRatio > 0
+      ? aspectRatio
+      : 1;
+  const naturalWidth = DETAIL_IMAGE_HEIGHT * safeAspectRatio;
+  const renderedWidth = Math.min(maxWidth, naturalWidth);
+
+  return (
+    <View style={[styles.imageWrapper, { width: renderedWidth }]}>
+      <Image
+        source={{ uri }}
+        style={[imageStyle, { aspectRatio: safeAspectRatio }]}
+        resizeMode="cover"
+      />
+    </View>
+  );
+}
 
 const PostDetailScreen = ({ route, navigation }) => {
   const {
@@ -545,23 +569,15 @@ const PostDetailScreen = ({ route, navigation }) => {
                     entry.url,
                     entry.rowKey,
                   );
+                  const maxImageWidth = isSingle ? width - 32 : width * 0.78;
 
                   return (
-                    <View
+                    <PostDetailImageItem
                       key={entry.rowKey}
-                      style={[
-                        styles.imageWrapper,
-                        {
-                          width: isSingle ? width - 32 : width * 0.7,
-                        },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri: displayUri }}
-                        style={styles.postImage}
-                        resizeMode="cover"
-                      />
-                    </View>
+                      uri={displayUri}
+                      maxWidth={maxImageWidth}
+                      imageStyle={styles.postImage}
+                    />
                   );
                 })}
               </ScrollView>
@@ -758,14 +774,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   imageWrapper: {
-    width: width * 0.7, // 화면 너비에서 양쪽 패딩(16 + 16)을 뺀 값
+    // 이미지 카드 크기 조정 포인트:
+    // - 높이: DETAIL_IMAGE_HEIGHT 상수로 조정
+    // - 너비: map 내부의 maxImageWidth 계산(단일/다중 이미지별)로 조정
+    height: DETAIL_IMAGE_HEIGHT,
     borderRadius: 10,
     overflow: "hidden",
     marginRight: 11,
   },
   postImage: {
     width: "100%",
-    height: 557,
+    height: "100%",
   },
 
   /* 텍스트 */
