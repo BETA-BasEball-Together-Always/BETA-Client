@@ -28,9 +28,12 @@ export async function writeDataUrlPngToCache(dataUrl) {
  * 포토부스 프레임을 캐시 내 고유 경로로 복사 (게시글 첨부·경로 충돌 방지)
  * — copyAsync 우선 (바이너리 그대로, 빠름). 실패 시 legacy read/write 폴백.
  */
-export async function copyFrameToUniqueUploadFile(sourceUri) {
+export async function copyFrameToUniqueUploadFile(sourceUri, uploadKey = null) {
   if (!sourceUri) return null;
-  const name = `beta-frame-${randomUploadKey()}.png`;
+  const keyPart = uploadKey != null ? String(uploadKey) : randomUploadKey();
+  // 업로드 단위 키(예: photoBooth nonce)가 포함된 고유 파일명.
+  // 서버/업로더가 multipart `name` 대신 uri base name을 참조하는 경우를 대비한다.
+  const name = `beta-frame-${keyPart}-${randomUploadKey()}.png`;
   const dest = `${FileSystem.cacheDirectory}${name}`;
   const from = sourceUri.startsWith("file://")
     ? sourceUri

@@ -55,6 +55,7 @@ import { isAllChannelPost } from "../../utils/communityChannel";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getActiveHashtagLabels,
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
@@ -106,7 +107,7 @@ const PostDetailScreen = ({ route, navigation }) => {
       /(^|\s)#[^\s#]+/g,
       " ",
     );
-  const hashtags = detail?.hashtags ?? [];
+  const hashtags = getActiveHashtagLabels(detail ?? post);
 
   const scrollRef = useRef(null);
 

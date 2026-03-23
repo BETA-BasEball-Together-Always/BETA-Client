@@ -62,14 +62,14 @@ const UPLOAD_REQUIRES_BODY_TOAST =
   "본문 내용을 추가해야 업로드를 할 수 있어요!";
 
 /** 업로드 직전 캐시에 고유 복사본을 만들어 동일 file:// 경로가 서버/캐시에서 덮어쓰이지 않게 함!! */
-async function cloneAssetsForUpload(assets) {
+async function cloneAssetsForUpload(assets, uploadKey = null) {
   const list = assets ?? [];
   const out = [];
   for (let i = 0; i < list.length; i++) {
     const asset = list[i];
     if (!asset?.uri) continue;
     try {
-      const copied = await copyFrameToUniqueUploadFile(asset.uri);
+      const copied = await copyFrameToUniqueUploadFile(asset.uri, uploadKey);
       if (copied) {
         const uri = copied.startsWith("file://")
           ? copied
@@ -77,7 +77,7 @@ async function cloneAssetsForUpload(assets) {
         out.push({
           ...asset,
           uri,
-          key: `${asset.key ?? "img"}-u-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 11)}`,
+          key: `${asset.key ?? "img"}-u-${uploadKey ?? "upload"}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 11)}`,
         });
       } else {
         out.push(asset);
@@ -131,6 +131,7 @@ const CreatePostScreen = () => {
   const route = useRoute();
   const editPost = route.params?.editPost;
   const isEditMode = !!editPost?.postId;
+  const photoBoothAttachNonce = route.params?.photoBoothAttachNonce;
 
   const author = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
@@ -233,6 +234,7 @@ const CreatePostScreen = () => {
   const lastUploadRef = useRef({ content: "", at: 0 });
   const captureEffectIdRef = useRef(0);
   const photoBoothEffectIdRef = useRef(0);
+  const lastPhotoBoothUploadUrisRef = useRef(null);
 
   const openLimitModal = (message) => {
     setLimitModalMessage(message);
@@ -680,12 +682,23 @@ const CreatePostScreen = () => {
     (async () => {
       setIsPickingMedia(true);
       try {
+        if (__DEV__) {
+          console.log("[CreatePost] photoBooth attach start", {
+            nonce,
+            initialImagesFromPhotoBooth: (list ?? []).map((x) => ({
+              uri: x?.uri,
+              width: x?.width,
+              height: x?.height,
+            })),
+          });
+        }
+
         /** Share에서 이미 복사했어도, 동일 경로/캐시 키를 한 번 더 분리 (잔상·덮어쓰기 방지) */
         const listUnique = [];
         for (let i = 0; i < list.length; i++) {
           const item = list[i];
           if (!item?.uri) continue;
-          const copied = await copyFrameToUniqueUploadFile(item.uri);
+          const copied = await copyFrameToUniqueUploadFile(item.uri, nonce);
           if (!copied) {
             console.warn(
               "[CreatePost] photoBooth copy failed, skip asset",
@@ -696,6 +709,15 @@ const CreatePostScreen = () => {
           const uri = copied.startsWith("file://")
             ? copied
             : `file://${copied}`;
+
+          if (__DEV__ && i === 0) {
+            console.log("[CreatePost] photoBooth copy asset[0]", {
+              srcUri: item.uri,
+              copied,
+              uri,
+            });
+          }
+
           listUnique.push({
             ...item,
             uri,
@@ -718,9 +740,10 @@ const CreatePostScreen = () => {
           key: `photobooth-${nonce}-${randomUploadKey()}`,
         }));
         let mergedOverflow = false;
-        setImages((prev) => {
-          mergedOverflow = prev.length + tagged.length > MAX_IMAGES;
-          return [...prev, ...tagged].slice(0, MAX_IMAGES);
+        // 다른 게시글로 같은 화면이 재사용될 수 있으므로, PhotoBooth attach 시점에는 기존 이미지를 초기화한다.
+        setImages(() => {
+          mergedOverflow = tagged.length > MAX_IMAGES;
+          return tagged.slice(0, MAX_IMAGES);
         });
         if (mergedOverflow) {
           openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
@@ -757,7 +780,18 @@ const CreatePostScreen = () => {
       "image/jpeg": "jpg",
     };
     const ext = extMap[mimeType] ?? "jpg";
-    const uniqueName = `image-${randomUploadKey()}-${idx}.${ext}`;
+    // 서버가 업로드 multipart의 file name(또는 uri base name)을 저장 키 생성에 반영한다고 가정.
+    const uniqueName = `image-${photoBoothAttachNonce ?? "upload"}-${randomUploadKey()}-${idx}.${ext}`;
+
+    if (__DEV__) {
+      console.log("[CreatePost] appendImageFile", {
+        fieldName,
+        idx,
+        assetUri: asset.uri,
+        mimeType,
+        uniqueName,
+      });
+    }
 
     formData.append(fieldName, {
       uri: normalizeFileUri(asset.uri),
@@ -841,9 +875,22 @@ const CreatePostScreen = () => {
 
     let imagesForUpload = images;
     try {
-      imagesForUpload = await cloneAssetsForUpload(images);
+      imagesForUpload = await cloneAssetsForUpload(
+        images,
+        photoBoothAttachNonce ?? "upload",
+      );
     } catch (e) {
       console.warn("[CreatePost] cloneAssetsForUpload", e);
+    }
+
+    if (__DEV__) {
+      lastPhotoBoothUploadUrisRef.current = {
+        sourceImagesUris: (images ?? []).map((a) => a?.uri),
+        uploadImagesUris: (imagesForUpload ?? []).map((a) => a?.uri),
+      };
+      console.log("[CreatePost] before createPost upload uris snapshot", {
+        uploadImagesUris: lastPhotoBoothUploadUrisRef.current.uploadImagesUris,
+      });
     }
 
     const formData = new FormData();
@@ -869,6 +916,12 @@ const CreatePostScreen = () => {
       onSuccess: (data) => {
         pendingCameraDraftForCreatePost = null;
         lastUploadRef.current = { content: normalizedContent, at: now };
+        if (__DEV__) {
+          console.log("[CreatePost] createPost onSuccess photoBooth uris", {
+            createdPostId: data?.postId ?? data?.id ?? null,
+            snapshot: lastPhotoBoothUploadUrisRef.current,
+          });
+        }
         // 목록 갱신은 useCreatePostMutation onSuccess에서 처리
         navigation.navigate("UploadSuccess", {
           createdPostId: data?.postId ?? data?.id ?? null,

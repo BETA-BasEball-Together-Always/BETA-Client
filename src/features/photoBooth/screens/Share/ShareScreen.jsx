@@ -130,6 +130,13 @@ export default function ShareScreen({ navigation }) {
         return;
       }
 
+      if (__DEV__) {
+        console.log("[ShareScreen] onDownload uri snapshot", {
+          exportedFrameUri,
+          ensuredFileUri: fileUri,
+        });
+      }
+
       await MediaLibrary.saveToLibraryAsync(fileUri);
       setSaving(false);
       setShowSaveCompleteTitle(true);
@@ -174,13 +181,15 @@ export default function ShareScreen({ navigation }) {
         return;
       }
 
+      const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
       /**
        * exportedFrameUri / ViewShot tmpfile와 분리된 고유 파일로 복사
        * 동일 경로를 포토부스·게시글 파이프라인이 공유하면 이후 캡처/정규화 시 덮어쓰기로
        * 이전 게시글 썸네일이 최신 이미지로 바뀌는 현상이 날 수 있음.
        * 복사 실패 시 동일 file:// 를 넘기지 않음 (폴백 금지).
        */
-      const uniqueCopyUri = await copyFrameToUniqueUploadFile(fileUri);
+      const uniqueCopyUri = await copyFrameToUniqueUploadFile(fileUri, nonce);
       if (!uniqueCopyUri) {
         console.warn("[ShareScreen] copyFrameToUniqueUploadFile returned null");
         Alert.alert(
@@ -201,6 +210,16 @@ export default function ShareScreen({ navigation }) {
             : `file://${uriForPost}`
           : uriForPost;
 
+      if (__DEV__) {
+        console.log("[ShareScreen] onPressCreatePost photoBooth uris", {
+          exportedFrameUri,
+          ensuredFileUri: fileUri,
+          uniqueCopyUri,
+          uriForPost,
+          uriForSize,
+        });
+      }
+
       const { width: w, height: h } = await measureImageSizeWithTimeout(
         uriForSize,
         1080,
@@ -218,8 +237,6 @@ export default function ShareScreen({ navigation }) {
         );
         return;
       }
-
-      const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
       rootNav.navigate("Community", {
         screen: "CreatePost",

@@ -6,6 +6,7 @@ import { homeKeys } from "../../home/services/homeKeys";
 import { mypageQueryKeys } from "../../profile/mypageQueryKeys";
 import { setUserEmotionSelection } from "../store/userEmotionSelectionStore";
 import { parseEmotionToggleServerResponse } from "../constants/communityReactions";
+import { resolveCommunityPostId } from "../constants/communityReactions";
 import { useRef } from "react";
 
 export const useTogglePostEmotionMutation = (postId, options = {}) => {
@@ -70,7 +71,8 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
           pages: prev.pages.map((page) => ({
             ...page,
             posts: (page.posts ?? []).map((p) =>
-              String(p.postId) === String(postId)
+              String(resolveCommunityPostId(p) ?? p.postId ?? p.id) ===
+              String(postId)
                 ? {
                     ...p,
                     emotions: data?.emotions ?? p.emotions,
@@ -103,7 +105,8 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         return {
           ...prev,
           popularPosts: prev.popularPosts.map((p) =>
-            String(p.postId) === String(postId)
+            String(resolveCommunityPostId(p) ?? p.postId ?? p.id) ===
+            String(postId)
               ? {
                   ...p,
                   emotions: data?.emotions ?? p.emotions,
@@ -147,7 +150,9 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
             pages: prev.pages.map((page) => ({
               ...page,
               posts: (page.posts ?? []).filter(
-                (p) => String(p.postId) !== String(postId),
+                (p) =>
+                  String(resolveCommunityPostId(p) ?? p.postId ?? p.id) !==
+                  String(postId),
               ),
             })),
           };
