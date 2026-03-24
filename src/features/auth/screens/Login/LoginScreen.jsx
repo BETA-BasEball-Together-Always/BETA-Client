@@ -319,8 +319,12 @@ const LoginScreen = ({ navigation, route }) => {
     setIsSocialLoading(true);
 
     try {
+      console.log("[NAVER] 로그인 버튼 클릭");
       const { token, profile, cancelled } = await naverSignIn();
-      if (cancelled) return;
+      if (cancelled) {
+        console.log("[NAVER] 로그인 취소/중단됨");
+        return;
+      }
 
       console.log("네이버 토큰:", token);
       console.log("네이버 프로필:", profile);
@@ -376,6 +380,7 @@ const LoginScreen = ({ navigation, route }) => {
         "잠시 후 다시 시도해주세요.",
       );
     } finally {
+      console.log("[NAVER] 로그인 로딩 해제");
       setIsSocialLoading(false);
     }
   };

@@ -1,9 +1,33 @@
 // src/features/auth/screens/libs/naverSignIn.js
 import NaverLogin from "@react-native-seoul/naver-login";
 
+const NAVER_LOGIN_TIMEOUT_MS = 15000;
+
+const withTimeout = (promise, timeoutMs) =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("NAVER_LOGIN_TIMEOUT"));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+
 export const naverSignIn = async () => {
   try {
-    const result = await NaverLogin.login();
+    console.log("[NAVER] login() 호출 시작");
+    const result = await withTimeout(
+      NaverLogin.login(),
+      NAVER_LOGIN_TIMEOUT_MS,
+    );
+    console.log("[NAVER] login() 응답 수신");
 
     if (!result) {
       console.warn("NaverLogin.login()가 undefined를 반환했습니다.");
@@ -34,6 +58,12 @@ export const naverSignIn = async () => {
       profile: profileResult?.response ?? null,
     };
   } catch (error) {
+    if (error?.message === "NAVER_LOGIN_TIMEOUT") {
+      console.error(
+        `[NAVER] 로그인 콜백 타임아웃(${NAVER_LOGIN_TIMEOUT_MS}ms) - iOS URL Scheme/네이티브 설정을 확인하세요.`,
+      );
+      return { cancelled: true, timeout: true };
+    }
     console.error("naverSignIn 오류: ", error);
     console.error("naverSignIn 오류 데이터: ", error.data);
     console.error("naverSignIn 오류 리스폰스: ", error.response);

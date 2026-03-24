@@ -5,7 +5,7 @@ export default ({ config }) => ({
   ...config,
   extra: {
     ...config.extra,
-    backendUrl: process.env.BACKEND_URL,
+    backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL,
     naverClientId: process.env.NAVER_CLIENT_ID,
     naverClientSecret: process.env.NAVER_CLIENT_SECRET,
     naverAppName: process.env.NAVER_APP_NAME,
