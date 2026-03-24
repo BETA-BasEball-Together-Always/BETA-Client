@@ -14,7 +14,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import AppHeader from "../../../../shared/component/AppHeader";
@@ -39,6 +42,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoading.svg";
 
 import ImagePreviewList from "../../component/createPost/ImagePreviewList";
+import { copyFrameToUniqueUploadFile } from "@features/photoBooth/utils/copyFrameToUniqueUploadFile";
+import { randomUploadKey } from "../../../../shared/utils/randomUploadKey";
 
 const { width } = Dimensions.get("window");
 
@@ -51,7 +56,44 @@ const MAX_UPLOAD_LONG_EDGE = 1920;
 const MIN_JPEG_QUALITY = 0.4;
 const MAX_HASHTAGS = 5;
 const MAX_HASHTAG_LEN = 20;
-const DUPLICATE_POST_WINDOW_MS = 30 * 1000; // 30초
+const DUPLICATE_POST_WINDOW_MS = 30 * 1000;
+
+const UPLOAD_REQUIRES_BODY_TOAST =
+  "본문 내용을 추가해야 업로드를 할 수 있어요!";
+
+/** 업로드 직전 캐시에 고유 복사본을 만들어 동일 file:// 경로가 서버/캐시에서 덮어쓰이지 않게 함!! */
+async function cloneAssetsForUpload(assets, uploadKey = null) {
+  const list = assets ?? [];
+  const out = [];
+  for (let i = 0; i < list.length; i++) {
+    const asset = list[i];
+    if (!asset?.uri) continue;
+    try {
+      const copied = await copyFrameToUniqueUploadFile(asset.uri, uploadKey);
+      if (copied) {
+        const uri = copied.startsWith("file://")
+          ? copied
+          : `file://${copied}`;
+        out.push({
+          ...asset,
+          uri,
+          key: `${asset.key ?? "img"}-u-${uploadKey ?? "upload"}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 11)}`,
+        });
+      } else {
+        out.push(asset);
+      }
+    } catch {
+      out.push(asset);
+    }
+  }
+  return out;
+}
+
+/**
+ * 카메라 화면으로 이동 시 스택에서 CreatePost가 언마운트되면 로컬 state가 사라짐
+ * 촬영 직전 스냅샷을 모듈에 두고 복귀 시 병합!
+ */
+let pendingCameraDraftForCreatePost = null;
 
 const guessMimeType = (uri) => {
   const lower = (uri || "").toLowerCase();
@@ -83,11 +125,13 @@ const CreatePostScreen = () => {
   const scrollRef = useRef(null);
   const inputOffsetY = useRef(0);
   const initialEditRef = useRef(null);
+  const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
   const route = useRoute();
   const editPost = route.params?.editPost;
   const isEditMode = !!editPost?.postId;
+  const photoBoothAttachNonce = route.params?.photoBoothAttachNonce;
 
   const author = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
@@ -113,6 +157,13 @@ const CreatePostScreen = () => {
   const [isPickingMedia, setIsPickingMedia] = useState(false);
 
   const [isLeaveModalVisible, setIsLeaveModalVisible] = useState(false);
+  const [uploadBodyToastVisible, setUploadBodyToastVisible] = useState(false);
+
+  useEffect(() => {
+    if (!uploadBodyToastVisible) return;
+    const t = setTimeout(() => setUploadBodyToastVisible(false), 2800);
+    return () => clearTimeout(t);
+  }, [uploadBodyToastVisible]);
 
   useEffect(() => {
     if (!editPost?.postId) {
@@ -170,15 +221,20 @@ const CreatePostScreen = () => {
 
   const isContentMax = content.length >= MAX_CONTENT_LENGTH;
   const isImagesMax = totalImageCount >= MAX_IMAGES;
-  const isUploadEnabled = content.trim().length > 0 || totalImageCount > 0;
+  /** 이미지 유무와 관계없이 본문 1글자 이상일 때만 업로드 활성 */
+  const isUploadEnabled = content.trim().length > 0;
+  const hasDraftContent =
+    content.trim().length > 0 || totalImageCount > 0;
 
-  const isUploading = createPostMutation.isPending || updatePostMutation.isPending;
+  const isUploading =
+    createPostMutation.isPending || updatePostMutation.isPending;
   const isSpinning = isPickingMedia || isUploading;
 
   const spinAnim = React.useRef(new Animated.Value(0)).current;
   const lastUploadRef = useRef({ content: "", at: 0 });
   const captureEffectIdRef = useRef(0);
   const photoBoothEffectIdRef = useRef(0);
+  const lastPhotoBoothUploadUrisRef = useRef(null);
 
   const openLimitModal = (message) => {
     setLimitModalMessage(message);
@@ -230,7 +286,6 @@ const CreatePostScreen = () => {
     return boards.find((b) => b.id === selectedBoardId)?.label ?? "";
   }, [boards, selectedBoardId]);
 
-
   const createPostChannel = useMemo(() => {
     if (selectedBoardId === "ALL") return "ALL";
     return "TEAM";
@@ -270,7 +325,9 @@ const CreatePostScreen = () => {
     if (mime === "image/gif") {
       const withDims = await ensureAssetDimensions(asset);
       try {
-        const info = await FileSystem.getInfoAsync(withDims.uri, { size: true });
+        const info = await FileSystem.getInfoAsync(withDims.uri, {
+          size: true,
+        });
         if (typeof info?.size === "number" && info.size > MAX_IMAGE_BYTES) {
           openLimitModal(
             "GIF 이미지 용량이 너무 큽니다.\n다른 이미지로 시도해 주세요.",
@@ -342,7 +399,9 @@ const CreatePostScreen = () => {
       );
       return null;
     } catch {
-      openLimitModal("이미지를 처리하지 못했습니다.\n다른 이미지로 시도해 주세요.");
+      openLimitModal(
+        "이미지를 처리하지 못했습니다.\n다른 이미지로 시도해 주세요.",
+      );
       return null;
     }
   };
@@ -409,6 +468,10 @@ const CreatePostScreen = () => {
     }
     return Array.from(set);
   }, [content]);
+
+  // 업로드용 content는 사용자가 입력한 원문 그대로 전송
+  // (서버가 hashtags를 따로 받더라도 content 내의 해시태그 위치/순서를 보존하기 위해)
+  const contentForUpload = content;
 
   const acceptedHashTags = useMemo(
     () => extractedHashTags.slice(0, MAX_HASHTAGS),
@@ -509,7 +572,29 @@ const CreatePostScreen = () => {
     }
   };
 
-  const handlePressCamera = () => navigation.navigate("CreatePostCamera");
+  const handlePressCamera = () => {
+    if (isEditMode) {
+      pendingCameraDraftForCreatePost = {
+        isEditMode: true,
+        content,
+        selectedBoardId,
+        keptExistingImages,
+        pendingNewImages,
+        deletedImageIds,
+      };
+    } else {
+      pendingCameraDraftForCreatePost = {
+        isEditMode: false,
+        content,
+        images,
+        selectedBoardId,
+      };
+    }
+    navigation.navigate("CreatePostCamera", {
+      currentImageCount: totalImageCount,
+      maxImages: MAX_IMAGES,
+    });
+  };
 
   const handleRemoveImage = (index) => {
     if (isEditMode) {
@@ -527,7 +612,6 @@ const CreatePostScreen = () => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  /** 카메라 촬영 복귀: captureNonce로 매번 실행(같은 객체 참조로 effect가 스킵되는 문제 방지) */
   useEffect(() => {
     const nonce = route.params?.captureNonce;
     const captured = route.params?.capturedAsset;
@@ -539,7 +623,44 @@ const CreatePostScreen = () => {
       try {
         const validated = await validateAndNormalizeAssets([captured]);
         if (cancelled || id !== captureEffectIdRef.current) return;
-        handleAddImages(validated);
+
+        const draft = pendingCameraDraftForCreatePost;
+        pendingCameraDraftForCreatePost = null;
+
+        if (!validated?.length) {
+          navigation.setParams({
+            capturedAsset: undefined,
+            captureNonce: undefined,
+          });
+          return;
+        }
+
+        if (draft?.isEditMode) {
+          const kept = draft.keptExistingImages ?? [];
+          const cap = Math.max(0, MAX_IMAGES - kept.length);
+          const prevPending = draft.pendingNewImages ?? [];
+          const merged = [...prevPending, ...validated].slice(0, cap);
+          if (prevPending.length + validated.length > cap) {
+            openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
+          }
+          setContent(draft.content ?? "");
+          setSelectedBoardId(draft.selectedBoardId ?? "TEAM");
+          setKeptExistingImages(kept);
+          setPendingNewImages(merged);
+          setDeletedImageIds(draft.deletedImageIds ?? []);
+        } else if (!isEditMode) {
+          const baseImages = draft?.images ?? [];
+          const merged = [...baseImages, ...validated].slice(0, MAX_IMAGES);
+          if (baseImages.length + validated.length > MAX_IMAGES) {
+            openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
+          }
+          setContent(draft?.content ?? "");
+          setSelectedBoardId(draft?.selectedBoardId ?? "TEAM");
+          setImages(merged);
+        } else {
+          handleAddImages(validated);
+        }
+
         navigation.setParams({
           capturedAsset: undefined,
           captureNonce: undefined,
@@ -555,10 +676,7 @@ const CreatePostScreen = () => {
     };
   }, [route.params?.captureNonce]);
 
-  /**
-   * 야구네컷 Share → 게시글 작성: 이번에 넘어온 이미지로 교체(기존 첨부 누적 방지).
-   * effect id로 Strict Mode 이중 실행 시 중복 적용 방지.
-   */
+
   useEffect(() => {
     const nonce = route.params?.photoBoothAttachNonce;
     const list = route.params?.initialImagesFromPhotoBooth;
@@ -568,9 +686,72 @@ const CreatePostScreen = () => {
     (async () => {
       setIsPickingMedia(true);
       try {
-        const validated = await validateAndNormalizeAssets(list);
+        if (__DEV__) {
+          console.log("[CreatePost] photoBooth attach start", {
+            nonce,
+            initialImagesFromPhotoBooth: (list ?? []).map((x) => ({
+              uri: x?.uri,
+              width: x?.width,
+              height: x?.height,
+            })),
+          });
+        }
+
+        /** Share에서 이미 복사했어도, 동일 경로/캐시 키를 한 번 더 분리 (잔상·덮어쓰기 방지) */
+        const listUnique = [];
+        for (let i = 0; i < list.length; i++) {
+          const item = list[i];
+          if (!item?.uri) continue;
+          const copied = await copyFrameToUniqueUploadFile(item.uri, nonce);
+          if (!copied) {
+            console.warn(
+              "[CreatePost] photoBooth copy failed, skip asset",
+              i,
+            );
+            continue;
+          }
+          const uri = copied.startsWith("file://")
+            ? copied
+            : `file://${copied}`;
+
+          if (__DEV__ && i === 0) {
+            console.log("[CreatePost] photoBooth copy asset[0]", {
+              srcUri: item.uri,
+              copied,
+              uri,
+            });
+          }
+
+          listUnique.push({
+            ...item,
+            uri,
+            width: item.width,
+            height: item.height,
+          });
+        }
+        if (!listUnique.length) {
+          openLimitModal(
+            "이미지를 불러오지 못했어요.\n포토부스에서 다시 시도해 주세요.",
+          );
+          return;
+        }
+
+        const validated = await validateAndNormalizeAssets(listUnique);
         if (cancelled || id !== photoBoothEffectIdRef.current) return;
-        setImages(validated.slice(0, MAX_IMAGES));
+        /** uri는 리스트 키로 쓰지 않음(동일 경로 문자열). nonce + randomUploadKey로만 구분 */
+        const tagged = validated.map((a) => ({
+          ...a,
+          key: `photobooth-${nonce}-${randomUploadKey()}`,
+        }));
+        let mergedOverflow = false;
+        // 다른 게시글로 같은 화면이 재사용될 수 있으므로, PhotoBooth attach 시점에는 기존 이미지를 초기화한다.
+        setImages(() => {
+          mergedOverflow = tagged.length > MAX_IMAGES;
+          return tagged.slice(0, MAX_IMAGES);
+        });
+        if (mergedOverflow) {
+          openLimitModal("사진은 최대 5장까지\n추가 가능합니다.");
+        }
         navigation.setParams({
           initialImagesFromPhotoBooth: undefined,
           photoBoothAttachNonce: undefined,
@@ -603,30 +784,56 @@ const CreatePostScreen = () => {
       "image/jpeg": "jpg",
     };
     const ext = extMap[mimeType] ?? "jpg";
+    // 서버가 업로드 multipart의 file name(또는 uri base name)을 저장 키 생성에 반영한다고 가정
+    const uniqueName = `image-${photoBoothAttachNonce ?? "upload"}-${randomUploadKey()}-${idx}.${ext}`;
+
+    if (__DEV__) {
+      console.log("[CreatePost] appendImageFile", {
+        fieldName,
+        idx,
+        assetUri: asset.uri,
+        mimeType,
+        uniqueName,
+      });
+    }
 
     formData.append(fieldName, {
       uri: normalizeFileUri(asset.uri),
-      name: `image-${Date.now()}-${idx}.${ext}`,
+      name: uniqueName,
       type: mimeType,
     });
   };
 
-  const handleUpload = () => {
-    if (!isUploadEnabled || isUploading) return;
+  const handleUploadPress = () => {
+    if (isUploading) return;
+    if (!content.trim()) {
+      setUploadBodyToastVisible(true);
+      return;
+    }
+    handleUpload();
+  };
+
+  const handleUpload = async () => {
+    if (isUploading) return;
+    if (!content.trim()) return;
 
     if (hasHashTagOverflow) {
       openLimitModal("해시태그는 최대 5개만 추가 가능합니다.");
       return;
     }
 
-    if (!isEditMode && selectedBoardId === "TEAM" && !author?.favoriteTeamCode) {
+    if (
+      !isEditMode &&
+      selectedBoardId === "TEAM" &&
+      !author?.favoriteTeamCode
+    ) {
       openLimitModal("응원팀을 설정한 뒤 팀 게시판에 글을 작성할 수 있습니다.");
       return;
     }
 
     if (isEditMode) {
       const formData = new FormData();
-      formData.append("content", content);
+      formData.append("content", contentForUpload);
       acceptedHashTags.forEach((tag) => {
         formData.append("hashtags", tag);
       });
@@ -641,6 +848,7 @@ const CreatePostScreen = () => {
         { postId: editPost.postId, formData },
         {
           onSuccess: () => {
+            pendingCameraDraftForCreatePost = null;
             invalidateCommunityPostLists(queryClient);
             navigation.goBack();
           },
@@ -659,7 +867,7 @@ const CreatePostScreen = () => {
     }
 
     const now = Date.now();
-    const normalizedContent = content.trim();
+    const normalizedContent = contentForUpload.trim();
     if (
       normalizedContent &&
       normalizedContent === lastUploadRef.current.content &&
@@ -669,20 +877,55 @@ const CreatePostScreen = () => {
       return;
     }
 
+    let imagesForUpload = images;
+    try {
+      imagesForUpload = await cloneAssetsForUpload(
+        images,
+        photoBoothAttachNonce ?? "upload",
+      );
+    } catch (e) {
+      console.warn("[CreatePost] cloneAssetsForUpload", e);
+    }
+
+    if (__DEV__) {
+      lastPhotoBoothUploadUrisRef.current = {
+        sourceImagesUris: (images ?? []).map((a) => a?.uri),
+        uploadImagesUris: (imagesForUpload ?? []).map((a) => a?.uri),
+      };
+      console.log("[CreatePost] before createPost upload uris snapshot", {
+        uploadImagesUris: lastPhotoBoothUploadUrisRef.current.uploadImagesUris,
+      });
+    }
+
     const formData = new FormData();
-    formData.append("content", content);
+    formData.append("content", contentForUpload);
     formData.append("channel", createPostChannel);
     acceptedHashTags.forEach((tag) => {
       formData.append("hashtags", tag);
     });
 
-    images.forEach((asset, idx) => {
-      appendImageFile(formData, "images", asset, idx);
-    });
+    try {
+      imagesForUpload.forEach((asset, idx) => {
+        appendImageFile(formData, "images", asset, idx);
+      });
+    } catch (e) {
+      console.warn("[CreatePost] handleUpload appendImageFile", e);
+      openLimitModal(
+        "업로드 준비 중 문제가 발생했어요.\n잠시 후 다시 시도해 주세요.",
+      );
+      return;
+    }
 
     createPostMutation.mutate(formData, {
       onSuccess: (data) => {
+        pendingCameraDraftForCreatePost = null;
         lastUploadRef.current = { content: normalizedContent, at: now };
+        if (__DEV__) {
+          console.log("[CreatePost] createPost onSuccess photoBooth uris", {
+            createdPostId: data?.postId ?? data?.id ?? null,
+            snapshot: lastPhotoBoothUploadUrisRef.current,
+          });
+        }
         // 목록 갱신은 useCreatePostMutation onSuccess에서 처리
         navigation.navigate("UploadSuccess", {
           createdPostId: data?.postId ?? data?.id ?? null,
@@ -697,7 +940,11 @@ const CreatePostScreen = () => {
           );
           return;
         }
-        if (status === 400 && Array.isArray(data?.errors) && data.errors[0]?.message) {
+        if (
+          status === 400 &&
+          Array.isArray(data?.errors) &&
+          data.errors[0]?.message
+        ) {
           openLimitModal(data.errors[0].message);
           return;
         }
@@ -711,9 +958,9 @@ const CreatePostScreen = () => {
   };
 
   const isEditDirty = () => {
-    if (!isEditMode) return isUploadEnabled;
+    if (!isEditMode) return hasDraftContent;
     const init = initialEditRef.current;
-    if (!init) return isUploadEnabled;
+    if (!init) return hasDraftContent;
     if (content !== init.content) return true;
     if (pendingNewImages.length > 0) return true;
     if (deletedImageIds.length > 0) return true;
@@ -721,7 +968,7 @@ const CreatePostScreen = () => {
   };
 
   const handlePressBack = () => {
-    if (isEditMode ? isEditDirty() : isUploadEnabled) {
+    if (isEditMode ? isEditDirty() : hasDraftContent) {
       setIsLeaveModalVisible(true);
     } else {
       navigation.goBack();
@@ -761,14 +1008,15 @@ const CreatePostScreen = () => {
           }
           right={
             <TouchableOpacity
-              onPress={handleUpload}
+              onPress={handleUploadPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={[
                 styles.uploadButton,
                 isUploadEnabled && !isUploading
                   ? styles.uploadButtonEnabled
                   : styles.uploadButtonDisabled,
               ]}
-              disabled={!isUploadEnabled || isUploading}
+              disabled={isUploading}
             >
               <AppText
                 variant="caption"
@@ -1075,6 +1323,19 @@ const CreatePostScreen = () => {
             </Animated.View>
           </View>
         </Modal>
+
+        {uploadBodyToastVisible ? (
+          <View
+            pointerEvents="auto"
+            style={styles.uploadHintToastOverlay}
+          >
+            <View pointerEvents="none" style={styles.uploadHintToast}>
+              <AppText variant="caption" style={styles.uploadHintToastText}>
+                {UPLOAD_REQUIRES_BODY_TOAST}
+              </AppText>
+            </View>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -1099,6 +1360,31 @@ const styles = StyleSheet.create({
   },
   uploadButtonDisabled: {
     backgroundColor: "#232323",
+  },
+  uploadHintToastOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    zIndex: 100,
+    elevation: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+  },
+  uploadHintToast: {
+    width: "100%",
+    maxWidth: 400,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "rgba(30, 30, 30, 0.95)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  uploadHintToastText: {
+    color: "#E5E5E5",
+    textAlign: "center",
   },
   uploadButtonEnabled: {
     backgroundColor: "#F9F9F9",

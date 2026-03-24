@@ -33,10 +33,44 @@ function hasOnlyInactiveImageAttachments(post) {
  */
 export function isPostDeletedOrHiddenInFeed(post) {
   if (!post) return true;
-  if (post.deleted === true || post.isDeleted === true) return true;
-  if (post.available === false || post.visible === false) return true;
+  if (
+    post.deleted === true ||
+    post.deleted === 1 ||
+    post.deleted === "1" ||
+    post.deleted === "true" ||
+    post.isDeleted === true ||
+    post.isDeleted === 1 ||
+    post.isDeleted === "1" ||
+    post.isDeleted === "true"
+  ) {
+    return true;
+  }
+  if (
+    post.available === false ||
+    post.available === 0 ||
+    post.available === "false" ||
+    post.available === "0" ||
+    post.visible === false ||
+    post.visible === 0 ||
+    post.visible === "false" ||
+    post.visible === "0"
+  ) {
+    return true;
+  }
 
   const st = normalizeStatus(post.status ?? post.postStatus ?? post.postState);
+  // 서버가 어떤 enum/문구를 쓰든 "삭제/제거" 계열이면 숨김 처리
+  if (
+    typeof st === "string" &&
+    (st.includes("DELETE") ||
+      st.includes("DELETED") ||
+      st.includes("REMOVE") ||
+      st.includes("REMOVED") ||
+      st.includes("TOMBSTON") ||
+      st.includes("INACTIVE"))
+  ) {
+    return true;
+  }
   if (
     st === "DELETED" ||
     st === "DELETE" ||
@@ -89,9 +123,53 @@ export function getActivePostHashtags(post) {
 
 /** 표시용 "#tag" 문자열 목록 */
 export function getActiveHashtagLabels(post) {
-  return getActivePostHashtags(post)
+  const activeHashtags = getActivePostHashtags(post);
+
+  const activeLabels = activeHashtags
     .map((t) =>
       typeof t === "string" ? t.trim() : (t.name ?? t.tag ?? t.value ?? ""),
     )
     .filter(Boolean);
+
+  // content에서 등장한 순서가 canonical로 보이므로, hashtags 배열 순서가 뒤집혀도 동일하게 맞춘다.
+  const content = typeof post?.content === "string" ? post.content : "";
+  const match = content.match(/#([^\s#]+)/g);
+  if (!match || match.length === 0) return activeLabels;
+
+  const normalizeKey = (s) =>
+    String(s ?? "")
+      .trim()
+      .replace(/^#/, "")
+      .toUpperCase();
+
+  const activeKeyToLabel = new Map();
+  for (const label of activeLabels) {
+    const key = normalizeKey(label);
+    if (!activeKeyToLabel.has(key)) activeKeyToLabel.set(key, label);
+  }
+
+  const contentKeys = match
+    .map((m) => m.replace(/^#/, ""))
+    .map((label) => normalizeKey(label));
+
+  const ordered = [];
+  const seen = new Set();
+
+  for (const key of contentKeys) {
+    if (seen.has(key)) continue;
+    const label = activeKeyToLabel.get(key);
+    if (!label) continue;
+    seen.add(key);
+    ordered.push(label);
+  }
+
+  // content에 없는(예: 본문에서 제거됐거나 서버가 content와 불일치하는) 해시태그는 기존 순서를 유지해 뒤에 붙인다.
+  for (const label of activeLabels) {
+    const key = normalizeKey(label);
+    if (seen.has(key)) continue;
+    ordered.push(label);
+    seen.add(key);
+  }
+
+  return ordered;
 }

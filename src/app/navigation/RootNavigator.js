@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AuthStack from "./AuthStack";
 import MainTabNavigator from "./MainTabNavigator";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -11,6 +11,8 @@ const Stack = createNativeStackNavigator();
 
 const RootNavigator = () => {
   const [boot, setBoot] = useState(null);
+  /** 세션 준비 후 SplashScreen에서 BETA 로고 페이드아웃이 끝나면 true */
+  const [splashDismissed, setSplashDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,8 +36,14 @@ const RootNavigator = () => {
     };
   }, []);
 
-  if (boot == null) {
-    return <SplashScreen />;
+  const onSplashExitComplete = useCallback(() => {
+    setSplashDismissed(true);
+  }, []);
+
+  if (!splashDismissed) {
+    return (
+      <SplashScreen bootResult={boot} onExitComplete={onSplashExitComplete} />
+    );
   }
 
   const initialRouteName = boot.destination === "main" ? "Main" : "Auth";

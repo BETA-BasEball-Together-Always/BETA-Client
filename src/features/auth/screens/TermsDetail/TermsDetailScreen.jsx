@@ -1,5 +1,5 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import AuthBackground from "../../components/AuthBackground";
 import TermsAgreementCard from "../../components/TermsAgreementCard";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -15,8 +14,6 @@ import { useSignupConsentMutation } from "../../services/signupConsentMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
-
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
 const TermsDetailScreen = ({ navigation }) => {
   const [terms, setTerms] = useState({
@@ -34,47 +31,48 @@ const TermsDetailScreen = ({ navigation }) => {
 
   const signupConsentMutation = useSignupConsentMutation();
   const signupStatusMutation = useSignupStatusMutation();
-  const handleBack = useStepBack("Login");
+
+  const handlePressDetail = useCallback(
+    (key) => {
+      if (!key) return;
+
+      switch (key) {
+        case "tos":
+          navigation.navigate("TermsTosDetail");
+          return;
+        case "privacyRequired":
+          navigation.navigate("TermsPrivacyRequiredDetail");
+          return;
+        case "privacyMarketing":
+          navigation.navigate("TermsPrivacyMarketingDetail");
+          return;
+        default:
+          return;
+      }
+    },
+    [navigation],
+  );
 
   return (
     <View style={styles.root}>
       <AuthBackground />
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.85}
-        >
-          <BackIcon />
-        </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>이용약관 동의</Text>
-
-        <View style={{ width: 32 }} />
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.titleBlock}>
           <AppText variant="displayTitle2" style={styles.mainText}>
-            BETA 서비스 이용을 위해
+            서비스 이용을 위해
           </AppText>
           <AppText variant="displayTitle2" style={styles.mainText}>
-            약관에 동의해 주세요.
+            약관 동의가 필요합니다
           </AppText>
         </View>
 
         <TermsAgreementCard
           value={terms}
           onChange={setTerms}
-          onPressDetail={() => {
-            // 필요 시 상세 약관 화면/웹뷰로 연결
-          }}
+          onPressDetail={handlePressDetail}
         />
       </ScrollView>
 
@@ -91,7 +89,10 @@ const TermsDetailScreen = ({ navigation }) => {
 
             try {
               const status = await signupStatusMutation.mutateAsync();
-              if (status?.signupStep && status.signupStep !== "SOCIAL_AUTHENTICATED") {
+              if (
+                status?.signupStep &&
+                status.signupStep !== "SOCIAL_AUTHENTICATED"
+              ) {
                 navigateFromSignupStatus(status, navigation);
                 return;
               }
@@ -106,7 +107,7 @@ const TermsDetailScreen = ({ navigation }) => {
               },
               {
                 onSuccess: (data) => {
-                  navigation.replace("SocialSignup", {
+                  navigation.navigate("SocialSignup", {
                     signup: { email: data?.email ?? "" },
                   });
                 },
@@ -125,7 +126,6 @@ const TermsDetailScreen = ({ navigation }) => {
           </AppText>
         </TouchableOpacity>
       </View>
-      </SafeAreaView>
     </View>
   );
 };
@@ -133,23 +133,15 @@ const TermsDetailScreen = ({ navigation }) => {
 export default TermsDetailScreen;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
-  safeArea: { flex: 1, backgroundColor: "transparent" },
-  headerRow: {
-    height: 56,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  root: {
+    flex: 1,
+    backgroundColor: "#000",
+    paddingVertical: 35,
   },
-  backButton: { width: 32, alignItems: "center" },
-  backButtonText: { fontSize: 28, lineHeight: 20, color: "#fff" },
-  headerTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
   content: {
-    flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 24,
+
+    paddingVertical: 80,
   },
   titleBlock: {
     marginBottom: 24,
@@ -169,12 +161,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nextButtonDisabled: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "#232323",
   },
   nextButtonText: {
     color: "#111111",
   },
   nextButtonTextDisabled: {
-    color: "rgba(255,255,255,0.45)",
+    color: "#3E3E3E",
   },
 });

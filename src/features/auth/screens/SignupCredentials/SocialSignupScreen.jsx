@@ -89,7 +89,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
       {
         onSuccess: (data) => {
           const teamList = data?.teamList ?? [];
-          navigation.replace("SignupFavoriteTeam", {
+          navigation.navigate("SignupFavoriteTeam", {
             signup: {
               ...signup,
               email: readonlyEmail,

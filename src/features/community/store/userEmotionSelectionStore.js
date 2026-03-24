@@ -1,57 +1,62 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { normalizeCommunityEmotionType } from "../constants/communityReactions";
+import { emotionSelectionJSONStorage } from "./emotionSelectionPersistStorage";
 
-const VALID_EMOTION_TYPES = new Set(["LIKE", "SAD", "FUN", "HYPE"]);
+const keyOf = (postId) => String(postId);
 
-/**
- * postId -> emotionType (LIKE|SAD|FUN|HYPE|null)
- *
- * - In-memory Map만 쓰면 API 하이드레이션 이후에도 UI가 갱신되지 않아서
- *   Zustand로 바꿔 postCard 등에서 즉시 반영되게 처리
- */
-export const useUserEmotionSelectionStore = create((set) => ({
-  selectionsByPostId: {},
-  setUserEmotionSelection: (postId, emotionTypeOrNull) =>
-    set((prev) => {
-      if (postId == null) return prev;
+export const useUserEmotionSelectionStore = create(
+  persist(
+    (set) => ({
+      selectionsByPostId: {},
+      setUserEmotionSelection: (postId, emotionTypeOrNull) =>
+        set((prev) => {
+          if (postId == null) return prev;
 
-      const nextValue =
-        emotionTypeOrNull == null
-          ? null
-          : VALID_EMOTION_TYPES.has(emotionTypeOrNull)
-            ? emotionTypeOrNull
-            : null;
-
-      return {
-        selectionsByPostId: {
-          ...prev.selectionsByPostId,
-          [postId]: nextValue,
-        },
-      };
-    }),
-  setUserEmotionSelectionsBulk: (entries) =>
-    set((prev) => ({
-      selectionsByPostId: {
-        ...prev.selectionsByPostId,
-        ...Object.fromEntries(
-          (entries ?? []).map(([postId, emotionTypeOrNull]) => [
-            postId,
+          const nextValue =
             emotionTypeOrNull == null
               ? null
-              : VALID_EMOTION_TYPES.has(emotionTypeOrNull)
-                ? emotionTypeOrNull
-                : null,
-          ]),
-        ),
-      },
-    })),
-  clearUserEmotionSelection: (postId) =>
-    set((prev) => {
-      if (postId == null) return prev;
-      const next = { ...prev.selectionsByPostId };
-      delete next[postId];
-      return { selectionsByPostId: next };
+              : normalizeCommunityEmotionType(emotionTypeOrNull);
+
+          return {
+            selectionsByPostId: {
+              ...prev.selectionsByPostId,
+              [keyOf(postId)]: nextValue,
+            },
+          };
+        }),
+      setUserEmotionSelectionsBulk: (entries) =>
+        set((prev) => ({
+          selectionsByPostId: {
+            ...prev.selectionsByPostId,
+            ...Object.fromEntries(
+              (entries ?? []).map(([postId, emotionTypeOrNull]) => [
+                keyOf(postId),
+                emotionTypeOrNull == null
+                  ? null
+                  : normalizeCommunityEmotionType(emotionTypeOrNull),
+              ]),
+            ),
+          },
+        })),
+      clearUserEmotionSelection: (postId) =>
+        set((prev) => {
+          if (postId == null) return prev;
+          const next = { ...prev.selectionsByPostId };
+          delete next[keyOf(postId)];
+          return { selectionsByPostId: next };
+        }),
+      clearAllEmotionSelections: () => set({ selectionsByPostId: {} }),
     }),
-}));
+    {
+      name: "community-user-emotion-selections",
+      storage: emotionSelectionJSONStorage,
+      partialize: (state) => ({
+        selectionsByPostId: state.selectionsByPostId,
+      }),
+    },
+  ),
+);
 
 /**
  * 기존 코드 호환용: store를 직접 업데이트하는 함수 export
@@ -69,9 +74,33 @@ export function clearUserEmotionSelection(postId) {
 
 export function getUserEmotionSelection(postId) {
   if (postId == null) return undefined;
-  return useUserEmotionSelectionStore.getState().selectionsByPostId[postId];
+  return useUserEmotionSelectionStore.getState().selectionsByPostId[
+    keyOf(postId)
+  ];
 }
 
 export function useUserEmotionSelection(postId) {
-  return useUserEmotionSelectionStore((s) => s.selectionsByPostId[postId]);
+  const k = postId == null ? null : keyOf(postId);
+  return useUserEmotionSelectionStore((s) =>
+    k == null ? undefined : s.selectionsByPostId[k],
+  );
+}
+
+/** 로그아웃 시 로컬 감정 맵 + 파일 제거 */
+export async function clearPersistedUserEmotionSelections() {
+  useUserEmotionSelectionStore.getState().clearAllEmotionSelections();
+  try {
+    await useUserEmotionSelectionStore.persist.clearStorage();
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 첫 프레임 전에 디스크에서 감정 맵을 읽어 하트 UI가 비지 않게 함 */
+export async function hydrateUserEmotionSelectionsFromStorage() {
+  try {
+    await useUserEmotionSelectionStore.persist.rehydrate();
+  } catch {
+    /* ignore */
+  }
 }

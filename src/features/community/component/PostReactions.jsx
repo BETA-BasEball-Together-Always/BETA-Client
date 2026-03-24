@@ -1,12 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Modal, Pressable } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Modal,
+  Pressable,
+  Platform,
+} from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
-import { COMMUNITY_REACTIONS } from "../constants/communityReactions";
+import {
+  COMMUNITY_REACTIONS,
+  normalizeCommunityEmotionType,
+  pickEmotionTypeFromPostCoalesced,
+  resolveCommunityPostId,
+} from "../constants/communityReactions";
 import ReactionSummary from "./ReactionSummary";
 import ReactionPicker from "./ReactionPicker";
 import PostActionBar from "./PostActionBar";
 
-const DEFAULT_ACTION_BAR_H = 32;
+/** Modal에 올릴 피커 바(대략 높이) — measure 실패 시 top 보정용 */
+const PICKER_BAR_APPROX_H = 48;
 
 const getReactionCountsFromPost = (post) => {
   // mutation cache는 `emotions`만 갱신하는데,
@@ -36,8 +48,10 @@ const PostReactions = ({
   onCommentPress,
   isEmotionPending = false,
 }) => {
-  const [actionBarHeight, setActionBarHeight] = useState(DEFAULT_ACTION_BAR_H);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [pickerAnchor, setPickerAnchor] = useState(null);
+
+  const actionSlotRef = useRef(null);
 
   const pickerOpen = showReactionPicker && !isEmotionPending;
   const longPressJustTriggeredRef = useRef(false);
@@ -58,9 +72,17 @@ const PostReactions = ({
     [reactionCounts],
   );
   const currentEmotionUiId = useMemo(() => {
-    const ui = selectedEmotionType ?? null;
-    return COMMUNITY_REACTIONS.some((r) => r.id === ui) ? ui : null;
-  }, [selectedEmotionType]);
+    const fromPost = pickEmotionTypeFromPostCoalesced(post);
+    if (fromPost && COMMUNITY_REACTIONS.some((r) => r.id === fromPost)) {
+      return fromPost;
+    }
+    const fromProp = normalizeCommunityEmotionType(selectedEmotionType);
+    if (fromProp && COMMUNITY_REACTIONS.some((r) => r.id === fromProp)) {
+      return fromProp;
+    }
+    if (selectedEmotionType === null) return null;
+    return null;
+  }, [selectedEmotionType, post]);
 
   const pickerSelectedReaction = useMemo(
     () => COMMUNITY_REACTIONS.find((r) => r.id === currentEmotionUiId) ?? null,
@@ -78,17 +100,30 @@ const PostReactions = ({
     // long-press 직후 RN이 onPress를 함께 호출하는 케이스를 방어
     if (longPressJustTriggeredRef.current) return;
 
-    const uiEmotionToToggle = currentEmotionUiId ?? COMMUNITY_REACTIONS[0]?.id;
+    const uiEmotionToToggle =
+      currentEmotionUiId ??
+      (selectedEmotionType === null
+        ? COMMUNITY_REACTIONS[0]?.id
+        : pickEmotionTypeFromPostCoalesced(post) ??
+          COMMUNITY_REACTIONS[0]?.id);
     setShowReactionPicker(false);
+    setPickerAnchor(null);
     longPressJustTriggeredRef.current = false;
 
-    onToggleEmotion?.(post?.postId, uiEmotionToToggle);
+    const togglePostId = resolveCommunityPostId(post) ?? post?.postId;
+    onToggleEmotion?.(togglePostId, uiEmotionToToggle);
   };
 
   const handleLongLikePress = () => {
     if (isEmotionPending) return;
     longPressJustTriggeredRef.current = true;
-    setShowReactionPicker(true);
+    setPickerAnchor(null);
+    requestAnimationFrame(() => {
+      actionSlotRef.current?.measureInWindow((x, y, width, height) => {
+        setPickerAnchor({ x, y, width, height });
+        setShowReactionPicker(true);
+      });
+    });
     setTimeout(() => {
       longPressJustTriggeredRef.current = false;
     }, 250);
@@ -98,7 +133,7 @@ const PostReactions = ({
     if (isEmotionPending) return;
 
     setShowReactionPicker(false);
-    // picker에서 선택하면 long-press 디바운스 플래그를 즉시 해제
+    setPickerAnchor(null);
     longPressJustTriggeredRef.current = false;
 
     console.log("[emotion picker] select", {
@@ -130,7 +165,9 @@ const PostReactions = ({
 
   const commentCount = post.commentCount ?? post.comments?.length ?? 0;
 
-  const anchorBottom = DEFAULT_ACTION_BAR_H;
+  useEffect(() => {
+    if (!showReactionPicker) setPickerAnchor(null);
+  }, [showReactionPicker]);
 
   return (
     <>
@@ -146,28 +183,11 @@ const PostReactions = ({
           />
         </View>
 
-        {pickerOpen && (
-          <Pressable
-            style={[StyleSheet.absoluteFillObject, styles.pickerBackdrop]}
-            onPress={() => setShowReactionPicker(false)}
-          />
-        )}
-
         <View
+          ref={actionSlotRef}
           style={styles.actionSlot}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            if (h > 0) setActionBarHeight(h);
-          }}
+          collapsable={Platform.OS === "android" ? false : undefined}
         >
-          {pickerOpen && (
-            <ReactionPicker
-              reactions={COMMUNITY_REACTIONS}
-              selectedReaction={pickerSelectedReaction}
-              onSelect={handleReactionSelect}
-              anchorBottom={anchorBottom}
-            />
-          )}
           <PostActionBar
             selected={heartSelected}
             commentMode={commentMode}
@@ -180,6 +200,48 @@ const PostReactions = ({
           />
         </View>
       </View>
+
+      <Modal
+        transparent
+        visible={pickerOpen && pickerAnchor != null}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowReactionPicker(false);
+          setPickerAnchor(null);
+        }}
+      >
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, styles.pickerModalBackdrop]}
+          onPress={() => {
+            setShowReactionPicker(false);
+            setPickerAnchor(null);
+          }}
+        />
+        {pickerAnchor ? (
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.pickerModalSlot,
+              {
+                left: Math.max(
+                  8,
+                  pickerAnchor.x +
+                    pickerAnchor.width / 2 -
+                    260 / 1.5,
+                ),
+                top: pickerAnchor.y - PICKER_BAR_APPROX_H - 8,
+              },
+            ]}
+          >
+            <ReactionPicker
+              inline
+              reactions={COMMUNITY_REACTIONS}
+              selectedReaction={pickerSelectedReaction}
+              onSelect={handleReactionSelect}
+            />
+          </View>
+        ) : null}
+      </Modal>
 
       <Modal transparent visible={copyModalVisible} animationType="fade">
         <View style={styles.modalContainer}>
@@ -208,9 +270,12 @@ const styles = StyleSheet.create({
     marginTop: 19,
     marginHorizontal: 4,
   },
-  pickerBackdrop: {
-    zIndex: 8,
-    backgroundColor: "rgba(0,0,0,0.12)",
+  pickerModalBackdrop: {
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  pickerModalSlot: {
+    position: "absolute",
+    zIndex: 20,
   },
   actionSlot: {
     position: "relative",

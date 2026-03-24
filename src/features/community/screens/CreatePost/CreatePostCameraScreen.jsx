@@ -7,19 +7,27 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRoute } from "@react-navigation/native";
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
 
+const LIMIT_MESSAGE = "사진은 최대 5장까지\n추가 가능합니다.";
+
 export default function CreatePostCameraScreen({ navigation }) {
+  const route = useRoute();
+  const maxImages = route.params?.maxImages ?? 5;
+  const currentImageCount = route.params?.currentImageCount ?? 0;
+
   const cameraRef = useRef(null);
   const device = useCameraDevice("back");
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -41,6 +49,10 @@ export default function CreatePostCameraScreen({ navigation }) {
 
   const handleCapture = useCallback(async () => {
     if (!cameraRef.current || isCapturing) return;
+    if (currentImageCount >= maxImages) {
+      Alert.alert("알림", LIMIT_MESSAGE);
+      return;
+    }
     setIsCapturing(true);
     try {
       const photo = await cameraRef.current.takePhoto({
@@ -56,8 +68,6 @@ export default function CreatePostCameraScreen({ navigation }) {
 
       const capturedAsset = {
         uri,
-        width: photo.width,
-        height: photo.height,
       };
 
       /** captureNonce로 매 촬영마다 useEffect가 확실히 실행되도록 함(누적 첨부 유지) */
@@ -74,7 +84,7 @@ export default function CreatePostCameraScreen({ navigation }) {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, navigation]);
+  }, [currentImageCount, isCapturing, maxImages, navigation]);
 
   return (
     <View style={styles.root}>

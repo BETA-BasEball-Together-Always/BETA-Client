@@ -1,16 +1,21 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   StyleSheet,
   TouchableOpacity,
+  Text,
   View,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 
 import PostReactions from "../PostReactions";
+import {
+  resolveCommunityPostId,
+  resolveSelectedEmotionForPost,
+} from "../../constants/communityReactions";
 import { useTogglePostEmotionMutation } from "../../services/emotionMutations";
 import { useUserEmotionSelection } from "../../store/userEmotionSelectionStore";
 import CommunityUserProfile from "../CommunityUserProfile";
@@ -19,13 +24,14 @@ import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
 import {
   DELETED_POST_MESSAGE,
-  getActiveHashtagLabels,
   getActivePostImages,
   getPostListUnavailableBody,
 } from "../../utils/communityPostVisibility";
+import { stripPhotoOnlyPlaceholderForDisplay } from "../../utils/photoOnlyPostPlaceholder";
 import { useSoftDeletedPostStore } from "../../store/softDeletedPostStore";
+import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 
-const PostCard = ({ post, showTeam = false }) => {
+const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
   const navigation = useNavigation();
   const { user: currentUser } = useUserStore();
   const deletePostMutation = useDeletePostMutation();
@@ -39,6 +45,8 @@ const PostCard = ({ post, showTeam = false }) => {
   );
   const showAsUnavailable = listUnavailableBody != null;
 
+  const resolvedPostId = resolveCommunityPostId(post);
+
   const { author } = post;
   const authorUserId = author?.userId;
 
@@ -48,9 +56,7 @@ const PostCard = ({ post, showTeam = false }) => {
     String(currentUser.id) === String(authorUserId);
 
   const postMenu =
-    !showAsUnavailable &&
-    isOwnPost &&
-    authorUserId != null
+    !showAsUnavailable && isOwnPost && authorUserId != null
       ? {
           onEdit: () => {
             navigation.navigate("Community", {
@@ -65,7 +71,7 @@ const PostCard = ({ post, showTeam = false }) => {
                 text: "삭제",
                 style: "destructive",
                 onPress: () => {
-                  deletePostMutation.mutate(post.postId, {
+                  deletePostMutation.mutate(resolvedPostId, {
                     onError: (e) => {
                       const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
                       setTimeout(() => {
@@ -80,48 +86,90 @@ const PostCard = ({ post, showTeam = false }) => {
         }
       : undefined;
 
-  const normalizeEmotionType = (t) =>
-    ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
+  const storeEmotion = useUserEmotionSelection(resolvedPostId);
+  const selectedEmotionType = useMemo(
+    () => resolveSelectedEmotionForPost(post, storeEmotion),
+    [post, storeEmotion],
+  );
 
-  const storeEmotion = useUserEmotionSelection(post.postId);
-  const selectedEmotionType =
-    storeEmotion !== undefined
-      ? normalizeEmotionType(storeEmotion)
-      : normalizeEmotionType(post.myEmotion ?? post.myEmotionType);
-
-  const toggleEmotionMutation = useTogglePostEmotionMutation(post.postId);
+  const toggleEmotionMutation = useTogglePostEmotionMutation(resolvedPostId);
 
   const isDeletingThis =
     deletePostMutation.isPending &&
-    deletePostMutation.variables === post.postId;
+    deletePostMutation.variables === resolvedPostId;
 
-  const contentWithoutHashtags = useMemo(() => {
+  const displayContent = useMemo(() => {
     if (showAsUnavailable) return "";
-    const raw = post?.content ?? "";
-    const removed = raw.replace(/(^|\s)#[^\s#]+/g, " ");
-    return removed.replace(/\s+/g, " ").trim();
+    return stripPhotoOnlyPlaceholderForDisplay(post?.content ?? "");
   }, [post?.content, showAsUnavailable]);
 
-  const activeImages = useMemo(
-    () => getActivePostImages(post),
-    [post],
-  );
+  const activeImages = useMemo(() => getActivePostImages(post), [post]);
+  const primaryImageRow = activeImages[0];
   const primaryImageUri =
-    activeImages[0]?.imageUrl || activeImages[0]?.url || null;
+    primaryImageRow?.imageUrl || primaryImageRow?.url || null;
+  const primaryImageStableKey =
+    primaryImageRow?.imageId ?? primaryImageRow?.id ?? primaryImageUri;
 
-  const hashtagLabels = useMemo(
-    () => getActiveHashtagLabels(post),
-    [post],
+  const primaryImageDisplayUri = useMemo(
+    () =>
+      primaryImageUri
+        ? withImageDisplayCacheKey(
+            primaryImageUri,
+            `${resolvedPostId}-${primaryImageStableKey}`,
+          )
+        : null,
+    [primaryImageUri, resolvedPostId, primaryImageStableKey],
   );
+
+  const renderContentWithHighlightedHashtags = useMemo(() => {
+    if (typeof displayContent !== "string" || displayContent.length === 0) {
+      return displayContent;
+    }
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(displayContent)) != null) {
+      const start = match.index;
+      const token = match[0];
+      if (start > lastIndex) {
+        nodes.push(
+          <Text key={`t-${segIdx++}-${lastIndex}`}>
+            {displayContent.slice(lastIndex, start)}
+          </Text>,
+        );
+      }
+      nodes.push(
+        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+          {token}
+        </Text>,
+      );
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < displayContent.length) {
+      nodes.push(
+        <Text key={`t-${segIdx++}-${lastIndex}`}>
+          {displayContent.slice(lastIndex)}
+        </Text>,
+      );
+    }
+
+    return nodes;
+  }, [displayContent]);
 
   /** numberOfLines={3}만 쓰면 onTextLayout에서 실제 줄 수를 알 수 없어 1회 측정 */
   const [bodyLineCount, setBodyLineCount] = useState(null);
+  const bodySectionWidthRef = useRef(null);
   const bodyNeedsMore =
     bodyLineCount != null && bodyLineCount > 3 && !showAsUnavailable;
 
   useEffect(() => {
+    bodySectionWidthRef.current = null;
     setBodyLineCount(null);
-  }, [post?.postId, contentWithoutHashtags]);
+  }, [post?.postId, displayContent]);
 
   const reactionCounts = useMemo(() => {
     const emotions = post.emotions ?? {};
@@ -172,7 +220,8 @@ const PostCard = ({ post, showTeam = false }) => {
   const reactionPost = useMemo(
     () => ({
       ...post,
-      id: post.postId,
+      postId: resolvedPostId ?? post.postId ?? post.id,
+      id: resolvedPostId ?? post.postId ?? post.id,
       comments: post.commentCount,
       reactionCounts: {
         LIKE: post.emotions?.likeCount ?? 0,
@@ -181,7 +230,7 @@ const PostCard = ({ post, showTeam = false }) => {
         HYPE: post.emotions?.hypeCount ?? 0,
       },
     }),
-    [post],
+    [post, resolvedPostId],
   );
 
   const handleSelectReaction = (_postId, reaction) => {
@@ -218,7 +267,21 @@ const PostCard = ({ post, showTeam = false }) => {
         activeOpacity={0.8}
         onPress={handlePressCard}
       >
-        <View style={styles.contentSection}>
+        <View
+          style={styles.contentSection}
+          onLayout={
+            stabilizeBodyMeasure
+              ? (e) => {
+                  const w = Math.round(e.nativeEvent.layout.width);
+                  if (w <= 0) return;
+                  if (bodySectionWidthRef.current !== w) {
+                    bodySectionWidthRef.current = w;
+                    setBodyLineCount(null);
+                  }
+                }
+              : undefined
+          }
+        >
           <AppText
             variant="caption"
             numberOfLines={
@@ -236,7 +299,7 @@ const PostCard = ({ post, showTeam = false }) => {
           >
             {showAsUnavailable
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
-              : contentWithoutHashtags}
+              : renderContentWithHighlightedHashtags}
           </AppText>
 
           {bodyNeedsMore ? (
@@ -251,16 +314,17 @@ const PostCard = ({ post, showTeam = false }) => {
             </TouchableOpacity>
           ) : null}
 
-          {!showAsUnavailable && hashtagLabels.length > 0 && (
-            <View style={styles.hashRow}>
-              <AppText variant="caption" style={styles.hashText}>
-                {hashtagLabels.map((tag) => `#${tag}`).join(" ")}
-              </AppText>
-            </View>
-          )}
+          {/* 해시태그는 본문 내에서 inline으로 초록색 처리 */}
 
-          {!showAsUnavailable && primaryImageUri ? (
-            <Image source={{ uri: primaryImageUri }} style={styles.image} />
+          {!showAsUnavailable && primaryImageDisplayUri ? (
+            <View style={styles.imageFrame}>
+              <Image
+                key={`${resolvedPostId}-${primaryImageStableKey}`}
+                source={{ uri: primaryImageDisplayUri }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            </View>
           ) : null}
         </View>
 
@@ -310,11 +374,16 @@ const styles = StyleSheet.create({
   bodyPressable: {
     flex: 1,
   },
-  image: {
+  imageFrame: {
     width: "100%",
     height: 200,
     marginTop: 10,
     borderRadius: 10,
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
   },
   contentSection: {
     paddingVertical: 2,

@@ -11,8 +11,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
 import photoBoothStore from "@features/photoBooth/store/photoBoothStore";
+import {
+  copyFrameToUniqueUploadFile,
+  writeDataUrlPngToCache,
+} from "@features/photoBooth/utils/copyFrameToUniqueUploadFile";
 import DownloadSVG from "./assets/download.svg";
 import ShareIcon from "./assets/share.svg";
 import RNShare from "react-native-share";
@@ -21,6 +24,37 @@ import PhotoBoothBack from "../assets/svg/photoBoothBack.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+
+/** PhotoBooth 등 중첩 스택에서 Root(Community가 등록된 Stack)까지 올라가 이동 */
+function getRootNavigation(navigation) {
+  let nav = navigation;
+  while (nav?.getParent?.()) {
+    nav = nav.getParent();
+  }
+  return nav;
+}
+
+function measureImageSizeWithTimeout(uri, fallbackW, fallbackH, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    const done = (w, h) => resolve({ width: w, height: h });
+    const t = setTimeout(() => done(fallbackW, fallbackH), timeoutMs);
+    Image.getSize(
+      uri,
+      (w, h) => {
+        clearTimeout(t);
+        done(w, h);
+      },
+      () => {
+        clearTimeout(t);
+        done(fallbackW, fallbackH);
+      },
+    );
+  });
+}
+
+/** Figma Share 미리보기 가로 상한 (프레임별) */
+const PREVIEW_MAX_WIDTH_1x4 = 140.313;
+const PREVIEW_MAX_WIDTH_2x2 = 285.6;
 
 export default function ShareScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -35,20 +69,35 @@ export default function ShareScreen({ navigation }) {
     return 2 / 3;
   }, [selectedFrameId]);
 
+  /**
+   * 화면 가로에 맞춘 미리보기 너비 — aspectRatio와 함께 높이 결정.
+   * 1x4(세로 4컷): 285.6px / 2x2: 140.313px (Figma 기준 상한, 좁은 화면에서는 축소)
+   */
+  const previewWidth = useMemo(() => {
+    const horizontalPad = 48;
+    const maxByFrame =
+      selectedFrameId === "1x4" ? PREVIEW_MAX_WIDTH_1x4 : PREVIEW_MAX_WIDTH_2x2;
+    return Math.min(SCREEN_W - horizontalPad, maxByFrame);
+  }, [SCREEN_W, selectedFrameId]);
+
+  /**
+   * Edit에서 저장한 file:// 는 이미 캡처마다 고유 경로이므로 복사 없이 그대로 사용.
+   * (Expo 54에서 copyAsync/Base64 복사가 실패하는 환경 대비)
+   */
   const ensureFileUri = useCallback(async () => {
     if (!exportedFrameUri) return null;
 
-    if (exportedFrameUri.startsWith("file://")) {
-      return exportedFrameUri;
+    if (
+      exportedFrameUri.startsWith("file://") ||
+      exportedFrameUri.startsWith("/")
+    ) {
+      return exportedFrameUri.startsWith("file://")
+        ? exportedFrameUri
+        : `file://${exportedFrameUri}`;
     }
     if (exportedFrameUri.startsWith("data:image")) {
       try {
-        const base64 = exportedFrameUri.split("base64,")[1];
-        const dest = `${FileSystem.cacheDirectory}beta-share-${Date.now()}.png`;
-        await FileSystem.writeAsStringAsync(dest, base64, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        return dest;
+        return await writeDataUrlPngToCache(exportedFrameUri);
       } catch (e) {
         console.warn("Failed to convert dataURL -> file", e);
         return null;
@@ -79,6 +128,13 @@ export default function ShareScreen({ navigation }) {
         setSaving(false);
         Alert.alert("오류", "이미지 파일을 준비하지 못했어요.");
         return;
+      }
+
+      if (__DEV__) {
+        console.log("[ShareScreen] onDownload uri snapshot", {
+          exportedFrameUri,
+          ensuredFileUri: fileUri,
+        });
       }
 
       await MediaLibrary.saveToLibraryAsync(fileUri);
@@ -112,49 +168,104 @@ export default function ShareScreen({ navigation }) {
     }
   }, [ensureFileUri]);
 
-  const onPressCreatePost = useCallback(() => {
-    if (!exportedFrameUri) {
-      Alert.alert("오류", "첨부할 이미지가 없어요.");
-      return;
-    }
+  const onPressCreatePost = useCallback(async () => {
+    try {
+      if (!exportedFrameUri) {
+        Alert.alert("오류", "첨부할 이미지가 없어요.");
+        return;
+      }
 
-    const uriForSize = exportedFrameUri.startsWith("file://")
-      ? exportedFrameUri
-      : exportedFrameUri.startsWith("/")
-        ? `file://${exportedFrameUri}`
-        : exportedFrameUri;
+      const fileUri = await ensureFileUri();
+      if (!fileUri) {
+        Alert.alert("오류", "이미지 파일을 준비하지 못했어요.");
+        return;
+      }
 
-    const go = (w, h) => {
-      navigation.navigate("Community", {
+      const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+      /**
+       * exportedFrameUri / ViewShot tmpfile와 분리된 고유 파일로 복사
+       * 동일 경로를 포토부스·게시글 파이프라인이 공유하면 이후 캡처/정규화 시 덮어쓰기로
+       * 이전 게시글 썸네일이 최신 이미지로 바뀌는 현상이 날 수 있음.
+       * 복사 실패 시 동일 file:// 를 넘기지 않음 (폴백 금지).
+       */
+      const uniqueCopyUri = await copyFrameToUniqueUploadFile(fileUri, nonce);
+      if (!uniqueCopyUri) {
+        console.warn("[ShareScreen] copyFrameToUniqueUploadFile returned null");
+        Alert.alert(
+          "오류",
+          "이미지를 안전하게 복사하지 못했어요. 저장 공간을 확인한 뒤 다시 시도해 주세요.",
+        );
+        return;
+      }
+
+      const uriForPost = uniqueCopyUri.startsWith("file://")
+        ? uniqueCopyUri
+        : `file://${uniqueCopyUri}`;
+
+      const uriForSize =
+        uriForPost.startsWith("file://") || uriForPost.startsWith("/")
+          ? uriForPost.startsWith("file://")
+            ? uriForPost
+            : `file://${uriForPost}`
+          : uriForPost;
+
+      if (__DEV__) {
+        console.log("[ShareScreen] onPressCreatePost photoBooth uris", {
+          exportedFrameUri,
+          ensuredFileUri: fileUri,
+          uniqueCopyUri,
+          uriForPost,
+          uriForSize,
+        });
+      }
+
+      const { width: w, height: h } = await measureImageSizeWithTimeout(
+        uriForSize,
+        1080,
+        1620,
+      );
+
+      const rootNav = getRootNavigation(navigation);
+      if (!rootNav?.navigate) {
+        console.warn("[ShareScreen] root navigation missing", {
+          hasNavigation: !!navigation,
+        });
+        Alert.alert(
+          "이동 실패",
+          "게시글 작성 화면을 찾지 못했어요. 앱을 다시 실행한 뒤 시도해 주세요.",
+        );
+        return;
+      }
+
+      rootNav.navigate("Community", {
         screen: "CreatePost",
         params: {
-          photoBoothAttachNonce: Date.now(),
+          photoBoothAttachNonce: nonce,
           initialImagesFromPhotoBooth: [
             {
-              uri: uriForSize,
+              uri: uriForPost,
               width: w,
               height: h,
             },
           ],
         },
       });
-    };
-
-    Image.getSize(
-      uriForSize,
-      (w, h) => go(w, h),
-      () => go(1080, Math.round(1080 / aspectRatio)),
-    );
-  }, [exportedFrameUri, navigation, aspectRatio]);
-
-  const previewMaxWidth = Math.min(SCREEN_W - 48, 320);
+    } catch (e) {
+      console.warn("[ShareScreen] onPressCreatePost", e);
+      Alert.alert(
+        "오류",
+        "게시글 작성 화면으로 이동하지 못했어요. 잠시 후 다시 시도해 주세요.",
+      );
+    }
+  }, [exportedFrameUri, ensureFileUri, navigation]);
 
   const preview = useMemo(() => {
     if (!exportedFrameUri) return null;
     return (
-      <View style={[styles.glowOuter, { width: previewMaxWidth }]}>
-        <View style={styles.glowInner}>
-          <View style={[styles.previewCard, { width: "100%", aspectRatio }]}>
+      <View style={[styles.glowOuter, { width: previewWidth, aspectRatio }]}>
+        <View style={[styles.glowInner, styles.previewFill]}>
+          <View style={[styles.previewCard, styles.previewFill]}>
             <Image
               source={{ uri: exportedFrameUri }}
               style={styles.previewImage}
@@ -164,7 +275,7 @@ export default function ShareScreen({ navigation }) {
         </View>
       </View>
     );
-  }, [exportedFrameUri, aspectRatio, previewMaxWidth]);
+  }, [exportedFrameUri, previewWidth, aspectRatio]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -209,7 +320,11 @@ export default function ShareScreen({ navigation }) {
         <View style={styles.previewArea}>
           {preview || (
             <View
-              style={[styles.previewCard, styles.previewEmpty, { aspectRatio }]}
+              style={[
+                styles.previewCard,
+                styles.previewEmpty,
+                { width: previewWidth, aspectRatio },
+              ]}
             >
               <AppText variant="caption" style={{ color: "#888" }}>
                 미리볼 이미지가 없어요
@@ -291,13 +406,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  previewFill: {
+    flex: 1,
+    alignSelf: "stretch",
+  },
   glowOuter: {
     maxWidth: "100%",
+    alignSelf: "center",
     ...Platform.select({
       ios: {
         shadowColor: "#FFFFFF",
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 28,
       },
       android: {
@@ -316,11 +436,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.25)",
   },
   previewEmpty: {
-    width: "100%",
-    maxWidth: 320,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 200,
   },
   previewImage: {
     width: "100%",

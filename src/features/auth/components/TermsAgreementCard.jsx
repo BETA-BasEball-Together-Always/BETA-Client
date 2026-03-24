@@ -5,6 +5,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import TermsAllOffIcon from "../assets/NativeSignup/svg/TermsAllOff.svg";
 import TermsItemOffIcon from "../assets/NativeSignup/svg/TermsItemOff.svg";
 import TermsCheckedIcon from "../assets/NativeSignup/svg/TermsChecked.svg";
+import MoreArrowIcon from "../assets/common/svg/more_arrow.svg";
+import { AppText } from "../../../shared/theme/components/AppText";
 
 const Checkbox = ({ checked, variant }) => {
   if (checked) {
@@ -32,30 +34,35 @@ const TermItem = ({
   onToggle,
   onPressChevron,
   showChevron,
-}) => (
-  <View style={styles.termRow}>
-    {/* ✅ 왼쪽(체크+라벨) = 토글 */}
-    <TouchableOpacity
-      style={styles.termLeft}
-      onPress={onToggle}
-      activeOpacity={0.8}
-    >
-      <Checkbox checked={checked} variant="item" />
-      <Text style={styles.termText}>{label}</Text>
-    </TouchableOpacity>
-
-    {/* ✅ 오른쪽(chevron) = 상세 보기 */}
-    {showChevron && (
+}) => {
+  return (
+    <View style={styles.termRow}>
+      {/* ✅ 왼쪽(체크+라벨) = 토글 */}
       <TouchableOpacity
-        onPress={onPressChevron}
+        style={styles.termLeft}
+        onPress={onToggle}
         activeOpacity={0.8}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Text style={styles.chevron}>{">"}</Text>
+        <Checkbox checked={checked} variant="item" />
+        <AppText variant="caption" style={styles.termText}>
+          {label}
+        </AppText>
       </TouchableOpacity>
-    )}
-  </View>
-);
+
+      {/* ✅ 오른쪽(chevron) = 상세 보기 */}
+      {showChevron && (
+        <TouchableOpacity
+          onPress={onPressChevron}
+          activeOpacity={0.8}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.chevronButton}
+        >
+          <MoreArrowIcon width={18} height={18} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
 const TermsAgreementCard = ({ value, onChange, onPressDetail }) => {
   const toggleAll = useCallback(() => {
@@ -91,15 +98,17 @@ const TermsAgreementCard = ({ value, onChange, onPressDetail }) => {
       >
         <View style={styles.termLeft}>
           <Checkbox checked={value.all} variant="all" />
-          <Text style={[styles.termText, styles.termAllText]}>
+          <AppText
+            variant="semi16"
+            style={[styles.termText, styles.termAllText]}
+          >
             이용약관 전체 동의
-          </Text>
+          </AppText>
         </View>
       </TouchableOpacity>
 
       <View style={styles.termDivider} />
 
-      {/* (필수) 만 14세 이상 확인: ✅ chevron 없음 */}
       <TermItem
         checked={value.over14}
         label="(필수) 만 14세 이상 확인"
@@ -107,7 +116,6 @@ const TermsAgreementCard = ({ value, onChange, onPressDetail }) => {
         showChevron={false}
       />
 
-      {/* 이용약관 3종: ✅ chevron 있음 + chevron은 상세 */}
       <TermItem
         checked={value.tos}
         label="(필수) 이용약관 동의"
@@ -126,8 +134,7 @@ const TermsAgreementCard = ({ value, onChange, onPressDetail }) => {
         checked={value.privacyMarketing}
         label="(선택) 개인정보 마케팅 활용 동의"
         onToggle={() => toggleOne("privacyMarketing")}
-        showChevron={canShowDetail}
-        onPressChevron={() => onPressDetail?.("privacyMarketing")}
+        showChevron={false}
       />
     </View>
   );
@@ -138,20 +145,20 @@ export default TermsAgreementCard;
 const styles = StyleSheet.create({
   termsCard: {
     marginTop: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    paddingVertical: 13,
+    paddingHorizontal: 30,
+    borderRadius: 13,
+    backgroundColor: "rgba(141, 141, 141, 0.07)",
   },
   termRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 6,
+    paddingVertical: 12,
   },
-  termRowHeader: { paddingBottom: 10 },
+  termRowHeader: {
+    paddingBottom: 10,
+  },
   termIconWrapper: {
     width: 18,
     height: 18,
@@ -159,13 +166,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  termLeft: { flexDirection: "row", alignItems: "center" },
-  termText: { color: "#FFFFFF", fontSize: 12 },
-  termAllText: { fontSize: 13, fontWeight: "600" },
+  termLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  termText: {
+    color: "#F9F9F9",
+    marginLeft: 6,
+  },
+  termAllText: {
+    fontWeight: "600",
+  },
   termDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(255,255,255,0.25)",
     marginVertical: 6,
   },
   chevron: { color: "#FFFFFF", fontSize: 14, opacity: 0.7 },
+  chevronButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 28,
+    height: 28,
+  },
 });

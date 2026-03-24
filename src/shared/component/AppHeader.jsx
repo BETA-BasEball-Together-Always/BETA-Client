@@ -19,7 +19,7 @@ const AppHeader = ({
   return (
     // <SafeAreaView edges={["top"]} style={styles.safe}>
     <View style={styles.navContainer}>
-      {left}
+      {left && <View style={styles.leftContainer}>{left}</View>}
       {shouldShowBack && (
         <TouchableOpacity
           style={styles.backButton}
@@ -36,7 +36,7 @@ const AppHeader = ({
       )}
 
       {pageName && (
-        <View style={styles.pageNameContainer}>
+        <View style={styles.pageNameContainer} pointerEvents="box-none">
           <AppText
             variant="displayTitle2"
             className="text-white"
@@ -47,7 +47,11 @@ const AppHeader = ({
         </View>
       )}
 
-      {center && <View style={styles.pageNameContainer}>{center}</View>}
+      {center && (
+        <View style={styles.pageNameContainer} pointerEvents="box-none">
+          {center}
+        </View>
+      )}
 
       {right && <View style={styles.rightContainer}>{right}</View>}
 
@@ -71,6 +75,14 @@ const styles = StyleSheet.create({
     // justifyContent: "flex-end",
     justifyContent: "center",
     paddingHorizontal: 25,
+  },
+  /** 좌측 커스텀(left) — 가운데 전체 오버레이보다 위에서 터치 수신 */
+  leftContainer: {
+    position: "absolute",
+    left: 25,
+    height: "100%",
+    justifyContent: "center",
+    zIndex: 2,
   },
   backButton: {
     position: "absolute",
@@ -97,5 +109,6 @@ const styles = StyleSheet.create({
     right: 25,
     height: "100%",
     justifyContent: "center",
+    zIndex: 2,
   },
 });

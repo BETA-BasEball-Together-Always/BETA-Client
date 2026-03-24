@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   cardSection: {
     flex: 1,
-    marginTop: 25,
+    marginTop: 40,
   },
   /** FlatList는 화면 전체 너비로 스크롤하고, 콘텐츠만 좌우 인셋 */
   teamListContent: {

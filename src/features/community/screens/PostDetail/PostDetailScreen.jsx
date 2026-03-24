@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  Text,
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,9 +22,6 @@ import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
 import PostReactions from "../../component/PostReactions";
 import CommunityUserProfile from "../../component/CommunityUserProfile";
-// import { LinearGradient } from "expo-linear-gradient";
-// import { TEAM_DATA } from "../../../../shared/constants/teams";
-// import TeamLabel from "../../component/communityMain/TeamLabel";
 
 import CommentList from "./components/CommentList";
 import CommentInput from "./components/CommentInput";
@@ -37,9 +35,19 @@ import {
   useTogglePostEmotionMutation,
   useUpdateCommentMutation,
 } from "../../services/postDetail/postDetailService";
-import { normalizeCommentsForDisplay } from "../../utils/communityComments";
+import {
+  normalizeCommentsForDisplay,
+  normalizeCommentAuthorFields,
+} from "../../utils/communityComments";
+import { stripPhotoOnlyPlaceholderForDisplay } from "../../utils/photoOnlyPostPlaceholder";
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
+import { useCommentAuthorFallbackStore } from "../../store/commentAuthorFallbackStore";
 import { useUserEmotionSelection } from "../../store/userEmotionSelectionStore";
+import {
+  normalizeCommunityEmotionType,
+  pickEmotionTypeFromPostCoalesced,
+  resolveSelectedEmotionForPost,
+} from "../../constants/communityReactions";
 import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 import { isAllChannelPost } from "../../utils/communityChannel";
 import {
@@ -48,9 +56,34 @@ import {
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 import FetchStateView from "../../../../shared/components/FetchStateView";
+import { useRemoteImageAspectRatio } from "../../utils/useRemoteImageAspectRatio";
 
 const { width } = Dimensions.get("window");
+const DETAIL_IMAGE_HEIGHT = 450;
+
+function PostDetailImageItem({ uri, maxWidth, imageStyle }) {
+  const aspectRatio = useRemoteImageAspectRatio(uri, 1);
+  if (!uri) return null;
+
+  const safeAspectRatio =
+    typeof aspectRatio === "number" && Number.isFinite(aspectRatio) && aspectRatio > 0
+      ? aspectRatio
+      : 1;
+  const naturalWidth = DETAIL_IMAGE_HEIGHT * safeAspectRatio;
+  const renderedWidth = Math.min(maxWidth, naturalWidth);
+
+  return (
+    <View style={[styles.imageWrapper, { width: renderedWidth }]}>
+      <Image
+        source={{ uri }}
+        style={[imageStyle, { aspectRatio: safeAspectRatio }]}
+        resizeMode="cover"
+      />
+    </View>
+  );
+}
 
 const PostDetailScreen = ({ route, navigation }) => {
   const {
@@ -75,6 +108,11 @@ const PostDetailScreen = ({ route, navigation }) => {
   const syncCommentRemovalWithServer = useCommentRemovalStore(
     (s) => s.syncWithServerTree,
   );
+  const commentAuthorFallbackMap = useCommentAuthorFallbackStore((s) => s.map);
+
+  useEffect(() => {
+    useCommentAuthorFallbackStore.getState().hydrate();
+  }, []);
 
   useEffect(() => {
     if (postId == null || detail?.comments == null) return;
@@ -85,9 +123,54 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const author = detail?.author ?? post?.author ?? {};
 
-  const contentWithoutHashtags =
-    detail?.content?.replace(/(^|\s)#[^\s#]+/g, " ") ?? "";
-  const hashtags = detail?.hashtags ?? [];
+  const displayContent = useMemo(() => {
+    return stripPhotoOnlyPlaceholderForDisplay(
+      detail?.content ?? post?.content ?? "",
+    );
+  }, [detail?.content, post?.content]);
+
+  const renderContentWithHighlightedHashtags = useMemo(() => {
+    if (typeof displayContent !== "string" || displayContent.length === 0) {
+      return displayContent;
+    }
+
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(displayContent)) != null) {
+      const start = match.index;
+      const token = match[0];
+
+      if (start > lastIndex) {
+        nodes.push(
+          <Text key={`t-${segIdx++}-${lastIndex}`}>
+            {displayContent.slice(lastIndex, start)}
+          </Text>,
+        );
+      }
+
+      nodes.push(
+        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+          {token}
+        </Text>,
+      );
+
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < displayContent.length) {
+      nodes.push(
+        <Text key={`t-${segIdx++}-${lastIndex}`}>
+          {displayContent.slice(lastIndex)}
+        </Text>,
+      );
+    }
+
+    return nodes;
+  }, [displayContent]);
 
   const scrollRef = useRef(null);
 
@@ -110,38 +193,21 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetId: null,
   });
 
-  const normalizeEmotionType = (t) =>
-    ["LIKE", "SAD", "FUN", "HYPE"].includes(t) ? t : null;
-
-  const [selectedEmotionType, setSelectedEmotionType] = useState(() =>
-    normalizeEmotionType(initialSelectedEmotionType),
-  );
   const myEmotionTypeFromStore = useUserEmotionSelection(postId);
 
-  // PostCard에서 넘어오지 않는 케이스(또는 앱 재실행 직후)에서도
-  // store hydration 결과로 heart fill이 복원되도록 동기화합니다.
-  useEffect(() => {
-    if (myEmotionTypeFromStore === undefined) return;
-    setSelectedEmotionType(myEmotionTypeFromStore);
-  }, [postId, myEmotionTypeFromStore]);
+  /** 상세 GET + 목록에서 넘어온 post + 라우트 initialSelectedEmotionType — 서버 값 우선 근거 */
+  const reactionSource = useMemo(() => {
+    const base = detail ?? initialPostParam ?? {};
+    const fromRoute = normalizeCommunityEmotionType(initialSelectedEmotionType);
+    if (!fromRoute) return base;
+    if (pickEmotionTypeFromPostCoalesced(base)) return base;
+    return { ...base, emotionType: fromRoute };
+  }, [detail, initialPostParam, initialSelectedEmotionType]);
 
-  useEffect(() => {
-    if (myEmotionTypeFromStore !== undefined) return;
-    const raw =
-      detail?.myEmotion ??
-      detail?.myEmotionType ??
-      initialPostParam?.myEmotion ??
-      initialPostParam?.myEmotionType;
-    const normalized = normalizeEmotionType(raw);
-    if (normalized != null) setSelectedEmotionType(normalized);
-  }, [
-    detail?.myEmotion,
-    detail?.myEmotionType,
-    initialPostParam?.myEmotion,
-    initialPostParam?.myEmotionType,
-    myEmotionTypeFromStore,
-    postId,
-  ]);
+  const selectedEmotionType = useMemo(
+    () => resolveSelectedEmotionForPost(reactionSource, myEmotionTypeFromStore),
+    [reactionSource, myEmotionTypeFromStore],
+  );
 
   const [editTarget, setEditTarget] = useState(null); // { commentId, content }
 
@@ -158,41 +224,56 @@ const PostDetailScreen = ({ route, navigation }) => {
     : "댓글을 삭제하고 있어요";
 
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
-  const toggleEmotionMutation = useTogglePostEmotionMutation(postId, {
-    onSuccess: (data) => {
-      setSelectedEmotionType(data.toggled ? data.emotionType : null);
-    },
-  });
+  const toggleEmotionMutation = useTogglePostEmotionMutation(postId);
   const blockUserMutation = useBlockUserMutation();
 
   const imageList = useMemo(() => {
     const source = detail ?? initialPostParam;
     const imgs = getActivePostImages(source);
-    const urls = imgs
-      .map((img) =>
-        typeof img === "string" ? img : img.imageUrl || img.url,
-      )
-      .filter(Boolean);
-    if (urls.length > 0) return urls;
-    if (source?.image) return [source.image];
+    const rows = [];
+    for (let idx = 0; idx < imgs.length; idx++) {
+      const img = imgs[idx];
+      const u = typeof img === "string" ? img : img?.imageUrl || img?.url;
+      if (!u) continue;
+      const id =
+        typeof img === "object" && img != null
+          ? (img.imageId ?? img.id ?? idx)
+          : idx;
+      rows.push({
+        url: u,
+        rowKey: `${postId}-${String(id)}-${idx}`,
+      });
+    }
+    if (rows.length > 0) return rows;
+    if (source?.image) {
+      return [{ url: source.image, rowKey: `${postId}-legacy-0` }];
+    }
     return [];
-  }, [detail, initialPostParam]);
+  }, [detail, initialPostParam, postId]);
 
   const displayComments = useMemo(
     () =>
       normalizeCommentsForDisplay(
-        detail?.comments ?? initialPostParam?.comments ?? [],
+        normalizeCommentAuthorFields(
+          detail?.comments ?? initialPostParam?.comments ?? [],
+          commentAuthorFallbackMap,
+        ),
         {
           postId,
           isHidden: (pid, commentId) =>
             useCommentRemovalStore.getState().isHidden(pid, commentId),
         },
       ),
-    [detail?.comments, initialPostParam?.comments, postId, hiddenCommentKeys],
+    [
+      detail?.comments,
+      initialPostParam?.comments,
+      postId,
+      hiddenCommentKeys,
+      commentAuthorFallbackMap,
+    ],
   );
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
-
   const openThreadActionModal = ({ targetType, targetId }) => {
     setPressedThread({ targetType, targetId });
 
@@ -256,7 +337,7 @@ const PostDetailScreen = ({ route, navigation }) => {
       commentId: targetId,
       content: target?.content ?? "",
     });
-    setReplyTarget(null); // edit 모드면 답글 작성 모드를 끈다.
+    setReplyTarget(null);
     closeThreadActionModal();
   };
 
@@ -332,9 +413,9 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const handleBack = () => {
     if (from === "upload") {
-      // 커스텀 탭바(customTabBar)는 MainTabNavigator에만 존재합니다.
-      // 따라서 CommunityStack 내부(AllCommunity/TeamCommunity)로 이동하면 탭바가 사라지므로,
-      // Root의 `Main`으로 이동시켜 탭바가 유지되도록 합니다.
+      // 커스텀 탭바(customTabBar)는 MainTabNavigator에만 존재
+      // 따라서 CommunityStack 내부(AllCommunity/TeamCommunity)로 이동하면 탭바가 사라지므로
+      // Root의 `Main`으로 이동시켜 탭바가 유지되도록!
       if (isAllChannelPost(post.channel)) {
         navigation.replace("Main", {
           screen: "AllCommunity",
@@ -384,7 +465,10 @@ const PostDetailScreen = ({ route, navigation }) => {
   }
 
   const mergedForDeletedCheck = detail ?? initialPostParam ?? null;
-  if (mergedForDeletedCheck && isPostDeletedOrHiddenInFeed(mergedForDeletedCheck)) {
+  if (
+    mergedForDeletedCheck &&
+    isPostDeletedOrHiddenInFeed(mergedForDeletedCheck)
+  ) {
     return (
       <SafeAreaView
         style={styles.safeArea}
@@ -479,25 +563,21 @@ const PostDetailScreen = ({ route, navigation }) => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.imageScroll}
               >
-                {imageList.map((img, index) => {
+                {imageList.map((entry, index) => {
                   const isSingle = imageList.length === 1;
+                  const displayUri = withImageDisplayCacheKey(
+                    entry.url,
+                    entry.rowKey,
+                  );
+                  const maxImageWidth = isSingle ? width - 32 : width * 0.78;
 
                   return (
-                    <View
-                      key={index}
-                      style={[
-                        styles.imageWrapper,
-                        {
-                          width: isSingle ? width - 32 : width * 0.7,
-                        },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri: img }}
-                        style={styles.postImage}
-                        resizeMode="cover"
-                      />
-                    </View>
+                    <PostDetailImageItem
+                      key={entry.rowKey}
+                      uri={displayUri}
+                      maxWidth={maxImageWidth}
+                      imageStyle={styles.postImage}
+                    />
                   );
                 })}
               </ScrollView>
@@ -505,14 +585,8 @@ const PostDetailScreen = ({ route, navigation }) => {
             {detail?.content && (
               <View style={styles.textWrapper}>
                 <AppText variant="middle" style={styles.content}>
-                  {contentWithoutHashtags}
+                  {renderContentWithHighlightedHashtags}
                 </AppText>
-
-                {hashtags.length > 0 && (
-                  <AppText style={styles.hashText}>
-                    {hashtags.map((tag) => `#${tag}`).join(" ")}
-                  </AppText>
-                )}
               </View>
             )}
 
@@ -700,14 +774,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   imageWrapper: {
-    width: width * 0.7, // 화면 너비에서 양쪽 패딩(16 + 16)을 뺀 값
+    // 이미지 카드 크기 조정 포인트:
+    // - 높이: DETAIL_IMAGE_HEIGHT 상수로 조정
+    // - 너비: map 내부의 maxImageWidth 계산(단일/다중 이미지별)로 조정
+    height: DETAIL_IMAGE_HEIGHT,
     borderRadius: 10,
     overflow: "hidden",
     marginRight: 11,
   },
   postImage: {
     width: "100%",
-    height: 199,
+    height: "100%",
   },
 
   /* 텍스트 */

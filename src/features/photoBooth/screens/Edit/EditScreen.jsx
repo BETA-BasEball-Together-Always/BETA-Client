@@ -25,7 +25,6 @@ import TextIcon from "./assets/tab/text.svg";
 import { useNavigation } from "@react-navigation/native";
 import ViewShot from "react-native-view-shot";
 import * as ImagePicker from "expo-image-picker";
-
 import {
   getOverlayHeight,
   getOverlayBackdropMode,
@@ -227,6 +226,7 @@ export default function EditScreen() {
         result: "tmpfile",
       });
       if (!uri) return;
+      /** ViewShot tmpfile는 캡처마다 고유 경로이며, Share에서 복사 없이 file:// 그대로 사용 */
       store.setExportedFrameUri(uri);
       navigation.navigate("Share");
     } catch (e) {

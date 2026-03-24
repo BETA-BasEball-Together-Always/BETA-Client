@@ -7,6 +7,8 @@ import SignupGenderAgeScreen from "../../features/auth/screens/SignupGenderAge/S
 import SignupNicknameScreen from "../../features/auth/screens/SignupNickname/SignupNicknameScreen";
 import SocialSignupScreen from "../../features/auth/screens/SignupCredentials/SocialSignupScreen";
 import TermsDetailScreen from "../../features/auth/screens/TermsDetail/TermsDetailScreen";
+import TermsTosDetailScreen from "../../features/auth/screens/TermsDetail/TermsTosDetailScreen";
+import TermsPrivacyRequiredDetailScreen from "../../features/auth/screens/TermsDetail/TermsPrivacyRequiredDetailScreen";
 import SignupCompleteScreen from "../../features/auth/screens/SignupComplete/SignupCompleteScreen";
 import { consumePendingAuthResume } from "../../shared/auth/pendingAuthResume";
 import { buildRootResetForAuthNestedResume } from "../../shared/auth/signupResumeStack";
@@ -45,7 +47,16 @@ const AuthStack = () => {
 
   return (
     <Stack.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        // `useStepBack`에서 history가 없을 땐 `navigation.replace()`를 사용!!
+        // 이 경우 기본 애니메이션이 push처럼 보여서 뒤로 이동이 헷갈릴 수 있어
+        // replace에서도 pop 애니메이션(좌->우)으로 통일
+        animationTypeForReplace: "pop",
+        // 회원가입 단계의 "다음"은 navigation.navigate (push)로 이동하도록 바꿨기 때문에
+        // push 애니메이션 방향을 명시해 "오른쪽->왼쪽" 전환이 보이도록 강제
+        animation: "slide_from_right",
+      }}
       initialRouteName={initialRouteName}
     >
       <Stack.Screen
@@ -62,6 +73,16 @@ const AuthStack = () => {
         name="TermsDetail"
         component={TermsDetailScreen}
         initialParams={initialParamsFor("TermsDetail")}
+      />
+      <Stack.Screen
+        name="TermsTosDetail"
+        component={TermsTosDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="TermsPrivacyRequiredDetail"
+        component={TermsPrivacyRequiredDetailScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen name="SignupNickname" component={SignupNicknameScreen} />
       <Stack.Screen

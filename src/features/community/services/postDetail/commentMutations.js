@@ -8,12 +8,10 @@ import {
   toggleCommentLikeApi,
 } from "./postDetailApi";
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
+import { mergeFlatAuthor } from "../../utils/communityComments";
+import { useCommentAuthorFallbackStore } from "../../store/commentAuthorFallbackStore";
 
 const DELETED_COMMENT_TEXT = "삭제된 댓글입니다";
-
-/**
- * 방법 A: 작성/수정/삭제 API 성공 후 게시글 상세 캐시의 comments만 갱신 (별도 GET /comments 재조회 없음)
- */
 
 /** parentId가 최상위 또는 중첩 답글인 경우 재귀적으로 replies에 추가 */
 function addReplyToCommentTree(list, parentId, newComment) {
@@ -49,14 +47,30 @@ export function mapCommentTreeAfterDelete(list, commentId) {
   const out = [];
   let mode = "none";
 
+  const DELETED_USER_NICKNAME = "(삭제된 사용자)";
+
   for (const c of list) {
     if (c.commentId === commentId) {
       const hasReplies = (c.replies?.length ?? 0) > 0;
       if (hasReplies) {
+        const deletedUserAuthor = {
+          nickname: DELETED_USER_NICKNAME,
+          nickName: DELETED_USER_NICKNAME,
+          userId: null,
+          teamCode: undefined,
+        };
+        useCommentAuthorFallbackStore
+          .getState()
+          .saveAuthorSnapshot(c.commentId, deletedUserAuthor);
         out.push({
           ...c,
           deleted: true,
           content: DELETED_COMMENT_TEXT,
+          author: deletedUserAuthor,
+          userId: null,
+          nickname: DELETED_USER_NICKNAME,
+          nickName: DELETED_USER_NICKNAME,
+          teamCode: undefined,
         });
         mode = "soft";
       } else {
