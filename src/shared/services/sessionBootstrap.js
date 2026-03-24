@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 import api from "../libs/api";
 import { useUserStore } from "../store/userStore";
 import {
@@ -7,7 +8,10 @@ import {
   setPendingAuthResume,
 } from "../auth/pendingAuthResume";
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  Constants.expoConfig?.extra?.backendUrl ||
+  null;
 
 const INCOMPLETE_SIGNUP_STEPS = new Set([
   "SOCIAL_AUTHENTICATED",
@@ -52,6 +56,9 @@ export function getSignupResumeRoute(signupStep, data) {
 }
 
 async function refreshTokensApi(refreshToken) {
+  if (!BASE_URL) {
+    throw new Error("BACKEND_BASE_URL_MISSING");
+  }
   const { data } = await axios.post(
     `${BASE_URL}/api/v1/auth/refresh`,
     { refreshToken },

@@ -8,7 +8,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "assetBundlePatterns": ["src/shared/assets/fonts/*"],
+    "assetBundlePatterns": [
+      "src/shared/assets/fonts/*"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -25,6 +27,9 @@
         "LSApplicationQueriesSchemes": [
           "kakaokompassauth",
           "kakaolink",
+          "naversearchapp",
+          "kakaokompassauth",
+          "kakaolink",
           "naversearchapp"
         ]
       },
@@ -36,7 +41,10 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA"
+      ],
       "package": "com.beta.baseballapp"
     },
     "web": {
@@ -71,6 +79,12 @@
         "projectId": "cb0869cf-b218-49c9-a57c-e29944ee41fb"
       }
     },
-    "owner": "beta_app"
+    "owner": "beta_app",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cb0869cf-b218-49c9-a57c-e29944ee41fb"
+    }
   }
 }
