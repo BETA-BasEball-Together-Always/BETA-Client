@@ -1,5 +1,6 @@
 // src/shared/api/api.js
 import axios from "axios";
+import Constants from "expo-constants";
 // import * as SecureStore from "expo-secure-store";
 // import {useAuthStore} from "../store/authStore"; // 경로는 프로젝트에 맞게 수정해줘
 
@@ -32,8 +33,19 @@ import axios from "axios";
 // };
 
 // ✅ axios 인스턴스 생성
+const BACKEND_BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  Constants.expoConfig?.extra?.backendUrl ||
+  null;
+
+if (!BACKEND_BASE_URL) {
+  console.error(
+    "[API] backend baseURL is missing. Set EXPO_PUBLIC_BACKEND_URL or extra.backendUrl.",
+  );
+}
+
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_BACKEND_URL,
+  baseURL: BACKEND_BASE_URL ?? undefined,
   timeout: 10000, //업로드 전용 api는 20000ms 고려
   headers: {
     "Content-Type": "application/json",
