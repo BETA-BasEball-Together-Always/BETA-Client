@@ -2,15 +2,13 @@
   "expo": {
     "name": "Beta",
     "slug": "Beta",
-    "scheme": "navergJBa1AaJEw6uVIiRTfPw",
+    "scheme": ["navergjba1aajew6uviirtfpw"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "assetBundlePatterns": [
-      "src/shared/assets/fonts/*"
-    ],
+    "assetBundlePatterns": ["src/shared/assets/fonts/*"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -41,10 +39,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.CAMERA"
-      ],
+      "permissions": ["android.permission.CAMERA", "android.permission.CAMERA"],
       "package": "com.beta.baseballapp"
     },
     "web": {
