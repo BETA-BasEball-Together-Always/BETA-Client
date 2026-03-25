@@ -22,6 +22,8 @@ import * as SecureStore from "expo-secure-store";
 import { getDeviceId } from "../../libs/Login/deviceUtils";
 import { useUserStore } from "../../../../shared/store/userStore";
 
+import api from "../../../../shared/libs/api";
+
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "../../assets/Login/kakao.svg";
@@ -31,7 +33,7 @@ import AppleIcon from "../../assets/Login/apple.svg";
 const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
-  const [providerConflict, setProviderConflict] = useState(null); // 'KAKAO' | 'NAVER' | 'APPLE' | null
+  const [providerConflict, setProviderConflict] = useState(null);
   const signupStatusMutation = useSignupStatusMutation();
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
@@ -162,6 +164,10 @@ const LoginScreen = ({ navigation, route }) => {
     if (isSocialLoading) return;
     setIsSocialLoading(true);
 
+    alert("Apple 로그인 시작!!!");
+    const api = require("../../../../shared/libs/api").default;
+    alert("BASE_URL: " + api.defaults.baseURL);
+
     try {
       const { token, cancelled } = await appleSignIn();
       if (cancelled) {
@@ -212,8 +218,9 @@ const LoginScreen = ({ navigation, route }) => {
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              const inferred =
-                inferProviderFromMessage(error?.response?.data?.message);
+              const inferred = inferProviderFromMessage(
+                error?.response?.data?.message,
+              );
               setProviderConflict(
                 socialProvider || inferred || provider || "APPLE",
               );
@@ -280,8 +287,9 @@ const LoginScreen = ({ navigation, route }) => {
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              const inferred =
-                inferProviderFromMessage(error?.response?.data?.message);
+              const inferred = inferProviderFromMessage(
+                error?.response?.data?.message,
+              );
               setProviderConflict(
                 socialProvider || inferred || provider || "KAKAO",
               );
@@ -349,8 +357,9 @@ const LoginScreen = ({ navigation, route }) => {
             const code = error?.response?.data?.code;
             const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              const inferred =
-                inferProviderFromMessage(error?.response?.data?.message);
+              const inferred = inferProviderFromMessage(
+                error?.response?.data?.message,
+              );
               setProviderConflict(
                 socialProvider || inferred || provider || "NAVER",
               );

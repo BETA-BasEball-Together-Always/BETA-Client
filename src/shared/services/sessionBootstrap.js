@@ -8,10 +8,13 @@ import {
   setPendingAuthResume,
 } from "../auth/pendingAuthResume";
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ||
-  Constants.expoConfig?.extra?.backendUrl ||
-  null;
+//api.js와 sessionBootstrap.js에서 중복된 base url 환경변수 정의!!
+//api.js에서 baseURL 가져오는 것으로 수정
+const BASE_URL = api.defaults.baseURL;
+
+console.log("[BOOTSTRAP] BASE_URL:", BASE_URL);
+console.log("[BOOTSTRAP] ENV:", process.env.EXPO_PUBLIC_BACKEND_URL);
+console.log("[BOOTSTRAP] EXTRA:", Constants.expoConfig?.extra?.backendUrl);
 
 const INCOMPLETE_SIGNUP_STEPS = new Set([
   "SOCIAL_AUTHENTICATED",
@@ -56,6 +59,8 @@ export function getSignupResumeRoute(signupStep, data) {
 }
 
 async function refreshTokensApi(refreshToken) {
+  console.log("[REFRESH] BASE_URL:", BASE_URL);
+
   if (!BASE_URL) {
     throw new Error("BACKEND_BASE_URL_MISSING");
   }

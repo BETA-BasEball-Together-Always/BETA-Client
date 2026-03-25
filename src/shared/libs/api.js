@@ -32,11 +32,13 @@ import Constants from "expo-constants";
 //   }
 // };
 
-// ✅ axios 인스턴스 생성
+// axios 인스턴스 생성
 const BACKEND_BASE_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ||
   Constants.expoConfig?.extra?.backendUrl ||
-  null;
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  "https://beta-app.kr"; //fallback 추가
+
+console.log("[API] BASE_URL:", BACKEND_BASE_URL);
 
 if (!BACKEND_BASE_URL) {
   console.error(

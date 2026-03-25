@@ -9,8 +9,22 @@ import api from "../../../shared/libs/api";
  * @param {'KAKAO'|'NAVER'|'APPLE'} provider
  * @param {{ token: string; deviceId: string }} body
  */
-const socialLoginApi = (provider, body) => {
-  return api.post(`/api/v1/auth/login/${provider}`, body);
+const socialLoginApi = async (provider, body) => {
+  // return api.post(`/api/v1/auth/login/${provider}`, body);
+  console.log("BASE_URL:", api.defaults.baseURL);
+  console.log(
+    "FULL URL:",
+    `${api.defaults.baseURL}/api/v1/auth/login/${provider}`,
+  );
+
+  try {
+    const res = await api.post(`/api/v1/auth/login/${provider}`, body);
+    return res;
+  } catch (e) {
+    console.log("ERROR:", e);
+    console.log("RESPONSE:", e.response);
+    throw e;
+  }
 };
 
 /**
