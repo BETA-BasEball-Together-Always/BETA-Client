@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "272348139360",
+    "project_id": "beta-c3057",
+    "storage_bucket": "beta-c3057.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:272348139360:android:e811db48ec24180032d805",
+        "android_client_info": {
+          "package_name": "com.beta.baseballapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkfpLtEOO1N5U8Z77DEY43VcaG1GEJcgw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
