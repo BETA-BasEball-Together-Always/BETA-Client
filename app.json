@@ -49,7 +49,6 @@
     "plugins": [
       "react-native-vision-camera",
       "expo-font",
-      "expo-build-properties",
       [
         "@react-native-seoul/kakao-login",
         {
@@ -60,6 +59,9 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "useFrameworks": "static"
+          },
           "android": {
             "extraMavenRepos": [
               "https://devrepo.kakao.com/nexus/content/groups/public/"
