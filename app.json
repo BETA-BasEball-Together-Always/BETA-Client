@@ -15,6 +15,7 @@
       "backgroundColor": "#000000"
     },
     "ios": {
+      "googleServicesFile": "./fcm-ios-com-beta-baseballapp.plist",
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -34,6 +35,7 @@
       "bundleIdentifier": "com.beta.baseballapp"
     },
     "android": {
+      "googleServicesFile": "./fcm-android-com-beta-baseballapp.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -47,6 +49,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      "@react-native-firebase/app",
       "react-native-vision-camera",
       "expo-font",
       [
@@ -60,7 +63,8 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
           },
           "android": {
             "extraMavenRepos": [

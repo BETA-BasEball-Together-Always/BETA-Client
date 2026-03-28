@@ -15,7 +15,22 @@ const mask = (value) => {
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
 };
 
+/** 네이버 SDK/로그인에 필요한 extra 값이 모두 있을 때만 true */
+export const isNaverLoginConfigured = () =>
+  Boolean(
+    NAVER_CLIENT_ID &&
+      NAVER_CLIENT_SECRET &&
+      NAVER_APP_NAME &&
+      NAVER_IOS_URL_SCHEME,
+  );
+
 export const initializeNaver = () => {
+  if (!isNaverLoginConfigured()) {
+    console.warn(
+      "[NAVER] 초기화 생략: extra에 naverClientId / naverClientSecret / naverAppName / naverIosUrlScheme 가 모두 필요합니다. (.env + prebuild 확인)",
+    );
+    return;
+  }
   try {
     console.log("[NAVER] initialize config:", {
       appName: NAVER_APP_NAME || "(missing)",

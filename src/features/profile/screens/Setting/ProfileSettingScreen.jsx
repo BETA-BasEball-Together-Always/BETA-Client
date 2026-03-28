@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -362,6 +363,97 @@ const ProfileSettingScreen = () => {
     [isPushBusy, pushSettings, refreshPushSettings],
   );
 
+  const openNotionLink = useCallback((url, labelForEmpty) => {
+    const trimmed = String(url ?? "").trim();
+    if (!trimmed) {
+      Alert.alert(
+        "안내",
+        `${labelForEmpty} 노션 링크가 비어 있습니다. 이 파일 상단의 NOTION_URLS 객체에 해당 필드(notice / faq / termsOfService / privacyPolicy)에 URL을 넣어 주세요.`,
+      );
+      return;
+    }
+    Linking.openURL(trimmed).catch(() => {
+      Alert.alert("오류", "링크를 열 수 없습니다.");
+    });
+  }, []);
+
+  const onPushSwitchChange = useCallback(
+    async (nextOn) => {
+      if (pushToggleBusy) return;
+      setPushToggleBusy(true);
+      try {
+        if (nextOn) {
+          const result = await submitPushEnabledToServer(true);
+          if (result.skipped) {
+            if (result.reason === "NOTIFICATION_PERMISSION_NOT_GRANTED") {
+              Alert.alert(
+                "알림 허용",
+                Platform.select({
+                  ios: "설정 > 알림에서 이 앱의 알림을 허용해 주세요.",
+                  default: "설정에서 이 앱의 알림 권한을 허용해 주세요.",
+                }),
+                [
+                  { text: "확인", style: "cancel" },
+                  { text: "설정", onPress: () => Linking.openSettings() },
+                ],
+              );
+              await refreshPushSwitchFromOs();
+              return;
+            }
+            if (result.reason === "NO_ACCESS_TOKEN") {
+              Alert.alert("안내", "로그인이 필요합니다.");
+              await refreshPushSwitchFromOs();
+              return;
+            }
+            if (result.reason === "FCM_TOKEN_ERROR") {
+              const hint =
+                result.error?.message ?? result.error?.nativeErrorMessage ?? "";
+              const apsHint =
+                Platform.OS === "ios" &&
+                String(hint).includes("aps-environment")
+                  ? "\n\n(iOS) Apple 푸시(APS) 인타이틀먼트가 빌드에 포함되어야 합니다. app.config에 aps-environment를 넣은 뒤 prebuild·재빌드하고, Apple Developer에서 해당 앱 ID에 Push Notifications 기능이 켜져 있는지 확인하세요. 백엔드 문제가 아닙니다."
+                  : "";
+              Alert.alert(
+                "알림",
+                hint
+                  ? `푸시 알림을 다시 켜는 중 오류가 났습니다.\n${hint}${apsHint}`
+                  : "푸시 알림을 다시 켜는 중 오류가 났습니다. 잠시 후 다시 시도하거나 앱을 다시 시작해 주세요.",
+              );
+              await refreshPushSwitchFromOs();
+              return;
+            }
+            Alert.alert(
+              "안내",
+              "푸시 알림을 켤 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            );
+            await refreshPushSwitchFromOs();
+            return;
+          }
+          lastServerPushEnabledRef.current = true;
+          setPushSwitchOn(true);
+        } else {
+          const result = await submitPushEnabledToServer(false);
+          if (result.skipped && result.reason === "NO_ACCESS_TOKEN") {
+            Alert.alert("안내", "로그인이 필요합니다.");
+          } else {
+            lastServerPushEnabledRef.current = false;
+            setPushSwitchOn(false);
+          }
+        }
+      } catch (e) {
+        logAxiosError("pushSettingsToggle", e);
+        Alert.alert(
+          "오류",
+          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        );
+        await refreshPushSwitchFromOs();
+      } finally {
+        setPushToggleBusy(false);
+      }
+    },
+    [pushToggleBusy, refreshPushSwitchFromOs],
+  );
+
   const renderConfirmModal = ({
     visible,
     onClose,
@@ -417,6 +509,27 @@ const ProfileSettingScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <AppHeader pageName="설정" showBack />
+
+      <View style={styles.section}>
+        <View style={styles.pushRow}>
+          <AppText
+            variant="semi18"
+            className="text-white"
+            style={styles.pushLabel}
+          >
+            푸시 알람 설정
+          </AppText>
+          {pushToggleBusy ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <PushSettingToggle
+              value={pushSwitchOn}
+              onValueChange={onPushSwitchChange}
+              busy={pushToggleBusy}
+            />
+          )}
+        </View>
+      </View>
 
       <View style={styles.section}>
         <AppText

@@ -156,6 +156,11 @@ async function ensureNotificationPermissionForEnable() {
   };
 }
 
+/** OS 알림 권한 허용 여부 (설정 화면 토글 표시용) */
+export async function getNotificationPermissionGranted() {
+  return ensureNotificationPermission({ requestPermission: false });
+}
+
 async function getFcmToken() {
   if (Platform.OS === "ios") {
     await messaging().registerDeviceForRemoteMessages();

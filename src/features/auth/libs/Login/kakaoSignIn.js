@@ -10,7 +10,7 @@ export const kakaoSignIn = async () => {
       // 로그아웃 실패는 굳이 막 에러낼 필요 없음
     }
 
-    // 1) 카카오 로그인 → 토큰 획득
+    // 1) 카카오 로그인 -> 토큰 획득
     const token = await login();
     // token 안에 accessToken, refreshToken, idToken 등이 들어있음
     // console.log("Kakao token:", token);
