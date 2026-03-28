@@ -42,18 +42,19 @@ import {
 import MoreArrow from "@features/auth/assets/common/svg/more_arrow.svg";
 
 /**
- * 노션 페이지 URL — 실제 공개 링크로 교체하세요.
- * (노션 페이지 우측 상단 공유 → 웹에 게시 → 링크 복사)
+ * 노션 페이지 URL
  */
 const NOTION_URLS = {
-  /** 공지사항: 노션 '공지사항' 페이지 URL */
+  /** 공지사항  */
   notice: "",
-  /** FAQ: 노션 FAQ 페이지 URL */
+  /** FAQ */
   faq: "",
-  /** 서비스 이용 약관: 노션 약관 페이지 URL */
-  termsOfService: "",
-  /** 개인정보 처리방침: 노션 개인정보 처리방침 페이지 URL */
-  privacyPolicy: "",
+  /** 서비스 이용 약관 */
+  termsOfService:
+    "https://www.notion.so/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
+  /** 개인정보 처리방침 */
+  privacyPolicy:
+    "https://www.notion.so/2e1226b7125d80398dece59a2b1f0a6b?source=copy_link",
 };
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
@@ -210,9 +211,7 @@ const ProfileSettingScreen = () => {
             }
             if (result.reason === "FCM_TOKEN_ERROR") {
               const hint =
-                result.error?.message ??
-                result.error?.nativeErrorMessage ??
-                "";
+                result.error?.message ?? result.error?.nativeErrorMessage ?? "";
               Alert.alert(
                 "알림",
                 hint
@@ -542,11 +541,12 @@ const styles = StyleSheet.create({
   switchSlot: {
     width: 56,
     height: 38,
+    borderRadius: 100,
     justifyContent: "center",
     alignItems: "flex-end",
   },
   switchShape: {
-    transform: [{ scaleX: 0.9 }, { scaleY: 1.14 }],
+    // transform: [{ scaleX: 0.9 }, { scaleY: 1.14 }],
   },
   linkRow: {
     flexDirection: "row",
@@ -561,6 +561,7 @@ const styles = StyleSheet.create({
     lineHeight: 21.8,
     flex: 1,
     marginRight: 8,
+    color: "rgba(228, 228, 228, 0.50)",
   },
   versionRow: {
     flexDirection: "row",
