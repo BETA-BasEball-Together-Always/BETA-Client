@@ -34,6 +34,7 @@ import Constants from "expo-constants";
 
 // axios 인스턴스 생성
 const BACKEND_BASE_URL =
+  //EXPO_PUBLIC_BACKEND_URL이 testflight에서는 undefined 되는 경우가 많으므로 순서 변경
   Constants.expoConfig?.extra?.backendUrl ||
   process.env.EXPO_PUBLIC_BACKEND_URL ||
   "https://beta-app.kr"; //fallback 추가

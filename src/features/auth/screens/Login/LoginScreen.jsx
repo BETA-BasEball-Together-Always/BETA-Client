@@ -217,9 +217,7 @@ const LoginScreen = ({ navigation, route }) => {
               const inferred = inferProviderFromMessage(
                 error?.response?.data?.message,
               );
-              setProviderConflict(
-                socialProvider || inferred || provider || "APPLE",
-              );
+              setProviderConflict(socialProvider || inferred || "APPLE");
               return;
             }
 
@@ -286,9 +284,7 @@ const LoginScreen = ({ navigation, route }) => {
               const inferred = inferProviderFromMessage(
                 error?.response?.data?.message,
               );
-              setProviderConflict(
-                socialProvider || inferred || provider || "KAKAO",
-              );
+              setProviderConflict(socialProvider || inferred || "KAKAO");
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -356,9 +352,7 @@ const LoginScreen = ({ navigation, route }) => {
               const inferred = inferProviderFromMessage(
                 error?.response?.data?.message,
               );
-              setProviderConflict(
-                socialProvider || inferred || provider || "NAVER",
-              );
+              setProviderConflict(socialProvider || inferred || "NAVER");
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {

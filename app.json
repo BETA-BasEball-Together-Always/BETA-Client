@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "assetBundlePatterns": ["src/shared/assets/fonts/*"],
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -60,8 +60,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static",
-            "forceStaticLinking": ["RNFBApp", "RNFBMessaging"]
+            "useFrameworks": "static"
           },
           "android": {
             "extraMavenRepos": [

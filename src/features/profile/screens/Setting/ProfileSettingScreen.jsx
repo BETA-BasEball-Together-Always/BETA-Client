@@ -177,7 +177,6 @@ const ProfileSettingScreen = () => {
         >
           계정
         </AppText>
-
         <Pressable
           onPress={() => setLogoutModalVisible(true)}
           disabled={isAuthBusy}

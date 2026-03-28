@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingBottom: 100, //선택 완료 버튼 때문에 마지막 구단 선택 카드 가려짐
   },
   inner: {
     maxWidth: 390,
