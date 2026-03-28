@@ -7,7 +7,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Switch,
+  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -58,6 +58,36 @@ const NOTION_URLS = {
 };
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
+
+/** 피그마 46×27 비율에 가깝게 (가로·세로 소폭 확대) — 썸은 완전한 원 */
+const PUSH_TOGGLE_W = 54;
+const PUSH_TOGGLE_H = 33;
+const PUSH_TOGGLE_THUMB = 28;
+const PUSH_TOGGLE_PAD = 2.5;
+
+function PushSettingToggle({ value, onValueChange, busy }) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled: busy }}
+      disabled={busy}
+      onPress={() => onValueChange(!value)}
+      style={[
+        styles.pushToggleTrack,
+        value ? styles.pushToggleTrackOn : styles.pushToggleTrackOff,
+      ]}
+    >
+      <View
+        style={[
+          styles.pushToggleInner,
+          { justifyContent: value ? "flex-end" : "flex-start" },
+        ]}
+      >
+        <View style={styles.pushToggleThumb} />
+      </View>
+    </Pressable>
+  );
+}
 
 const LOGOUT_SUB =
   "계정에서 로그아웃됩니다.\n언제든 다시 로그인하실 수 있어요.";
@@ -212,10 +242,15 @@ const ProfileSettingScreen = () => {
             if (result.reason === "FCM_TOKEN_ERROR") {
               const hint =
                 result.error?.message ?? result.error?.nativeErrorMessage ?? "";
+              const apsHint =
+                Platform.OS === "ios" &&
+                String(hint).includes("aps-environment")
+                  ? "\n\n(iOS) Apple 푸시(APS) 인타이틀먼트가 빌드에 포함되어야 합니다. app.config에 aps-environment를 넣은 뒤 prebuild·재빌드하고, Apple Developer에서 해당 앱 ID에 Push Notifications 기능이 켜져 있는지 확인하세요. 백엔드 문제가 아닙니다."
+                  : "";
               Alert.alert(
                 "알림",
                 hint
-                  ? `푸시 알림을 다시 켜는 중 오류가 났습니다.\n${hint}`
+                  ? `푸시 알림을 다시 켜는 중 오류가 났습니다.\n${hint}${apsHint}`
                   : "푸시 알림을 다시 켜는 중 오류가 났습니다. 잠시 후 다시 시도하거나 앱을 다시 시작해 주세요.",
               );
               await refreshPushSwitchFromOs();
@@ -321,19 +356,11 @@ const ProfileSettingScreen = () => {
           {pushToggleBusy ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <View style={styles.switchSlot}>
-              <Switch
-                style={styles.switchShape}
-                value={pushSwitchOn}
-                onValueChange={onPushSwitchChange}
-                trackColor={{
-                  false: "rgba(172, 172, 172, 0.20)",
-                  true: "#34C759",
-                }}
-                thumbColor="#FFF"
-                ios_backgroundColor="rgba(172, 172, 172, 0.20)"
-              />
-            </View>
+            <PushSettingToggle
+              value={pushSwitchOn}
+              onValueChange={onPushSwitchChange}
+              busy={pushToggleBusy}
+            />
           )}
         </View>
       </View>
@@ -350,16 +377,12 @@ const ProfileSettingScreen = () => {
           onPress={() => setLogoutModalVisible(true)}
           disabled={isAuthBusy}
           style={({ pressed }) => [
-            styles.rowPressable,
+            styles.accountRow,
             pressed && styles.rowPressed,
             isAuthBusy && styles.rowDisabled,
           ]}
         >
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.menuItemText}>
             로그아웃
           </AppText>
         </Pressable>
@@ -368,16 +391,12 @@ const ProfileSettingScreen = () => {
           onPress={() => setWithdrawModalVisible(true)}
           disabled={isAuthBusy}
           style={({ pressed }) => [
-            styles.rowPressable,
+            styles.accountRow,
             pressed && styles.rowPressed,
             isAuthBusy && styles.rowDisabled,
           ]}
         >
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.menuItemText}>
             계정 탈퇴
           </AppText>
         </Pressable>
@@ -398,11 +417,7 @@ const ProfileSettingScreen = () => {
             pressed && styles.rowPressed,
           ]}
         >
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.linkRowText}>
             공지사항
           </AppText>
           <MoreArrow width={22} height={22} />
@@ -414,11 +429,7 @@ const ProfileSettingScreen = () => {
             pressed && styles.rowPressed,
           ]}
         >
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.linkRowText}>
             FAQ
           </AppText>
           <MoreArrow width={22} height={22} />
@@ -442,11 +453,7 @@ const ProfileSettingScreen = () => {
             pressed && styles.rowPressed,
           ]}
         >
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.linkRowText}>
             서비스 이용약관
           </AppText>
           <MoreArrow width={22} height={22} />
@@ -460,25 +467,17 @@ const ProfileSettingScreen = () => {
             pressed && styles.rowPressed,
           ]}
         >
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.linkRowText}>
             개인정보 처리방침
           </AppText>
           <MoreArrow width={22} height={22} />
         </Pressable>
 
         <View style={styles.versionRow}>
-          <AppText
-            variant="bodyMedium"
-            className="text-gray-400"
-            style={styles.accountMenuText}
-          >
+          <AppText variant="bodyMedium" style={styles.linkRowText}>
             현재버전
           </AppText>
-          <AppText variant="bodyMedium" style={styles.versionMeta}>
+          <AppText variant="smallRegular" style={styles.versionMeta}>
             V.{APP_VERSION} 최신버전
           </AppText>
         </View>
@@ -537,16 +536,43 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
 
-  // 푸시 알람 토글 스위치
-  switchSlot: {
-    width: 56,
-    height: 38,
-    borderRadius: 100,
+  pushToggleTrack: {
+    width: PUSH_TOGGLE_W,
+    height: PUSH_TOGGLE_H,
+    borderRadius: PUSH_TOGGLE_H / 2,
+    padding: PUSH_TOGGLE_PAD,
     justifyContent: "center",
-    alignItems: "flex-end",
   },
-  switchShape: {
-    // transform: [{ scaleX: 0.9 }, { scaleY: 1.14 }],
+  pushToggleTrackOff: {
+    backgroundColor: "rgba(172, 172, 172, 0.20)",
+  },
+  pushToggleTrackOn: {
+    backgroundColor: "#34C759",
+  },
+  pushToggleInner: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pushToggleThumb: {
+    width: PUSH_TOGGLE_THUMB,
+    height: PUSH_TOGGLE_THUMB,
+    borderRadius: PUSH_TOGGLE_THUMB / 2,
+    backgroundColor: "#FFFFFF",
+  },
+
+  /** alignSelf:flex-start + 자식 flex:1 Text 는 RN에서 너비 0으로 무너질 수 있음 → stretch + RN Text 사용 */
+  accountRow: {
+    alignSelf: "stretch",
+    minHeight: 44,
+    paddingVertical: 4,
+    justifyContent: "center",
+  },
+  menuItemText: {
+    // fontSize: 16,
+    lineHeight: 21.8,
+    color: "rgba(228, 228, 228, 0.50)",
+    // fontFamily: "NotoSansKR_Medium",
   },
   linkRow: {
     flexDirection: "row",
@@ -557,11 +583,13 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: 4,
   },
-  accountMenuText: {
-    lineHeight: 21.8,
+  linkRowText: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
+    // fontSize: 16,
+    lineHeight: 21.8,
     color: "rgba(228, 228, 228, 0.50)",
+    // fontFamily: "NotoSansKR_Medium",
   },
   versionRow: {
     flexDirection: "row",
@@ -573,11 +601,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   versionMeta: {
+    flexShrink: 0,
+    lineHeight: 13.6,
     color: "rgba(228, 228, 228, 0.45)",
-    lineHeight: 21.8,
-  },
-  rowPressable: {
-    alignSelf: "flex-start",
   },
   rowPressed: {
     opacity: 0.7,

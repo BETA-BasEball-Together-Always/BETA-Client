@@ -1,10 +1,23 @@
 // app.config.js
 import "dotenv/config";
 
+/** FCM/APNs용 — 없으면 iOS에서 getToken 시 aps-environment 인타이틀먼트 오류 발생!!! prebuild 후 재빌드 필요!!! */
+const apsEnvironment =
+  process.env.EAS_BUILD_PROFILE === "production"
+    ? "production"
+    : "development";
+
 export default ({ config }) => ({
   ...config,
   // 네이버 iOS URL Scheme과 동일한 값을 쓰도록 env 우선 (app.json scheme과 불일치하면 로그인 콜백 실패)
   scheme: process.env.NAVER_IOS_URL_SCHEME || config.scheme,
+  ios: {
+    ...config.ios,
+    entitlements: {
+      ...(config.ios?.entitlements ?? {}),
+      "aps-environment": apsEnvironment,
+    },
+  },
   extra: {
     ...config.extra,
     backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL, //url 변수명 다른 것 수정
