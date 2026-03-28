@@ -14,6 +14,7 @@ const PostList = ({
   isLoading,
   isFeedBusy = false,
   showTeam = false,
+  createPostBoardId,
   removeClippedSubviews,
   stabilizePostBodyMeasure = false,
   sort,
@@ -79,7 +80,13 @@ const PostList = ({
       <TouchableOpacity
         style={styles.fabButton}
         onPress={() =>
-          navigation.navigate("Community", { screen: "CreatePost" })
+          navigation.navigate("Community", {
+            screen: "CreatePost",
+            params:
+              createPostBoardId != null
+                ? { initialBoardId: createPostBoardId }
+                : undefined,
+          })
         }
       >
         <PlusIcon width={16} height={16} />
