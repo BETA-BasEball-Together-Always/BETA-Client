@@ -16,7 +16,7 @@ import { kakaoSignIn } from "../../libs/Login/kakaoSignIn";
 import { naverSignIn } from "../../libs/Login/naverSignIn";
 import { appleSignIn } from "../../libs/Login/appleSignIn";
 import { useSocialLoginMutation } from "../../services/socialLoginMutation";
-import { useSignupStatusMutation } from "../../services/signupStatusMutation";
+import { fetchSignupStatusWithToken } from "../../services/signupStatusMutation";
 
 import * as SecureStore from "expo-secure-store";
 import { getDeviceId } from "../../libs/Login/deviceUtils";
@@ -34,7 +34,6 @@ const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
   const [providerConflict, setProviderConflict] = useState(null);
-  const signupStatusMutation = useSignupStatusMutation();
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
 
@@ -79,12 +78,13 @@ const LoginScreen = ({ navigation, route }) => {
 
   const handleSocialLoginResult = async (provider, response) => {
     const data = response?.data;
+    const userResponse = data?.userResponse;
     const isNewUser =
       typeof data?.isNewUser === "boolean"
         ? data.isNewUser
-        : // 백엔드 필드명이 newUser로 올 수도 있어 둘 다 지원
-          data?.newUser;
-    const userResponse = data?.userResponse;
+        : typeof data?.newUser === "boolean"
+          ? data.newUser
+          : !userResponse?.user;
 
     if (!userResponse?.accessToken) {
       Alert.alert("로그인 오류", "응답을 처리할 수 없습니다.");
@@ -107,20 +107,33 @@ const LoginScreen = ({ navigation, route }) => {
       return;
     }
 
-    // 신규 or 회원가입 미완료 → 서버에서 최신 signupStep / 데이터 조회
+    // 회원가입 미완료
+    // - SOCIAL_AUTHENTICATED 또는 단계 미표시: 약관만 필요 -> GET /signup/status 생략 가능
+    // - 그 외(CONSENT_AGREED, PROFILE_COMPLETED, TEAM_SELECTED 등): 해당 화면 구성용
+    //   email·teamList 등은 반드시 GET /api/v1/auth/signup/status 로 조회
     let signupStep = userResponse.signupStep;
     let emailFromServer = null;
     let teamListFromServer = null;
 
-    try {
-      const status = await signupStatusMutation.mutateAsync();
-      if (status?.signupStep) {
-        signupStep = status.signupStep;
+    const canSkipSignupStatus =
+      signupStep == null || signupStep === "SOCIAL_AUTHENTICATED";
+
+    if (!canSkipSignupStatus) {
+      try {
+        const status = await fetchSignupStatusWithToken(userResponse.accessToken);
+        if (status?.signupStep) {
+          signupStep = status.signupStep;
+        }
+        emailFromServer = status?.email ?? null;
+        teamListFromServer = status?.teamList ?? null;
+      } catch (e) {
+        console.log("signup/status 조회 실패:", e);
+        Alert.alert(
+          "안내",
+          "회원가입 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
       }
-      emailFromServer = status?.email ?? null;
-      teamListFromServer = status?.teamList ?? null;
-    } catch (e) {
-      console.log("signup/status 조회 실패:", e);
     }
 
     console.log("회원가입 진행 단계 (복원 포함): ", signupStep);
@@ -168,6 +181,7 @@ const LoginScreen = ({ navigation, route }) => {
       const { token, cancelled } = await appleSignIn();
       if (cancelled) {
         console.log("Apple 로그인 취소됨");
+        setIsSocialLoading(false);
         return;
       }
 
@@ -175,6 +189,7 @@ const LoginScreen = ({ navigation, route }) => {
 
       if (!token?.identityToken) {
         console.log("identityToken 없음");
+        setIsSocialLoading(false);
         return;
       }
 
@@ -195,14 +210,18 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("refreshToken: ", userResponse?.refreshToken);
             console.log("서버 device id: ", userResponse?.deviceId);
 
-            // 토큰은 전역 store + SecureStore에 동시 저장
-            await setTokens({
-              accessToken: userResponse.accessToken,
-              refreshToken: userResponse.refreshToken,
-            });
+            try {
+              // 토큰은 전역 store + SecureStore에 동시 저장
+              await setTokens({
+                accessToken: userResponse.accessToken,
+                refreshToken: userResponse.refreshToken,
+              });
 
-            console.log("토큰 저장 완료 (store + SecureStore)!");
-            handleSocialLoginResult("APPLE", response);
+              console.log("토큰 저장 완료 (store + SecureStore)!");
+              await handleSocialLoginResult("APPLE", response);
+            } finally {
+              setIsSocialLoading(false);
+            }
           },
           onError: (error) => {
             console.log("Apple 서버 로그인 실패");
@@ -218,6 +237,7 @@ const LoginScreen = ({ navigation, route }) => {
                 error?.response?.data?.message,
               );
               setProviderConflict(socialProvider || inferred || "APPLE");
+              setIsSocialLoading(false);
               return;
             }
 
@@ -226,6 +246,7 @@ const LoginScreen = ({ navigation, route }) => {
               "애플 로그인 실패",
               "잠시 후 다시 시도해 주세요.",
             );
+            setIsSocialLoading(false);
           },
         },
       );
@@ -239,7 +260,6 @@ const LoginScreen = ({ navigation, route }) => {
         "애플 로그인 실패",
         "잠시 후 다시 시도해 주세요.",
       );
-    } finally {
       setIsSocialLoading(false);
     }
   };
@@ -250,7 +270,10 @@ const LoginScreen = ({ navigation, route }) => {
 
     try {
       const { token, profile, cancelled } = await kakaoSignIn();
-      if (cancelled) return;
+      if (cancelled) {
+        setIsSocialLoading(false);
+        return;
+      }
 
       console.log("카카오 토큰:", token);
       console.log("카카오 프로필:", profile);
@@ -264,12 +287,16 @@ const LoginScreen = ({ navigation, route }) => {
           onSuccess: async (response) => {
             const userResponse = response.data.userResponse;
 
-            await setTokens({
-              accessToken: userResponse.accessToken,
-              refreshToken: userResponse.refreshToken,
-            });
+            try {
+              await setTokens({
+                accessToken: userResponse.accessToken,
+                refreshToken: userResponse.refreshToken,
+              });
 
-            handleSocialLoginResult("KAKAO", response);
+              await handleSocialLoginResult("KAKAO", response);
+            } finally {
+              setIsSocialLoading(false);
+            }
           },
           onError: (error) => {
             console.log("카카오 서버 로그인 실패");
@@ -285,6 +312,7 @@ const LoginScreen = ({ navigation, route }) => {
                 error?.response?.data?.message,
               );
               setProviderConflict(socialProvider || inferred || "KAKAO");
+              setIsSocialLoading(false);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -292,6 +320,7 @@ const LoginScreen = ({ navigation, route }) => {
                 error?.response?.data?.message ??
                 "카카오 계정에 이메일이 등록되어 있지 않습니다.";
               Alert.alert("카카오 로그인 오류", msg);
+              setIsSocialLoading(false);
               return;
             }
             showApiAuthError(
@@ -299,6 +328,7 @@ const LoginScreen = ({ navigation, route }) => {
               "카카오 로그인 실패",
               "잠시 후 다시 시도해주세요.",
             );
+            setIsSocialLoading(false);
           },
         },
       );
@@ -309,7 +339,6 @@ const LoginScreen = ({ navigation, route }) => {
         "카카오 로그인 실패",
         "잠시 후 다시 시도해주세요.",
       );
-    } finally {
       setIsSocialLoading(false);
     }
   };
@@ -320,9 +349,29 @@ const LoginScreen = ({ navigation, route }) => {
 
     try {
       console.log("[NAVER] 로그인 버튼 클릭");
-      const { token, profile, cancelled } = await naverSignIn();
+      const naverResult = await naverSignIn();
+      const { token, profile, cancelled } = naverResult;
       if (cancelled) {
-        console.log("[NAVER] 로그인 취소/중단됨");
+        if (naverResult.missingConfig) {
+          Alert.alert(
+            "네이버 로그인",
+            "네이버 앱 연동 설정이 비어 있습니다. NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, NAVER_APP_NAME, NAVER_IOS_URL_SCHEME(.env)을 채운 뒤 prebuild/재빌드해 주세요.",
+          );
+        } else if (naverResult.timeout) {
+          Alert.alert(
+            "네이버 로그인",
+            "응답 시간이 초과되었습니다. 네이버 앱 설치 여부와 URL Scheme 설정을 확인한 뒤 다시 시도해 주세요.",
+          );
+        } else if (naverResult.errorMessage) {
+          Alert.alert("네이버 로그인", naverResult.errorMessage);
+        } else if (!naverResult.userCancel) {
+          Alert.alert(
+            "네이버 로그인",
+            "로그인을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+          );
+        }
+        console.log("[NAVER] 로그인 취소/중단됨", naverResult);
+        setIsSocialLoading(false);
         return;
       }
 
@@ -337,12 +386,16 @@ const LoginScreen = ({ navigation, route }) => {
           onSuccess: async (response) => {
             const userResponse = response.data.userResponse;
 
-            await setTokens({
-              accessToken: userResponse.accessToken,
-              refreshToken: userResponse.refreshToken,
-            });
+            try {
+              await setTokens({
+                accessToken: userResponse.accessToken,
+                refreshToken: userResponse.refreshToken,
+              });
 
-            handleSocialLoginResult("NAVER", response);
+              await handleSocialLoginResult("NAVER", response);
+            } finally {
+              setIsSocialLoading(false);
+            }
           },
           onError: (error) => {
             console.log("네이버 소셜 로그인 실패:", error);
@@ -353,6 +406,7 @@ const LoginScreen = ({ navigation, route }) => {
                 error?.response?.data?.message,
               );
               setProviderConflict(socialProvider || inferred || "NAVER");
+              setIsSocialLoading(false);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -360,6 +414,7 @@ const LoginScreen = ({ navigation, route }) => {
                 error?.response?.data?.message ??
                 "네이버 계정에 이메일이 등록되어 있지 않습니다.";
               Alert.alert("네이버 로그인 오류", msg);
+              setIsSocialLoading(false);
               return;
             }
             showApiAuthError(
@@ -367,6 +422,7 @@ const LoginScreen = ({ navigation, route }) => {
               "네이버 로그인 실패",
               "잠시 후 다시 시도해주세요.",
             );
+            setIsSocialLoading(false);
           },
         },
       );
@@ -378,8 +434,6 @@ const LoginScreen = ({ navigation, route }) => {
         "네이버 로그인 실패",
         "잠시 후 다시 시도해주세요.",
       );
-    } finally {
-      console.log("[NAVER] 로그인 로딩 해제");
       setIsSocialLoading(false);
     }
   };

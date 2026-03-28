@@ -1,16 +1,24 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
+  Switch,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CommonActions, useNavigation } from "@react-navigation/native";
+import {
+  CommonActions,
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Constants from "expo-constants";
 
 import AppHeader from "../../../../shared/component/AppHeader";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -27,6 +35,28 @@ import {
   getApiErrorUserMessage,
   logAxiosError,
 } from "../../../../shared/utils/debugAxiosError";
+import {
+  getNotificationPermissionGranted,
+  submitPushEnabledToServer,
+} from "../../../../shared/services/pushDeviceService";
+import MoreArrow from "@features/auth/assets/common/svg/more_arrow.svg";
+
+/**
+ * 노션 페이지 URL — 실제 공개 링크로 교체하세요.
+ * (노션 페이지 우측 상단 공유 → 웹에 게시 → 링크 복사)
+ */
+const NOTION_URLS = {
+  /** 공지사항: 노션 '공지사항' 페이지 URL */
+  notice: "",
+  /** FAQ: 노션 FAQ 페이지 URL */
+  faq: "",
+  /** 서비스 이용 약관: 노션 약관 페이지 URL */
+  termsOfService: "",
+  /** 개인정보 처리방침: 노션 개인정보 처리방침 페이지 URL */
+  privacyPolicy: "",
+};
+
+const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 
 const LOGOUT_SUB =
   "계정에서 로그아웃됩니다.\n언제든 다시 로그인하실 수 있어요.";
@@ -40,6 +70,29 @@ const ProfileSettingScreen = () => {
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
+  const [pushSwitchOn, setPushSwitchOn] = useState(false);
+  const [pushToggleBusy, setPushToggleBusy] = useState(false);
+  /** 서버에 마지막으로 반영한 푸시 on/off (앱에서 끈 뒤 재진입 시 OS 권한만으로 다시 켜져 보이는 현상 완화) */
+  const lastServerPushEnabledRef = useRef(null);
+
+  const refreshPushSwitchFromOs = useCallback(async () => {
+    try {
+      if (lastServerPushEnabledRef.current === false) {
+        setPushSwitchOn(false);
+        return;
+      }
+      const granted = await getNotificationPermissionGranted();
+      setPushSwitchOn(granted);
+    } catch {
+      setPushSwitchOn(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPushSwitchFromOs();
+    }, [refreshPushSwitchFromOs]),
+  );
 
   const resetAppSession = useCallback(async () => {
     await clearAuth();
@@ -113,6 +166,80 @@ const ProfileSettingScreen = () => {
 
   const isAuthBusy = logoutMutation.isPending || withdrawMutation.isPending;
 
+  const openNotionLink = useCallback((url, labelForEmpty) => {
+    const trimmed = String(url ?? "").trim();
+    if (!trimmed) {
+      Alert.alert(
+        "안내",
+        `${labelForEmpty} 노션 링크가 비어 있습니다. 이 파일 상단의 NOTION_URLS 객체에 해당 필드(notice / faq / termsOfService / privacyPolicy)에 URL을 넣어 주세요.`,
+      );
+      return;
+    }
+    Linking.openURL(trimmed).catch(() => {
+      Alert.alert("오류", "링크를 열 수 없습니다.");
+    });
+  }, []);
+
+  const onPushSwitchChange = useCallback(
+    async (nextOn) => {
+      if (pushToggleBusy) return;
+      setPushToggleBusy(true);
+      try {
+        if (nextOn) {
+          const result = await submitPushEnabledToServer(true);
+          if (result.skipped) {
+            if (result.reason === "NOTIFICATION_PERMISSION_NOT_GRANTED") {
+              Alert.alert(
+                "알림 허용",
+                Platform.select({
+                  ios: "설정 > 알림에서 이 앱의 알림을 허용해 주세요.",
+                  default: "설정에서 이 앱의 알림 권한을 허용해 주세요.",
+                }),
+                [
+                  { text: "확인", style: "cancel" },
+                  { text: "설정", onPress: () => Linking.openSettings() },
+                ],
+              );
+              await refreshPushSwitchFromOs();
+              return;
+            }
+            if (result.reason === "NO_ACCESS_TOKEN") {
+              Alert.alert("안내", "로그인이 필요합니다.");
+              await refreshPushSwitchFromOs();
+              return;
+            }
+            Alert.alert(
+              "안내",
+              "푸시 알림을 켤 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            );
+            await refreshPushSwitchFromOs();
+            return;
+          }
+          lastServerPushEnabledRef.current = true;
+          setPushSwitchOn(true);
+        } else {
+          const result = await submitPushEnabledToServer(false);
+          if (result.skipped && result.reason === "NO_ACCESS_TOKEN") {
+            Alert.alert("안내", "로그인이 필요합니다.");
+          } else {
+            lastServerPushEnabledRef.current = false;
+            setPushSwitchOn(false);
+          }
+        }
+      } catch (e) {
+        logAxiosError("pushSettingsToggle", e);
+        Alert.alert(
+          "오류",
+          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        );
+        await refreshPushSwitchFromOs();
+      } finally {
+        setPushToggleBusy(false);
+      }
+    },
+    [pushToggleBusy, refreshPushSwitchFromOs],
+  );
+
   const renderConfirmModal = ({
     visible,
     onClose,
@@ -170,6 +297,32 @@ const ProfileSettingScreen = () => {
       <AppHeader pageName="설정" showBack />
 
       <View style={styles.section}>
+        <View style={styles.pushRow}>
+          <AppText
+            variant="semi18"
+            className="text-white"
+            style={styles.pushLabel}
+          >
+            푸시 알람 설정
+          </AppText>
+          {pushToggleBusy ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Switch
+              value={pushSwitchOn}
+              onValueChange={onPushSwitchChange}
+              trackColor={{
+                false: "rgba(172, 172, 172, 0.20)",
+                true: "#34C759",
+              }}
+              thumbColor="#FFF"
+              ios_backgroundColor="rgba(172, 172, 172, 0.20)"
+            />
+          )}
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <AppText
           variant="semi18"
           className="text-white"
@@ -218,20 +371,101 @@ const ProfileSettingScreen = () => {
         <AppText
           variant="semi18"
           className="text-white"
-          style={{ lineHeight: 24.5 }}
+          style={styles.sectionTitle}
         >
           안내
         </AppText>
+        <Pressable
+          onPress={() => openNotionLink(NOTION_URLS.notice, "공지사항")}
+          style={({ pressed }) => [
+            styles.linkRow,
+            pressed && styles.rowPressed,
+          ]}
+        >
+          <AppText
+            variant="bodyMedium"
+            className="text-gray-400"
+            style={styles.linkRowLabel}
+          >
+            공지사항
+          </AppText>
+          <MoreArrow width={22} height={22} />
+        </Pressable>
+        <Pressable
+          onPress={() => openNotionLink(NOTION_URLS.faq, "FAQ")}
+          style={({ pressed }) => [
+            styles.linkRow,
+            pressed && styles.rowPressed,
+          ]}
+        >
+          <AppText
+            variant="bodyMedium"
+            className="text-gray-400"
+            style={styles.linkRowLabel}
+          >
+            FAQ
+          </AppText>
+          <MoreArrow width={22} height={22} />
+        </Pressable>
       </View>
 
       <View style={styles.section}>
         <AppText
           variant="semi18"
           className="text-white"
-          style={{ lineHeight: 24.5 }}
+          style={styles.sectionTitle}
         >
           서비스 정보
         </AppText>
+        <Pressable
+          onPress={() =>
+            openNotionLink(NOTION_URLS.termsOfService, "서비스 이용 약관")
+          }
+          style={({ pressed }) => [
+            styles.linkRow,
+            pressed && styles.rowPressed,
+          ]}
+        >
+          <AppText
+            variant="bodyMedium"
+            className="text-gray-400"
+            style={styles.linkRowLabel}
+          >
+            서비스 이용 약관
+          </AppText>
+          <MoreArrow width={22} height={22} />
+        </Pressable>
+        <Pressable
+          onPress={() =>
+            openNotionLink(NOTION_URLS.privacyPolicy, "개인정보 처리 방침")
+          }
+          style={({ pressed }) => [
+            styles.linkRow,
+            pressed && styles.rowPressed,
+          ]}
+        >
+          <AppText
+            variant="bodyMedium"
+            className="text-gray-400"
+            style={styles.linkRowLabel}
+          >
+            개인정보 처리 방침
+          </AppText>
+          <MoreArrow width={22} height={22} />
+        </Pressable>
+
+        <View style={styles.versionRow}>
+          <AppText
+            variant="bodyMedium"
+            className="text-gray-400"
+            style={styles.linkRowLabel}
+          >
+            현재버전
+          </AppText>
+          <AppText variant="bodyMedium" style={styles.versionMeta}>
+            V.{APP_VERSION} 최신버전
+          </AppText>
+        </View>
       </View>
 
       {renderConfirmModal({
@@ -267,9 +501,46 @@ const styles = StyleSheet.create({
     backgroundColor: "#121212",
   },
   section: {
-    marginVertical: 25,
+    marginVertical: 20,
     marginHorizontal: 25,
     gap: 13,
+  },
+  sectionTitle: {
+    lineHeight: 24.5,
+    marginBottom: 4,
+  },
+  pushRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 44,
+  },
+  pushLabel: {
+    lineHeight: 24.5,
+    flex: 1,
+    marginRight: 12,
+  },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 44,
+    paddingVertical: 4,
+  },
+  linkRowLabel: {
+    lineHeight: 21.8,
+    flex: 1,
+  },
+  versionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 44,
+    paddingVertical: 4,
+  },
+  versionMeta: {
+    color: "rgba(228, 228, 228, 0.45)",
+    lineHeight: 21.8,
   },
   rowPressable: {
     alignSelf: "flex-start",

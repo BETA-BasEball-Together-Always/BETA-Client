@@ -1,5 +1,6 @@
 // src/features/auth/screens/libs/naverSignIn.js
 import NaverLogin from "@react-native-seoul/naver-login";
+import { isNaverLoginConfigured } from "./naverInit";
 
 const NAVER_LOGIN_TIMEOUT_MS = 15000;
 
@@ -21,6 +22,10 @@ const withTimeout = (promise, timeoutMs) =>
   });
 
 export const naverSignIn = async () => {
+  if (!isNaverLoginConfigured()) {
+    return { cancelled: true, missingConfig: true };
+  }
+
   try {
     console.log("[NAVER] login() 호출 시작");
     const result = await withTimeout(
@@ -40,7 +45,7 @@ export const naverSignIn = async () => {
     if (!isSuccess) {
       if (failureResponse?.isCancel) {
         console.log("네이버 로그인 취소됨");
-        return { cancelled: true };
+        return { cancelled: true, userCancel: true };
       }
       console.warn("네이버 로그인 실패: ", failureResponse);
       throw new Error(failureResponse?.message || "Naver login failed");
@@ -67,6 +72,9 @@ export const naverSignIn = async () => {
     console.error("naverSignIn 오류: ", error);
     console.error("naverSignIn 오류 데이터: ", error.data);
     console.error("naverSignIn 오류 리스폰스: ", error.response);
-    return { cancelled: true };
+    return {
+      cancelled: true,
+      errorMessage: error?.message ?? String(error),
+    };
   }
 };

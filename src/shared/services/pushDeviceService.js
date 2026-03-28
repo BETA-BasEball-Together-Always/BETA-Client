@@ -68,12 +68,97 @@ async function ensureNotificationPermission({ requestPermission }) {
   return false;
 }
 
+/** OS 알림 권한 허용 여부 (설정 화면 토글 표시용) */
+export async function getNotificationPermissionGranted() {
+  return ensureNotificationPermission({ requestPermission: false });
+}
+
 async function getFcmToken() {
   if (Platform.OS === "ios") {
     await messaging().registerDeviceForRemoteMessages();
   }
 
   return messaging().getToken();
+}
+
+/**
+ * PATCH 푸시 알림 활성화/비활성화 토글
+ */
+async function patchDevicePushEnabled(accessToken, deviceId, pushEnabled) {
+  const { data } = await api.patch(
+    "/api/v1/devices/push-enabled",
+    { deviceId, pushEnabled },
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (data && data.success === false) {
+    const err = new Error(data.message || "push-enabled rejected");
+    err.apiPayload = data;
+    throw err;
+  }
+  return data;
+}
+
+/**
+ * PUT FCM 토큰 + 푸시 활성화
+ */
+async function putDevicePushSettings(accessToken, deviceId, pushEnabled, fcmToken) {
+  const { data } = await api.put(
+    "/api/v1/devices/push-settings",
+    {
+      deviceId,
+      pushEnabled,
+      fcmToken: fcmToken ?? "",
+    },
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (data && data.success === false) {
+    const err = new Error(data.message || "push-settings rejected");
+    err.apiPayload = data;
+    throw err;
+  }
+  return data;
+}
+
+/**
+ * 설정 화면 토글
+ * - 끔: push-enabled 만 호출
+ * - 켬: 권한/FCM 토큰 확보 후 push-settings 호출 (토큰 등록 + 활성화)
+ */
+export async function submitPushEnabledToServer(pushEnabled) {
+  const accessToken = await getAccessToken();
+  if (!accessToken) {
+    return { skipped: true, reason: "NO_ACCESS_TOKEN" };
+  }
+
+  const deviceId = await getDeviceId();
+
+  if (!pushEnabled) {
+    await patchDevicePushEnabled(accessToken, deviceId, false);
+    return { ok: true };
+  }
+
+  const granted = await ensureNotificationPermission({
+    requestPermission: true,
+  });
+  if (!granted) {
+    return { skipped: true, reason: "NOTIFICATION_PERMISSION_NOT_GRANTED" };
+  }
+
+  let fcmToken;
+  try {
+    fcmToken = await getFcmToken();
+  } catch (error) {
+    return { skipped: true, reason: "FCM_TOKEN_ERROR", error };
+  }
+
+  await putDevicePushSettings(
+    accessToken,
+    deviceId,
+    true,
+    fcmToken ?? "",
+  );
+
+  return { ok: true };
 }
 
 export async function syncCurrentDevicePushSettings({
@@ -126,19 +211,7 @@ export async function syncCurrentDevicePushSettings({
     };
   }
 
-  await api.put(
-    "/api/v1/devices/push-settings",
-    {
-      deviceId,
-      fcmToken,
-      pushEnabled,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  );
+  await putDevicePushSettings(accessToken, deviceId, pushEnabled, fcmToken);
 
   return {
     deviceId,
