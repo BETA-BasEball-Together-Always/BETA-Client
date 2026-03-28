@@ -208,6 +208,20 @@ const ProfileSettingScreen = () => {
               await refreshPushSwitchFromOs();
               return;
             }
+            if (result.reason === "FCM_TOKEN_ERROR") {
+              const hint =
+                result.error?.message ??
+                result.error?.nativeErrorMessage ??
+                "";
+              Alert.alert(
+                "알림",
+                hint
+                  ? `푸시 알림을 다시 켜는 중 오류가 났습니다.\n${hint}`
+                  : "푸시 알림을 다시 켜는 중 오류가 났습니다. 잠시 후 다시 시도하거나 앱을 다시 시작해 주세요.",
+              );
+              await refreshPushSwitchFromOs();
+              return;
+            }
             Alert.alert(
               "안내",
               "푸시 알림을 켤 수 없습니다. 잠시 후 다시 시도해 주세요.",
@@ -308,16 +322,19 @@ const ProfileSettingScreen = () => {
           {pushToggleBusy ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Switch
-              value={pushSwitchOn}
-              onValueChange={onPushSwitchChange}
-              trackColor={{
-                false: "rgba(172, 172, 172, 0.20)",
-                true: "#34C759",
-              }}
-              thumbColor="#FFF"
-              ios_backgroundColor="rgba(172, 172, 172, 0.20)"
-            />
+            <View style={styles.switchSlot}>
+              <Switch
+                style={styles.switchShape}
+                value={pushSwitchOn}
+                onValueChange={onPushSwitchChange}
+                trackColor={{
+                  false: "rgba(172, 172, 172, 0.20)",
+                  true: "#34C759",
+                }}
+                thumbColor="#FFF"
+                ios_backgroundColor="rgba(172, 172, 172, 0.20)"
+              />
+            </View>
           )}
         </View>
       </View>
@@ -342,7 +359,7 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={{ lineHeight: 21.8 }}
+            style={styles.accountMenuText}
           >
             로그아웃
           </AppText>
@@ -360,7 +377,7 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={{ lineHeight: 21.8 }}
+            style={styles.accountMenuText}
           >
             계정 탈퇴
           </AppText>
@@ -385,7 +402,7 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={styles.linkRowLabel}
+            style={styles.accountMenuText}
           >
             공지사항
           </AppText>
@@ -401,7 +418,7 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={styles.linkRowLabel}
+            style={styles.accountMenuText}
           >
             FAQ
           </AppText>
@@ -419,7 +436,7 @@ const ProfileSettingScreen = () => {
         </AppText>
         <Pressable
           onPress={() =>
-            openNotionLink(NOTION_URLS.termsOfService, "서비스 이용 약관")
+            openNotionLink(NOTION_URLS.termsOfService, "서비스 이용약관")
           }
           style={({ pressed }) => [
             styles.linkRow,
@@ -429,15 +446,15 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={styles.linkRowLabel}
+            style={styles.accountMenuText}
           >
-            서비스 이용 약관
+            서비스 이용약관
           </AppText>
           <MoreArrow width={22} height={22} />
         </Pressable>
         <Pressable
           onPress={() =>
-            openNotionLink(NOTION_URLS.privacyPolicy, "개인정보 처리 방침")
+            openNotionLink(NOTION_URLS.privacyPolicy, "개인정보 처리방침")
           }
           style={({ pressed }) => [
             styles.linkRow,
@@ -447,9 +464,9 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={styles.linkRowLabel}
+            style={styles.accountMenuText}
           >
-            개인정보 처리 방침
+            개인정보 처리방침
           </AppText>
           <MoreArrow width={22} height={22} />
         </Pressable>
@@ -458,7 +475,7 @@ const ProfileSettingScreen = () => {
           <AppText
             variant="bodyMedium"
             className="text-gray-400"
-            style={styles.linkRowLabel}
+            style={styles.accountMenuText}
           >
             현재버전
           </AppText>
@@ -520,21 +537,37 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+
+  // 푸시 알람 토글 스위치
+  switchSlot: {
+    width: 56,
+    height: 38,
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  switchShape: {
+    transform: [{ scaleX: 0.9 }, { scaleY: 1.14 }],
+  },
   linkRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    alignSelf: "stretch",
+    width: "100%",
     minHeight: 44,
     paddingVertical: 4,
   },
-  linkRowLabel: {
+  accountMenuText: {
     lineHeight: 21.8,
     flex: 1,
+    marginRight: 8,
   },
   versionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    alignSelf: "stretch",
+    width: "100%",
     minHeight: 44,
     paddingVertical: 4,
   },

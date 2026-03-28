@@ -82,6 +82,35 @@ async function getFcmToken() {
 }
 
 /**
+ * 토글 OFF 이후 재활성화 등에서 getToken 이 불안정할 때 deleteToken 후 한 번 더 시도
+ */
+async function obtainFcmTokenReliable() {
+  const readNonEmpty = async () => {
+    const t = await getFcmToken();
+    const s = t && String(t).trim();
+    if (!s) {
+      throw new Error("FCM token is empty");
+    }
+    return s;
+  };
+
+  try {
+    return await readNonEmpty();
+  } catch (firstError) {
+    try {
+      await messaging().deleteToken();
+    } catch {
+      /* ignore */
+    }
+    try {
+      return await readNonEmpty();
+    } catch {
+      throw firstError;
+    }
+  }
+}
+
+/**
  * PATCH 푸시 알림 활성화/비활성화 토글
  */
 async function patchDevicePushEnabled(accessToken, deviceId, pushEnabled) {
@@ -121,8 +150,8 @@ async function putDevicePushSettings(accessToken, deviceId, pushEnabled, fcmToke
 
 /**
  * 설정 화면 토글
- * - 끔: push-enabled 만 호출
- * - 켬: 권한/FCM 토큰 확보 후 push-settings 호출 (토큰 등록 + 활성화)
+ * - 끔: PATCH push-enabled만
+ * - 켬: 권한 + FCM 토큰 후 PATCH push-enabled true -> PUT push-settings (토큰 등록/명세 순서에 맞춤)
  */
 export async function submitPushEnabledToServer(pushEnabled) {
   const accessToken = await getAccessToken();
@@ -146,17 +175,13 @@ export async function submitPushEnabledToServer(pushEnabled) {
 
   let fcmToken;
   try {
-    fcmToken = await getFcmToken();
+    fcmToken = await obtainFcmTokenReliable();
   } catch (error) {
     return { skipped: true, reason: "FCM_TOKEN_ERROR", error };
   }
 
-  await putDevicePushSettings(
-    accessToken,
-    deviceId,
-    true,
-    fcmToken ?? "",
-  );
+  await patchDevicePushEnabled(accessToken, deviceId, true);
+  await putDevicePushSettings(accessToken, deviceId, true, fcmToken);
 
   return { ok: true };
 }
