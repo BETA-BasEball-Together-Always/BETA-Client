@@ -164,10 +164,6 @@ const LoginScreen = ({ navigation, route }) => {
     if (isSocialLoading) return;
     setIsSocialLoading(true);
 
-    alert("Apple 로그인 시작!!!");
-    const api = require("../../../../shared/libs/api").default;
-    alert("BASE_URL: " + api.defaults.baseURL);
-
     try {
       const { token, cancelled } = await appleSignIn();
       if (cancelled) {
