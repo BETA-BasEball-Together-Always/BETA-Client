@@ -36,34 +36,31 @@ import {
   logAxiosError,
 } from "../../../../shared/utils/debugAxiosError";
 import {
-  getNotificationPermissionGranted,
+  fetchCurrentDevicePushSettings,
+  submitPushDetailSettingsToServer,
   submitPushEnabledToServer,
 } from "../../../../shared/services/pushDeviceService";
 import MoreArrow from "@features/auth/assets/common/svg/more_arrow.svg";
 
-/**
- * 노션 페이지 URL
- */
 const NOTION_URLS = {
-  /** 공지사항  */
   notice: "",
-  /** FAQ */
   faq: "",
-  /** 서비스 이용 약관 */
   termsOfService:
     "https://www.notion.so/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
-  /** 개인정보 처리방침 */
   privacyPolicy:
     "https://www.notion.so/2e1226b7125d80398dece59a2b1f0a6b?source=copy_link",
 };
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
-
-/** 피그마 46×27 비율에 가깝게 (가로·세로 소폭 확대) — 썸은 완전한 원 */
 const PUSH_TOGGLE_W = 54;
 const PUSH_TOGGLE_H = 33;
 const PUSH_TOGGLE_THUMB = 28;
 const PUSH_TOGGLE_PAD = 2.5;
+const EMPTY_PUSH_SETTINGS = {
+  pushEnabled: false,
+  postCommentPushEnabled: false,
+  postEmotionPushEnabled: false,
+};
 
 function PushSettingToggle({ value, onValueChange, busy }) {
   return (
@@ -89,6 +86,35 @@ function PushSettingToggle({ value, onValueChange, busy }) {
   );
 }
 
+function PushSettingRow({
+  title,
+  description,
+  value,
+  onValueChange,
+  busy,
+  showDivider = true,
+}) {
+  return (
+    <View style={[styles.pushItem, showDivider && styles.pushItemDivider]}>
+      <View style={styles.pushItemTextWrap}>
+        <AppText variant="semi16" style={styles.pushItemTitle}>
+          {title}
+        </AppText>
+        {description ? (
+          <AppText variant="smallRegular" style={styles.pushItemDescription}>
+            {description}
+          </AppText>
+        ) : null}
+      </View>
+      <PushSettingToggle
+        value={value}
+        onValueChange={onValueChange}
+        busy={busy}
+      />
+    </View>
+  );
+}
+
 const LOGOUT_SUB =
   "계정에서 로그아웃됩니다.\n언제든 다시 로그인하실 수 있어요.";
 const WITHDRAW_SUB =
@@ -97,32 +123,31 @@ const WITHDRAW_SUB =
 const ProfileSettingScreen = () => {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
-  const clearAuth = useUserStore((s) => s.clearAuth);
+  const clearAuth = useUserStore((state) => state.clearAuth);
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
-  const [pushSwitchOn, setPushSwitchOn] = useState(false);
+  const [pushSettings, setPushSettings] = useState(EMPTY_PUSH_SETTINGS);
+  const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
   const [pushToggleBusy, setPushToggleBusy] = useState(false);
-  /** 서버에 마지막으로 반영한 푸시 on/off (앱에서 끈 뒤 재진입 시 OS 권한만으로 다시 켜져 보이는 현상 완화) */
-  const lastServerPushEnabledRef = useRef(null);
 
-  const refreshPushSwitchFromOs = useCallback(async () => {
+  const refreshPushSettings = useCallback(async () => {
     try {
-      if (lastServerPushEnabledRef.current === false) {
-        setPushSwitchOn(false);
-        return;
-      }
-      const granted = await getNotificationPermissionGranted();
-      setPushSwitchOn(granted);
-    } catch {
-      setPushSwitchOn(false);
+      setPushSettingsLoading(true);
+      const result = await fetchCurrentDevicePushSettings();
+      setPushSettings(result.settings ?? EMPTY_PUSH_SETTINGS);
+    } catch (error) {
+      logAxiosError("fetchDevicePushSettings", error);
+      setPushSettings(EMPTY_PUSH_SETTINGS);
+    } finally {
+      setPushSettingsLoading(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      refreshPushSwitchFromOs();
-    }, [refreshPushSwitchFromOs]),
+      refreshPushSettings();
+    }, [refreshPushSettings]),
   );
 
   const resetAppSession = useCallback(async () => {
@@ -157,13 +182,13 @@ const ProfileSettingScreen = () => {
       setLogoutModalVisible(false);
       await resetAppSession();
     },
-    onError: (e) => {
-      logAxiosError("logout", e);
-      const msg = getApiErrorUserMessage(
-        e,
+    onError: (error) => {
+      logAxiosError("logout", error);
+      const message = getApiErrorUserMessage(
+        error,
         "로그아웃에 실패했습니다. 다시 시도해 주세요.",
       );
-      Alert.alert("오류", String(msg));
+      Alert.alert("오류", String(message));
     },
   });
 
@@ -185,17 +210,18 @@ const ProfileSettingScreen = () => {
         await resetAppSession();
       }
     },
-    onError: (e) => {
-      logAxiosError("withdrawAccount", e);
-      const msg = getApiErrorUserMessage(
-        e,
+    onError: (error) => {
+      logAxiosError("withdrawAccount", error);
+      const message = getApiErrorUserMessage(
+        error,
         "회원 탈퇴 요청에 실패했습니다. 다시 시도해 주세요.",
       );
-      Alert.alert("오류", String(msg));
+      Alert.alert("오류", String(message));
     },
   });
 
   const isAuthBusy = logoutMutation.isPending || withdrawMutation.isPending;
+  const isPushBusy = pushToggleBusy || pushSettingsLoading;
 
   const openNotionLink = useCallback((url, labelForEmpty) => {
     const trimmed = String(url ?? "").trim();
@@ -211,81 +237,130 @@ const ProfileSettingScreen = () => {
     });
   }, []);
 
+  const showPermissionSettingsAlert = useCallback(() => {
+    Alert.alert(
+      "알림 허용",
+      Platform.select({
+        ios: "설정 > 알림에서 이 앱의 알림을 허용해 주세요.",
+        default: "설정에서 이 앱의 알림 권한을 허용해 주세요.",
+      }),
+      [
+        { text: "확인", style: "cancel" },
+        { text: "설정", onPress: () => Linking.openSettings() },
+      ],
+    );
+  }, []);
+
   const onPushSwitchChange = useCallback(
     async (nextOn) => {
-      if (pushToggleBusy) return;
+      if (isPushBusy) {
+        return;
+      }
+
       setPushToggleBusy(true);
       try {
-        if (nextOn) {
-          const result = await submitPushEnabledToServer(true);
-          if (result.skipped) {
-            if (result.reason === "NOTIFICATION_PERMISSION_NOT_GRANTED") {
-              Alert.alert(
-                "알림 허용",
-                Platform.select({
-                  ios: "설정 > 알림에서 이 앱의 알림을 허용해 주세요.",
-                  default: "설정에서 이 앱의 알림 권한을 허용해 주세요.",
-                }),
-                [
-                  { text: "확인", style: "cancel" },
-                  { text: "설정", onPress: () => Linking.openSettings() },
-                ],
-              );
-              await refreshPushSwitchFromOs();
-              return;
+        const result = await submitPushEnabledToServer(nextOn);
+
+        if (result.skipped) {
+          if (result.reason === "NOTIFICATION_PERMISSION_NOT_GRANTED") {
+            if (result.shouldOpenSettings) {
+              showPermissionSettingsAlert();
             }
-            if (result.reason === "NO_ACCESS_TOKEN") {
-              Alert.alert("안내", "로그인이 필요합니다.");
-              await refreshPushSwitchFromOs();
-              return;
-            }
-            if (result.reason === "FCM_TOKEN_ERROR") {
-              const hint =
-                result.error?.message ?? result.error?.nativeErrorMessage ?? "";
-              const apsHint =
-                Platform.OS === "ios" &&
-                String(hint).includes("aps-environment")
-                  ? "\n\n(iOS) Apple 푸시(APS) 인타이틀먼트가 빌드에 포함되어야 합니다. app.config에 aps-environment를 넣은 뒤 prebuild·재빌드하고, Apple Developer에서 해당 앱 ID에 Push Notifications 기능이 켜져 있는지 확인하세요. 백엔드 문제가 아닙니다."
-                  : "";
-              Alert.alert(
-                "알림",
-                hint
-                  ? `푸시 알림을 다시 켜는 중 오류가 났습니다.\n${hint}${apsHint}`
-                  : "푸시 알림을 다시 켜는 중 오류가 났습니다. 잠시 후 다시 시도하거나 앱을 다시 시작해 주세요.",
-              );
-              await refreshPushSwitchFromOs();
-              return;
-            }
-            Alert.alert(
-              "안내",
-              "푸시 알림을 켤 수 없습니다. 잠시 후 다시 시도해 주세요.",
-            );
-            await refreshPushSwitchFromOs();
             return;
           }
-          lastServerPushEnabledRef.current = true;
-          setPushSwitchOn(true);
-        } else {
-          const result = await submitPushEnabledToServer(false);
-          if (result.skipped && result.reason === "NO_ACCESS_TOKEN") {
+
+          if (result.reason === "NO_ACCESS_TOKEN") {
             Alert.alert("안내", "로그인이 필요합니다.");
-          } else {
-            lastServerPushEnabledRef.current = false;
-            setPushSwitchOn(false);
+            return;
           }
+
+          if (result.reason === "FCM_TOKEN_ERROR") {
+            const hint =
+              result.error?.message ?? result.error?.nativeErrorMessage ?? "";
+            const apsHint =
+              Platform.OS === "ios" &&
+              String(hint).includes("aps-environment")
+                ? "\n\n(iOS) Apple 푸시(APS) 인타이틀먼트가 빌드에 포함되어야 합니다. app.config에 aps-environment를 넣은 뒤 prebuild·재빌드하고, Apple Developer에서 해당 앱 ID에 Push Notifications 기능이 켜져 있는지 확인하세요. 백엔드 문제가 아닙니다."
+                : "";
+
+            Alert.alert(
+              "알림",
+              hint
+                ? `푸시 알림을 변경하는 중 오류가 났습니다.\n${hint}${apsHint}`
+                : "푸시 알림을 변경하는 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.",
+            );
+            return;
+          }
+
+          Alert.alert(
+            "안내",
+            "푸시 알림을 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+          return;
         }
-      } catch (e) {
-        logAxiosError("pushSettingsToggle", e);
+
+        setPushSettings(result.settings ?? EMPTY_PUSH_SETTINGS);
+      } catch (error) {
+        logAxiosError("pushSettingsToggle", error);
         Alert.alert(
           "오류",
-          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+          getApiErrorUserMessage(error, "푸시 설정을 변경하지 못했습니다."),
         );
-        await refreshPushSwitchFromOs();
+        await refreshPushSettings();
       } finally {
         setPushToggleBusy(false);
       }
     },
-    [pushToggleBusy, refreshPushSwitchFromOs],
+    [isPushBusy, refreshPushSettings, showPermissionSettingsAlert],
+  );
+
+  const onPushDetailChange = useCallback(
+    async (field, nextValue) => {
+      if (isPushBusy) {
+        return;
+      }
+
+      const nextSettings = {
+        ...pushSettings,
+        [field]: nextValue,
+      };
+
+      setPushToggleBusy(true);
+      try {
+        const result = await submitPushDetailSettingsToServer({
+          postCommentPushEnabled: nextSettings.postCommentPushEnabled,
+          postEmotionPushEnabled: nextSettings.postEmotionPushEnabled,
+        });
+
+        if (result.skipped) {
+          if (result.reason === "NO_ACCESS_TOKEN") {
+            Alert.alert("안내", "로그인이 필요합니다.");
+            return;
+          }
+
+          Alert.alert(
+            "안내",
+            "푸시 세부 설정을 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+          return;
+        }
+
+        setPushSettings(result.settings ?? EMPTY_PUSH_SETTINGS);
+      } catch (error) {
+        logAxiosError("pushDetailSettingsToggle", error);
+        Alert.alert(
+          "오류",
+          getApiErrorUserMessage(
+            error,
+            "푸시 세부 설정을 변경하지 못했습니다.",
+          ),
+        );
+        await refreshPushSettings();
+      } finally {
+        setPushToggleBusy(false);
+      }
+    },
+    [isPushBusy, pushSettings, refreshPushSettings],
   );
 
   const renderConfirmModal = ({
@@ -345,22 +420,46 @@ const ProfileSettingScreen = () => {
       <AppHeader pageName="설정" showBack />
 
       <View style={styles.section}>
-        <View style={styles.pushRow}>
-          <AppText
-            variant="semi18"
-            className="text-white"
-            style={styles.pushLabel}
-          >
-            푸시 알람 설정
-          </AppText>
-          {pushToggleBusy ? (
-            <ActivityIndicator color="#FFF" />
+        <AppText
+          variant="semi18"
+          className="text-white"
+          style={styles.sectionTitle}
+        >
+          푸시 알림 설정
+        </AppText>
+
+        <View style={styles.pushCard}>
+          {pushSettingsLoading ? (
+            <View style={styles.pushLoadingWrap}>
+              <ActivityIndicator color="#FFF" />
+            </View>
           ) : (
-            <PushSettingToggle
-              value={pushSwitchOn}
-              onValueChange={onPushSwitchChange}
-              busy={pushToggleBusy}
-            />
+            <>
+              <PushSettingRow
+                title="푸시 알람 전체"
+                description="알림을 끄면 모든 소식을 받을 수 없어요."
+                value={pushSettings.pushEnabled}
+                onValueChange={onPushSwitchChange}
+                busy={isPushBusy}
+              />
+              <PushSettingRow
+                title="댓글 알림"
+                value={pushSettings.postCommentPushEnabled}
+                onValueChange={(value) =>
+                  onPushDetailChange("postCommentPushEnabled", value)
+                }
+                busy={isPushBusy}
+              />
+              <PushSettingRow
+                title="공감 알림"
+                value={pushSettings.postEmotionPushEnabled}
+                onValueChange={(value) =>
+                  onPushDetailChange("postEmotionPushEnabled", value)
+                }
+                busy={isPushBusy}
+                showDivider={false}
+              />
+            </>
           )}
         </View>
       </View>
@@ -369,7 +468,7 @@ const ProfileSettingScreen = () => {
         <AppText
           variant="semi18"
           className="text-white"
-          style={{ lineHeight: 24.5 }}
+          style={styles.sectionTitle}
         >
           계정
         </AppText>
@@ -524,18 +623,41 @@ const styles = StyleSheet.create({
     lineHeight: 24.5,
     marginBottom: 4,
   },
-  pushRow: {
+  pushCard: {
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    overflow: "hidden",
+  },
+  pushLoadingWrap: {
+    minHeight: 164,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pushItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 58,
   },
-  pushLabel: {
-    lineHeight: 24.5,
+  pushItemDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+  },
+  pushItemTextWrap: {
     flex: 1,
     marginRight: 12,
   },
-
+  pushItemTitle: {
+    color: "#FFFFFF",
+    lineHeight: 22,
+  },
+  pushItemDescription: {
+    color: "rgba(228, 228, 228, 0.50)",
+    marginTop: 2,
+    lineHeight: 17,
+  },
   pushToggleTrack: {
     width: PUSH_TOGGLE_W,
     height: PUSH_TOGGLE_H,
@@ -560,8 +682,6 @@ const styles = StyleSheet.create({
     borderRadius: PUSH_TOGGLE_THUMB / 2,
     backgroundColor: "#FFFFFF",
   },
-
-  /** alignSelf:flex-start + 자식 flex:1 Text 는 RN에서 너비 0으로 무너질 수 있음 → stretch + RN Text 사용 */
   accountRow: {
     alignSelf: "stretch",
     minHeight: 44,
@@ -569,10 +689,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   menuItemText: {
-    // fontSize: 16,
     lineHeight: 21.8,
     color: "rgba(228, 228, 228, 0.50)",
-    // fontFamily: "NotoSansKR_Medium",
   },
   linkRow: {
     flexDirection: "row",
@@ -586,10 +704,8 @@ const styles = StyleSheet.create({
   linkRowText: {
     flex: 1,
     marginRight: 12,
-    // fontSize: 16,
     lineHeight: 21.8,
     color: "rgba(228, 228, 228, 0.50)",
-    // fontFamily: "NotoSansKR_Medium",
   },
   versionRow: {
     flexDirection: "row",

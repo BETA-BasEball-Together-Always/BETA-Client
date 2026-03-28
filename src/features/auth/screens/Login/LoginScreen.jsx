@@ -200,15 +200,7 @@ const LoginScreen = ({ navigation, route }) => {
         { provider: "APPLE", token: token.identityToken, deviceId },
         {
           onSuccess: async (response) => {
-            console.log("Apple 로그인 서버 응답 성공!");
-            console.log("전체 응답: ", response?.data);
-
-            const { isNewUser, userResponse } = response.data;
-
-            console.log("isNewUser: ", isNewUser);
-            console.log("accessToken: ", userResponse?.accessToken);
-            console.log("refreshToken: ", userResponse?.refreshToken);
-            console.log("서버 device id: ", userResponse?.deviceId);
+            const userResponse = response.data?.userResponse;
 
             try {
               // 토큰은 전역 store + SecureStore에 동시 저장
@@ -217,7 +209,6 @@ const LoginScreen = ({ navigation, route }) => {
                 refreshToken: userResponse.refreshToken,
               });
 
-              console.log("토큰 저장 완료 (store + SecureStore)!");
               await handleSocialLoginResult("APPLE", response);
             } finally {
               setIsSocialLoading(false);

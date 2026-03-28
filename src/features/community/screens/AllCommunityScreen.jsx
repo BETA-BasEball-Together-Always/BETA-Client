@@ -63,6 +63,7 @@ const AllCommunityScreen = ({ route }) => {
             onEndReached={loadMore}
             isLoading={isFetchingNextPage}
             isFeedBusy={isLoading || isFetching}
+            createPostBoardId="ALL"
             showTeam={true}
             sort={sort}
             onSortChange={setSort}

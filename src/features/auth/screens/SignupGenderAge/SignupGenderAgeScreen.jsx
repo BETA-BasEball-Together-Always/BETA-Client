@@ -22,6 +22,7 @@ import { useStepBack } from "../../hooks/useStepBack";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../shared/store/userStore";
+import api from "../../../../shared/libs/api";
 
 const { height } = Dimensions.get("window");
 
@@ -42,6 +43,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
 
   const signupCompleteMutation = useSignupCompleteMutation();
   const setUser = useUserStore((state) => state.setUser);
+  const setTokens = useUserStore((state) => state.setTokens);
 
   // 재진입 시 route.params.signup만 사용해 데이터 복구
   useEffect(() => {
@@ -58,14 +60,22 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
         age: typeof ageValue === "number" ? ageValue : undefined,
       },
       {
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
+          if (data?.accessToken) {
+            await setTokens({
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken,
+            });
+            api.defaults.headers.Authorization = `Bearer ${data.accessToken}`;
+          }
+
           // 백엔드에서 최종 UserDto를 내려준다고 가정하고 전역 상태에 저장
           const userDto = data?.user ?? data;
           if (userDto) {
-            setUser(userDto);
+            await setUser(userDto);
           }
 
-            navigation.navigate("SignupComplete", {
+          navigation.navigate("SignupComplete", {
             signup: {
               ...(signupData || {}),
               favoriteTeamLabel:

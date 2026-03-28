@@ -132,6 +132,8 @@ const CreatePostScreen = () => {
   const editPost = route.params?.editPost;
   const isEditMode = !!editPost?.postId;
   const photoBoothAttachNonce = route.params?.photoBoothAttachNonce;
+  const initialBoardId =
+    route.params?.initialBoardId === "ALL" ? "ALL" : "TEAM";
 
   const author = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
@@ -141,7 +143,7 @@ const CreatePostScreen = () => {
   const [content, setContent] = useState(() =>
     isEditMode ? (editPost?.content ?? "") : "",
   );
-  const [selectedBoardId, setSelectedBoardId] = useState("TEAM");
+  const [selectedBoardId, setSelectedBoardId] = useState(initialBoardId);
   /** 수정 모드: 서버에 남길 기존 이미지 */
   const [keptExistingImages, setKeptExistingImages] = useState([]);
   /** 수정 모드: 새로 첨부한 로컬 이미지 */
@@ -194,6 +196,11 @@ const CreatePostScreen = () => {
       setSelectedBoardId("TEAM");
     }
   }, [editPost?.postId, editPost?.channel]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+    setSelectedBoardId(initialBoardId);
+  }, [initialBoardId, isEditMode]);
 
   const totalImageCount = isEditMode
     ? keptExistingImages.length + pendingNewImages.length

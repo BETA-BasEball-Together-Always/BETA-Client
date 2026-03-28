@@ -23,7 +23,7 @@ const PushDeviceBootstrap = () => {
 
     syncedTokenRef.current = accessToken;
 
-    syncCurrentDevicePushSettings({ requestPermission: true }).catch((error) => {
+    syncCurrentDevicePushSettings({ requestPermission: false }).catch((error) => {
       console.warn("[푸시] 로그인 후 디바이스 푸시 설정 동기화에 실패했습니다.", error);
     });
   }, [accessToken]);
