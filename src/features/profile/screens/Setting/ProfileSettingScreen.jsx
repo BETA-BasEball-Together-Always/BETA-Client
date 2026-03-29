@@ -158,10 +158,10 @@ const ProfileSettingScreen = () => {
   const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
   const [pushToggleBusy, setPushToggleBusy] = useState(false);
 
-  // 세부 토글 PATCH 시 다른 쪽 값은 항상 최신 state에서 읽기
+  //세부 토글 PATCH 시 다른 쪽 값은 항상 최신 state에서 읽기
   const pushSettingsRef = useRef(pushSettings);
   pushSettingsRef.current = pushSettings;
-  // 첫 진입만 푸시 카드 전체 로딩; 이후 포커스 재조회는 백그라운드로 해서 스피너/ isPushBusy 로 토글 터치가 막히지 않게 함
+
   const pushSettingsInitialFetchDoneRef = useRef(false);
 
   const refreshPushSettings = useCallback(async (opts) => {
@@ -224,7 +224,7 @@ const ProfileSettingScreen = () => {
       setPushToggleBusy(true);
       try {
         const result = await submitPushEnabledToServer(nextOn);
-        // 디버그: 전체 토글 후 서비스 레이어가 조합한 결과(위 pushDeviceService에서 PATCH/PUT 응답도 별도 로그) (안정화 후 제거 가능)
+
         console.log("[푸시설정] 전체 토글 — submitPushEnabledToServer 반환", {
           nextOn,
           skipped: result.skipped,
@@ -269,7 +269,7 @@ const ProfileSettingScreen = () => {
     [pushToggleBusy, refreshPushSettings],
   );
 
-  // 세부 푸시 토글 — API는 postComment/postEmotion 둘 다 필수; 변경하지 않은 쪽은 ref의 최신 값 사용
+  // 세부 푸시 토글
   const onPushDetailChange = useCallback(
     async (key, value) => {
       if (pushToggleBusy) return;
@@ -288,7 +288,7 @@ const ProfileSettingScreen = () => {
           postCommentPushEnabled: nextComment,
           postEmotionPushEnabled: nextEmotion,
         });
-        // 디버그: 세부 토글 후 서비스 반환값 (실제 HTTP 응답 본문은 pushDeviceService PATCH 로그 참고) (안정화 후 제거 가능)
+        // 디버그: 세부 토글 후 서비스 반환값
         console.log(
           "[푸시설정] 세부 토글 — submitPushDetailSettingsToServer 반환",
           {

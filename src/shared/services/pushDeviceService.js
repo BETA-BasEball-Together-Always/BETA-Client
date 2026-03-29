@@ -39,7 +39,7 @@ const normalizePushSettings = (settings) => {
   const anySubOn = postCommentPushEnabled || postEmotionPushEnabled;
   const hasExplicitMaster = typeof settings?.pushEnabled === "boolean";
 
-  // GET/일부 응답에서 pushEnabled가 (댓글∧공감)로만 계산되면 한쪽만 켠 상태에서 전체 OFF로 보이고 세부 토글이 막힘 → 명시값 OR 세부 한 개라도 ON이면 전체 ON으로 해석
+  // GET/일부 응답에서 pushEnabled가 (댓글∧공감)로만 계산되면 한쪽만 켠 상태에서 전체 OFF로 보이고 세부 토글이 막힘 -> 명시값 OR 세부 한 개라도 ON이면 전체 ON으로 해석
   const pushEnabled = hasExplicitMaster
     ? Boolean(settings.pushEnabled) || anySubOn
     : anySubOn;
@@ -226,7 +226,7 @@ async function patchDevicePushEnabled(accessToken, deviceId, pushEnabled) {
     throw error;
   }
 
-  // 디버그: 전체 푸시 토글 시 서버 응답 확인용 (안정화 후 제거 가능)
+  //전체 푸시 토글 시 서버 응답 확인용
   console.log(
     "[푸시설정] PATCH /api/v1/devices/push-enabled 서버 응답",
     JSON.stringify(data ?? null, null, 2),
@@ -257,7 +257,7 @@ async function patchDevicePushDetailSettings(
     throw error;
   }
 
-  // 디버그: 댓글/공감 세부 토글 시 서버 응답 확인용 (안정화 후 제거 가능)
+  //댓글/공감 세부 토글 시 서버 응답 확인용
   console.log(
     "[푸시설정] PATCH /api/v1/devices/push-detail-settings 서버 응답",
     JSON.stringify(data ?? null, null, 2),
@@ -282,7 +282,7 @@ async function putDevicePushSettings(accessToken, deviceId, fcmToken) {
     throw error;
   }
 
-  // 디버그: 전체 푸시 ON 직후 FCM 동기화(put) 응답 — 토글 직접 응답은 아니나 흐름 추적용 (안정화 후 제거 가능)
+  //전체 푸시 ON 직후 FCM 동기화(put) 응답
   console.log(
     "[푸시설정] PUT /api/v1/devices/push-settings 서버 응답",
     JSON.stringify(data ?? null, null, 2),
@@ -333,7 +333,7 @@ export async function submitPushEnabledToServer(pushEnabled) {
 
   await patchDevicePushEnabled(accessToken, deviceId, true);
 
-  // 전체 푸시 ON 시 댓글/공감 세부 토글도 함께 켜져야 하므로, push-detail-settings에 둘 다 true로 맞춤
+  //전체 푸시 ON 시 댓글/공감 세부 토글도 함께 켜져야 하므로, push-detail-settings에 둘 다 true로 맞춤
   await patchDevicePushDetailSettings(accessToken, deviceId, true, true);
 
   let fcmToken = null;
@@ -382,7 +382,7 @@ export async function submitPushDetailSettingsToServer({
 
   return {
     ok: true,
-    // 세부만 PATCH했을 때 pushEnabled를 AND로 넣으면 한쪽만 켠 경우 전체 스위치가 꺼진 것처럼 normalize됨 → 명시하지 않고 세부 기준으로만 정규화
+    //세부만 PATCH했을 때 pushEnabled를 AND로 넣으면 한쪽만 켠 경우 전체 스위치가 꺼진 것처럼 normalize됨 -> 명시하지 않고 세부 기준으로만 정규화
     settings: normalizePushSettings({
       deviceId,
       postCommentPushEnabled: commentOn,
