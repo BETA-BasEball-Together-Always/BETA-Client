@@ -38,7 +38,7 @@ import { useSoftDeletedPostStore } from "../../../../community/store/softDeleted
 import { useNavigation } from "@react-navigation/native";
 
 const AVATAR_SIZE = 35;
-const AVATAR_ICON = 23;
+const AVATAR_ICON = 25;
 const POPULAR_CARD_WIDTH = 229;
 const POPULAR_CARD_HEIGHT = 285;
 const POST_MENU_WIDTH = 170;
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 7,
+    marginBottom: 8,
   },
   profileMain: {
     flexDirection: "row",
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     borderRadius: AVATAR_SIZE / 2,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 8,
+    marginRight: 5.4,
     overflow: "hidden",
   },
   avatarFallback: {
@@ -473,12 +473,12 @@ const styles = StyleSheet.create({
     flexWrap: "nowrap",
   },
   profileNickname: {
-    color: "#D4D4D4",
+    color: "#F9F9F9",
     lineHeight: 17,
     marginRight: 4,
     flexShrink: 1,
   },
-  /** 인기 카드 전용 — TeamLabel 컴포넌트와 동일 색/의미, 글자만 축소 */
+
   compactTeamBadge: {
     paddingHorizontal: 5,
     paddingVertical: 1.5,
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
   profileTime: {
     color: "#A1A1AA",
     fontSize: 10,
-    marginTop: 1,
+    marginTop: 1.59,
     lineHeight: 12,
   },
   menuBtn: {

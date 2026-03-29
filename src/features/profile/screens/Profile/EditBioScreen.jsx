@@ -17,8 +17,8 @@ import {
 } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
-import AppHeader from "../../../../shared/component/AppHeader";
-import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
+import AppHeader from "../../../../shared/components/AppHeader";
+import LeaveConfirmModal from "../../../../shared/components/LeaveConfirmModal";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import CloseIcon from "../../assets/svg/closeIcon.svg";

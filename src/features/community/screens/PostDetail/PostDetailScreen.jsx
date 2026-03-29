@@ -16,7 +16,7 @@ import {
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import AppHeader from "../../../../shared/component/AppHeader";
+import AppHeader from "../../../../shared/components/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 

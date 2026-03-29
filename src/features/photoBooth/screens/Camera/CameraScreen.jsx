@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
+import LeaveConfirmModal from "../../../../shared/components/LeaveConfirmModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Camera,

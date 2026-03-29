@@ -29,7 +29,7 @@ const { height } = Dimensions.get("window");
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
 
-  // ✅ signup 객체로만 누적 전달
+  // signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
   const externalTeamList = route?.params?.teamList ?? null;
 
@@ -159,7 +159,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
             >
-              {/* <SelectTeamBackground /> */}
+              <SelectTeamBackground />
 
               <View style={styles.inner}>
                 {/* 타이틀 */}
@@ -250,7 +250,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
+    paddingHorizontal: 20,
     paddingBottom: 100, //선택 완료 버튼 때문에 마지막 구단 선택 카드 가려짐
+    position: "relative",
   },
   inner: {
     maxWidth: 390,

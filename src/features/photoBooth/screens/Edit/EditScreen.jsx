@@ -33,7 +33,7 @@ import {
   TEXT_STYLE_PANEL_HEIGHT,
 } from "./editConstants";
 import { editStyles } from "./editStyles";
-import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
+import LeaveConfirmModal from "../../../../shared/components/LeaveConfirmModal";
 import EditTopBar from "./components/EditTopBar";
 import EditBottomToolbar from "./components/EditBottomToolbar";
 import EditOverlayBackdrop from "./components/EditOverlayBackdrop";
@@ -187,7 +187,6 @@ export default function EditScreen() {
     return theme?.[frameKey] || FRAMES.base?.[frameKey] || null;
   }, [teamKey, frameKey]);
 
-  /** 피그마 좌표·패딩: `editConstants.js` 의 FIGMA_EDIT_2X2_* / FIGMA_EDIT_1X4_* */
   const editFrameLayout = useMemo(
     () =>
       computeEditFrameLayout({
@@ -506,91 +505,91 @@ export default function EditScreen() {
             style={[editStyles.frameBox, editFrameLayout.frameStyle]}
             options={{ format: "png", quality: 1 }}
           >
-          {frameSource ? (
-            <ImageBackground
-              source={frameSource}
-              style={StyleSheet.absoluteFill}
-              resizeMode="contain"
-              onLayout={(e) => {
-                const { x, y, width: w, height: h } = e.nativeEvent.layout;
-                setFrameLayout({ x, y, w, h });
-              }}
-            >
-              {photosLocal.map((uri, i) => (
-                <TouchableOpacity
-                  key={i}
-                  activeOpacity={0.9}
-                  style={[editStyles.photo, slots[i]]}
-                  onPress={() => onPressFramePhoto(i)}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={StyleSheet.absoluteFill}
-                    resizeMode="cover"
-                  />
-                  {selectedSlot === i && (
-                    <View
-                      style={editStyles.selectedOverlay}
-                      pointerEvents="none"
+            {frameSource ? (
+              <ImageBackground
+                source={frameSource}
+                style={StyleSheet.absoluteFill}
+                resizeMode="contain"
+                onLayout={(e) => {
+                  const { x, y, width: w, height: h } = e.nativeEvent.layout;
+                  setFrameLayout({ x, y, w, h });
+                }}
+              >
+                {photosLocal.map((uri, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    activeOpacity={0.9}
+                    style={[editStyles.photo, slots[i]]}
+                    onPress={() => onPressFramePhoto(i)}
+                  >
+                    <Image
+                      source={{ uri }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
                     />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ImageBackground>
-          ) : (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#aaa" }}>
-                프레임 이미지를 찾을 수 없어요
-              </Text>
-            </View>
-          )}
-          {stickers.map((st) => (
-            <StickerItem
-              key={st.id}
-              item={st}
-              selected={selectedStickerId === st.id}
-              onSelect={() => selectSticker(st.id)}
-              onUpdate={(patch) => {
-                setStickers((prev) =>
-                  prev.map((s) => (s.id === st.id ? { ...s, ...patch } : s)),
-                );
-              }}
-              onDelete={() => {
-                setStickers((prev) => prev.filter((s) => s.id !== st.id));
-                if (selectedStickerId === st.id) setSelectedStickerId(null);
-              }}
-            />
-          ))}
-          {texts.map((t) => (
-            <TextItem
-              key={t.id}
-              item={t}
-              selected={selectedTextId === t.id}
-              onSelect={() => selectText(t.id)}
-              onUpdate={(patch) => {
-                setTexts((prev) =>
-                  prev.map((x) => (x.id === t.id ? { ...x, ...patch } : x)),
-                );
-              }}
-              onDelete={() => {
-                setTexts((prev) => prev.filter((x) => x.id !== t.id));
-                if (selectedTextId === t.id) setSelectedTextId(null);
-              }}
-              editing={editingTextId === t.id}
-              onEditStart={() => startEditText(t.id)}
-              onEditSave={(newText) => commitEditText(t.id, newText)}
-              onEditCancel={() => setEditingTextId(null)}
-              onDraftChange={(id, v) => {
-                draftsRef.current.set(id, v);
-              }}
-            />
-          ))}
+                    {selectedSlot === i && (
+                      <View
+                        style={editStyles.selectedOverlay}
+                        pointerEvents="none"
+                      />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ImageBackground>
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#aaa" }}>
+                  프레임 이미지를 찾을 수 없어요
+                </Text>
+              </View>
+            )}
+            {stickers.map((st) => (
+              <StickerItem
+                key={st.id}
+                item={st}
+                selected={selectedStickerId === st.id}
+                onSelect={() => selectSticker(st.id)}
+                onUpdate={(patch) => {
+                  setStickers((prev) =>
+                    prev.map((s) => (s.id === st.id ? { ...s, ...patch } : s)),
+                  );
+                }}
+                onDelete={() => {
+                  setStickers((prev) => prev.filter((s) => s.id !== st.id));
+                  if (selectedStickerId === st.id) setSelectedStickerId(null);
+                }}
+              />
+            ))}
+            {texts.map((t) => (
+              <TextItem
+                key={t.id}
+                item={t}
+                selected={selectedTextId === t.id}
+                onSelect={() => selectText(t.id)}
+                onUpdate={(patch) => {
+                  setTexts((prev) =>
+                    prev.map((x) => (x.id === t.id ? { ...x, ...patch } : x)),
+                  );
+                }}
+                onDelete={() => {
+                  setTexts((prev) => prev.filter((x) => x.id !== t.id));
+                  if (selectedTextId === t.id) setSelectedTextId(null);
+                }}
+                editing={editingTextId === t.id}
+                onEditStart={() => startEditText(t.id)}
+                onEditSave={(newText) => commitEditText(t.id, newText)}
+                onEditCancel={() => setEditingTextId(null)}
+                onDraftChange={(id, v) => {
+                  draftsRef.current.set(id, v);
+                }}
+              />
+            ))}
           </ViewShot>
         </View>
       </Pressable>

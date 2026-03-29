@@ -19,7 +19,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 
-import AppHeader from "../../../../shared/component/AppHeader";
+import AppHeader from "../../../../shared/components/AppHeader";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import api from "../../../../shared/libs/api";
 import { useUserStore } from "../../../../shared/store/userStore";

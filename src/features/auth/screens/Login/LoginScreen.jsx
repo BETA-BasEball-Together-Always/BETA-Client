@@ -120,7 +120,9 @@ const LoginScreen = ({ navigation, route }) => {
 
     if (!canSkipSignupStatus) {
       try {
-        const status = await fetchSignupStatusWithToken(userResponse.accessToken);
+        const status = await fetchSignupStatusWithToken(
+          userResponse.accessToken,
+        );
         if (status?.signupStep) {
           signupStep = status.signupStep;
         }
@@ -135,9 +137,6 @@ const LoginScreen = ({ navigation, route }) => {
         return;
       }
     }
-
-    console.log("회원가입 진행 단계 (복원 포함): ", signupStep);
-
     switch (signupStep) {
       case "SOCIAL_AUTHENTICATED":
         // 약관 동의 페이지로
@@ -185,7 +184,7 @@ const LoginScreen = ({ navigation, route }) => {
         return;
       }
 
-      console.log("애플 identityToken:", token?.identityToken);
+      // console.log("애플 identityToken:", token?.identityToken);
 
       if (!token?.identityToken) {
         console.log("identityToken 없음");
@@ -194,7 +193,7 @@ const LoginScreen = ({ navigation, route }) => {
       }
 
       const deviceId = await getDeviceId();
-      console.log("deviceID: ", deviceId);
+      // console.log("deviceID: ", deviceId);
 
       socialLoginMutation.mutate(
         { provider: "APPLE", token: token.identityToken, deviceId },
@@ -266,11 +265,11 @@ const LoginScreen = ({ navigation, route }) => {
         return;
       }
 
-      console.log("카카오 토큰:", token);
-      console.log("카카오 프로필:", profile);
+      // console.log("카카오 토큰:", token);
+      // console.log("카카오 프로필:", profile);
 
       const deviceId = await getDeviceId();
-      console.log("deviceID: ", deviceId);
+      // console.log("deviceID: ", deviceId);
 
       socialLoginMutation.mutate(
         { provider: "KAKAO", token: token.accessToken, deviceId },
@@ -344,18 +343,32 @@ const LoginScreen = ({ navigation, route }) => {
       const { token, profile, cancelled } = naverResult;
       if (cancelled) {
         if (naverResult.missingConfig) {
+          console.warn(
+            "[NAVER][dev] extra에 네이버 설정이 비어 있습니다. 환경변수 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, NAVER_APP_NAME, NAVER_IOS_URL_SCHEME를 .env / .env.local 또는 EAS(빌드 프로필)에 맞춰 넣고, app.config가 이를 extra로 넘기는지 확인한 뒤 prebuild·재빌드하세요.",
+          );
           Alert.alert(
-            "네이버 로그인",
-            "네이버 앱 연동 설정이 비어 있습니다. NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, NAVER_APP_NAME, NAVER_IOS_URL_SCHEME(.env)을 채운 뒤 prebuild/재빌드해 주세요.",
+            "로그인 안내",
+            "로그인을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.",
           );
         } else if (naverResult.timeout) {
+          console.warn(
+            "[NAVER][dev] 로그인 콜백 타임아웃. iOS serviceUrlSchemeIOS(NAVER_IOS_URL_SCHEME)·@react-native-seoul/naver-login 플러그인 urlScheme·네이버 앱 설치 여부를 확인하세요.",
+          );
           Alert.alert(
             "네이버 로그인",
-            "응답 시간이 초과되었습니다. 네이버 앱 설치 여부와 URL Scheme 설정을 확인한 뒤 다시 시도해 주세요.",
+            "응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.",
           );
         } else if (naverResult.errorMessage) {
-          Alert.alert("네이버 로그인", naverResult.errorMessage);
+          console.warn(
+            "[NAVER][dev] login() 실패 상세:",
+            naverResult.errorMessage,
+          );
+          Alert.alert(
+            "네이버 로그인",
+            "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+          );
         } else if (!naverResult.userCancel) {
+          console.warn("[NAVER][dev] 로그인 취소/실패(상세):", naverResult);
           Alert.alert(
             "네이버 로그인",
             "로그인을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.",

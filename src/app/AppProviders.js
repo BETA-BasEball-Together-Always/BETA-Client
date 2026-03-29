@@ -14,7 +14,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { initializeNaver } from "../features/auth/libs/Login/naverInit";
 import { hydrateUserEmotionSelectionsFromStorage } from "../features/community/store/userEmotionSelectionStore";
-import PushDeviceBootstrap from "../shared/component/PushDeviceBootstrap";
+import PushDeviceBootstrap from "../shared/components/PushDeviceBootstrap";
 
 const queryClient = new QueryClient({
   defaultOptions: {
