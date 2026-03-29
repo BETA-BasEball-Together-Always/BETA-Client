@@ -427,8 +427,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(63, 63, 63, 0.30)",
     borderRadius: 20,
     marginRight: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 11,
+    paddingVertical: 16,
+    paddingHorizontal: 13,
     marginBottom: 25,
     position: "relative",
     overflow: "hidden",
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   profileMain: {
     flexDirection: "row",
@@ -568,7 +568,6 @@ const styles = StyleSheet.create({
   contentBlock: {
     flex: 1,
     minHeight: 0,
-    paddingHorizontal: 10,
     paddingTop: 5,
     justifyContent: "flex-start",
   },
@@ -577,7 +576,7 @@ const styles = StyleSheet.create({
   },
   content: {
     color: "#F9F9F9",
-    lineHeight: 13.6,
+    lineHeight: 15,
   },
   // Inline "#태그" 강조용 (Home 인기 카드)
   inlineHashtagText: {

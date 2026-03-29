@@ -146,7 +146,7 @@ const PostDetailScreen = ({ route, navigation }) => {
 
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`}>
+          <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
             {displayContent.slice(lastIndex, start)}
           </Text>,
         );
@@ -163,7 +163,7 @@ const PostDetailScreen = ({ route, navigation }) => {
 
     if (lastIndex < displayContent.length) {
       nodes.push(
-        <Text key={`t-${segIdx++}-${lastIndex}`}>
+        <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
           {displayContent.slice(lastIndex)}
         </Text>,
       );
@@ -724,6 +724,7 @@ const styles = StyleSheet.create({
   backLabel: {
     color: "#F9F9F9",
     marginLeft: 15,
+    lineHeight: 22,
   },
 
   container: {
@@ -794,11 +795,18 @@ const styles = StyleSheet.create({
   },
   hashText: {
     color: "#6F9D48",
+    fontSize: 15,
+    lineHeight: 19,
+  },
+  contentInline: {
+    fontSize: 15,
+    lineHeight: 19,
+    color: "#F9F9F9",
   },
   content: {
     color: "#F9F9F9",
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 19,
   },
   divider: {
     width: "100%",
@@ -813,6 +821,7 @@ const styles = StyleSheet.create({
   commentTitle: {
     color: "rgba(228, 228, 228, 0.5)",
     marginBottom: 13,
+    lineHeight: 15,
   },
   modalOverlay: {
     position: "absolute",

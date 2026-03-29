@@ -476,5 +476,6 @@ const styles = StyleSheet.create({
   },
   postBtnText: {
     color: "#1E1E1E",
+    lineHeight: 24.5,
   },
 });

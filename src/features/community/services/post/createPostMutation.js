@@ -40,9 +40,11 @@ export const useCreatePostMutation = () => {
       invalidateCommunityPostLists(queryClient);
     },
     onError: (error) => {
-      console.log("게시글 작성 실패: ", error);
-      console.log("게시글 작성 실패 response: ", error.response);
-      console.log("게시글 작성 실패 data: ", error.data);
+      if (__DEV__) {
+        console.log("게시글 작성 실패: ", error?.message);
+        console.log("게시글 작성 실패 response: ", error?.response);
+        console.log("게시글 작성 실패 data: ", error?.response?.data);
+      }
     },
   });
 };

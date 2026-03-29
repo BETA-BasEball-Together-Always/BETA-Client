@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text, Platform } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
 
 /**
@@ -32,9 +32,7 @@ const ReactionSummary = ({
                     },
                   ]}
                 >
-                  <AppText variant="semi13" style={{ lineHeight: 20 }}>
-                    {reaction.emoji}
-                  </AppText>
+                  <Text style={styles.emojiInCircle}>{reaction.emoji}</Text>
                 </View>
               ) : null,
             )}
@@ -42,7 +40,7 @@ const ReactionSummary = ({
           <AppText
             variant="numMediumRegular"
             className="text-gray-400"
-            style={styles.totalText}
+            style={[styles.totalText, styles.summaryMetricText]}
           >
             {totalReactions}
           </AppText>
@@ -53,8 +51,11 @@ const ReactionSummary = ({
 
       <AppText
         variant="numMediumRegular"
-        className="text-gray-400"
-        style={!showStrip ? styles.commentOnly : undefined}
+        style={[
+          styles.commentCountText,
+          styles.summaryMetricText,
+          !showStrip ? styles.commentOnly : undefined,
+        ]}
       >
         댓글 {commentCount}
       </AppText>
@@ -93,8 +94,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: -3,
+    overflow: "hidden",
   },
   totalText: {
     marginLeft: 12,
+  },
+  summaryMetricText: {
+    lineHeight: 15,
+  },
+  emojiInCircle: {
+    width: 22,
+    height: 22,
+    fontSize: 13,
+    lineHeight: 22,
+    textAlign: "center",
+    ...Platform.select({
+      ios: { paddingTop: 0 },
+      android: {
+        includeFontPadding: false,
+        textAlignVertical: "center",
+      },
+    }),
+  },
+  commentCountText: {
+    color: "#D4D4D4",
+    fontSize: 11,
   },
 });

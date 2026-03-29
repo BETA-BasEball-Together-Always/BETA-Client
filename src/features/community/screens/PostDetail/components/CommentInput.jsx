@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
+import { useUserStore } from "../../../../../shared/store/userStore";
 
 const BORDER_DISABLED = "rgba(106, 106, 106, 0.34)";
 
@@ -15,6 +16,14 @@ export default function CommentInput({
 
   //피그마 기준 입력창 포커스 시 ui 변경 위함!! 구분선 + 등록 버튼 표시
   const [isFocused, setIsFocused] = useState(false);
+
+  const favoriteTeamName = useUserStore((s) => s.user?.favoriteTeamName);
+  const defaultPlaceholder = useMemo(() => {
+    const name = favoriteTeamName?.trim();
+    return name
+      ? `${name} 팬으로서 한 마디 남겨보세요 :)`
+      : "팬으로서 한 마디 남겨보세요 :)";
+  }, [favoriteTeamName]);
 
   const isEditing = !!editTarget?.commentId;
   const submitLabel = isEditing ? "수정" : "등록";
@@ -65,9 +74,7 @@ export default function CommentInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={
-            isEditing
-              ? "수정할 댓글을 입력하세요"
-              : "트윈스 팬으로서 한 마디 남겨보세요 :)"
+            isEditing ? "수정할 댓글을 입력하세요" : defaultPlaceholder
           }
           placeholderTextColor="#666"
           style={[styles.input, isFocused && styles.inputWithButton]}
@@ -91,11 +98,12 @@ export default function CommentInput({
             >
               <AppText
                 variant="middle"
-                style={
+                style={[
+                  styles.submitLabel,
                   isSubmitEnabled
                     ? styles.submitTextEnabled
-                    : styles.submitTextDisabled
-                }
+                    : styles.submitTextDisabled,
+                ]}
               >
                 {submitLabel}
               </AppText>
@@ -122,6 +130,7 @@ const styles = StyleSheet.create({
     color: "#888",
     marginBottom: 6,
     fontSize: 12,
+    lineHeight: 19,
   },
   inputContainer: {
     flexDirection: "row",
@@ -139,6 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 8,
     fontSize: 14,
+    lineHeight: 19,
     maxHeight: 80,
   },
   inputWithButton: {
@@ -163,6 +173,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER_DISABLED,
     backgroundColor: "#F9F9F9",
+  },
+  submitLabel: {
+    lineHeight: 19,
   },
   submitTextDisabled: {
     color: "#6A6A6A",

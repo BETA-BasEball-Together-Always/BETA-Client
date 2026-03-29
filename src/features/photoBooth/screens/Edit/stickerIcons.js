@@ -5,7 +5,6 @@ import icon4 from "./assets/stickers/icon4.svg";
 import icon5 from "./assets/stickers/icon5.svg";
 import icon6 from "./assets/stickers/icon6.svg";
 import icon7 from "./assets/stickers/icon7.svg";
-import icon8 from "./assets/stickers/icon8.svg";
 import textbubble1 from "./assets/stickers/textbubble1.svg";
 import textbubble2 from "./assets/stickers/textbubble2.svg";
 import textbubble3 from "./assets/stickers/textbubble3.svg";
@@ -21,7 +20,6 @@ export const SVG_STICKER_COMPONENTS = [
   icon5,
   icon6,
   icon7,
-  icon8,
   textbubble1,
   textbubble2,
   textbubble3,

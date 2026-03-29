@@ -4,18 +4,19 @@ import HeartIcon from "../assets/svg/CommunityPost/heartIcon.svg";
 import HeartFilledIcon from "../assets/svg/CommunityPost/heartFilledIcon.svg";
 import CommentIcon from "../assets/svg/CommunityPost/commentIcon.svg";
 import CommentOnPressIcon from "../assets/svg/CommunityPost/commentOnPressIcon.svg";
-import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
-import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
+// 다음 버전 링크 복사 UI — 복원 시 아래 import + 오른쪽 TouchableOpacity 블록 함께 해제
+// import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
+// import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
 
 /** 아이콘 옆 count 없음 — ReactionSummary에서만 집계 표시 */
 const PostActionBar = ({
   selected,
   commentMode,
-  linkPressed,
+  // linkPressed,
   onLikePress,
   onLongLikePress,
   onCommentPress,
-  onCopyPress,
+  // onCopyPress,
   onLayout,
   likeDisabled = false,
 }) => {
@@ -43,6 +44,7 @@ const PostActionBar = ({
         </TouchableOpacity>
       </View>
 
+      {/* 다음 버전: 게시글 링크 클립보드 복사
       <TouchableOpacity onPress={onCopyPress}>
         {linkPressed ? (
           <LinkOnPressIcon width={22} height={22} />
@@ -50,6 +52,7 @@ const PostActionBar = ({
           <LinkIcon width={22} height={22} />
         )}
       </TouchableOpacity>
+      */}
     </View>
   );
 };
@@ -59,7 +62,7 @@ export default PostActionBar;
 const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     marginTop: 14,
     marginHorizontal: 5,

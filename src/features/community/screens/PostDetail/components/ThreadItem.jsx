@@ -133,7 +133,11 @@ export default function ThreadItem({
             <View style={styles.contentLeft}>
               <AppText
                 variant="caption"
-                style={[styles.content, isDeleted && styles.deletedContent]}
+                style={[
+                  styles.content,
+                  variant === "reply" ? styles.contentReply : styles.contentComment,
+                  isDeleted && styles.deletedContent,
+                ]}
               >
                 {isDeleted ? DELETED_COMMENT_TEXT : item.content}
               </AppText>
@@ -249,6 +253,7 @@ const styles = StyleSheet.create({
   },
   nickname: {
     color: "#D4D4D4",
+    lineHeight: 22,
   },
   teamLabelWrap: {
     marginLeft: 6,
@@ -256,10 +261,11 @@ const styles = StyleSheet.create({
   authorTag: {
     color: "#666666",
     marginLeft: 4,
+    lineHeight: 13.6,
   },
   timeText: {
     color: "rgba(228, 228, 228, 0.50)",
-    // marginLeft: 8,
+    lineHeight: 15,
   },
   contentRow: {
     flexDirection: "row",
@@ -273,6 +279,11 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#F9F9F9",
     marginRight: 12,
+  },
+  contentComment: {
+    lineHeight: 17.7,
+  },
+  contentReply: {
     lineHeight: 17,
   },
   deletedContent: {
@@ -288,6 +299,7 @@ const styles = StyleSheet.create({
   likeCount: {
     marginTop: 2,
     color: "#666",
+    lineHeight: 12,
   },
   replyButton: {
     flexDirection: "row",
@@ -301,6 +313,7 @@ const styles = StyleSheet.create({
   },
   replyText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 15,
   },
   replyMoreButton: {
     marginHorizontal: 5,

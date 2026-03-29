@@ -153,6 +153,7 @@ export default function EditScreen() {
   }, [editingTextId, texts]);
 
   const isTextStylePanel = selectedTextId !== null;
+  /** 폰트/색 패널일 때만 TEXT_STYLE_PANEL_HEIGHT — editConstants */
   const overlayHeight = isTextStylePanel
     ? TEXT_STYLE_PANEL_HEIGHT
     : getOverlayHeight(activeTool);

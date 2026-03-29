@@ -1,3 +1,8 @@
+/**
+ * 사진 탭: 썸네일 리스트 + 촬영/갤러리 카드
+ * 높이·너비는 대부분 ../editStyles 의 thumb, photoActionCardOuter (둘 다 맞출 것)
+ * 썸네일 사이 간격은 아래 ItemSeparatorComponent 의 width
+ */
 import React from "react";
 import {
   View,

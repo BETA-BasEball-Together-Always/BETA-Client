@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -862,12 +863,27 @@ const CreatePostScreen = () => {
           },
           onError: (e) => {
             const status = e?.response?.status;
+            const data = e?.response?.data;
             if (status === 413) {
               openLimitModal(
                 "게시글 용량이 너무 큽니다.\n이미지 크기나 개수를 줄여 다시 시도해 주세요.",
               );
+              return;
             }
-            console.log("게시글 수정 실패:", e?.response?.data ?? e);
+            if (
+              status === 400 &&
+              Array.isArray(data?.errors) &&
+              data.errors[0]?.message
+            ) {
+              openLimitModal(data.errors[0].message);
+              return;
+            }
+            const msg = getApiErrorMessage(e, "");
+            if (typeof msg === "string" && msg.trim()) {
+              Alert.alert("알림", msg.trim());
+              return;
+            }
+            Alert.alert("알림", "게시글 수정에 실패했어요. 잠시 후 다시 시도해 주세요.");
           },
         },
       );
@@ -956,11 +972,19 @@ const CreatePostScreen = () => {
           openLimitModal(data.errors[0].message);
           return;
         }
-        if (status === 400) {
-          openLimitModal(getApiErrorMessage(e, "입력값을 확인해 주세요."));
+        const msg = getApiErrorMessage(e, "");
+        if (typeof msg === "string" && msg.trim()) {
+          Alert.alert("알림", msg.trim());
           return;
         }
-        console.log("게시글 업로드 실패:", e?.response?.data ?? e);
+        if (status === 400) {
+          openLimitModal("입력값을 확인해 주세요.");
+          return;
+        }
+        Alert.alert(
+          "알림",
+          "게시글을 등록하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        );
       },
     });
   };
@@ -1010,7 +1034,11 @@ const CreatePostScreen = () => {
             </TouchableOpacity>
           }
           center={
-            <AppText variant="displayTitle2" className="text-[#E5E5E5]">
+            <AppText
+              variant="displayTitle2"
+              className="text-[#E5E5E5]"
+              style={styles.screenTitle}
+            >
               {isEditMode ? "게시글 수정" : "새 글 작성"}
             </AppText>
           }
@@ -1099,11 +1127,19 @@ const CreatePostScreen = () => {
             </LinearGradient>
             <View style={styles.profileTextWrap}>
               <View style={styles.profileNameRow}>
-                <AppText variant="caption" className="text-[#E5E5E5]">
+                <AppText
+                  variant="caption"
+                  className="text-[#E5E5E5]"
+                  style={styles.profileNickname}
+                >
                   {author?.nickname}
                 </AppText>
                 <View style={styles.teamChip}>
-                  <AppText variant="smallRegular" className="text-[#FF4D6D]">
+                  <AppText
+                    variant="smallRegular"
+                    className="text-[#FF4D6D]"
+                    style={styles.teamName}
+                  >
                     {author?.favoriteTeamName}
                   </AppText>
                 </View>
@@ -1205,17 +1241,33 @@ const CreatePostScreen = () => {
           </View>
 
           <View style={styles.guideBox}>
-            <AppText variant="semi13" className="text-[#E5E5E5]">
+            <AppText
+              variant="semi13"
+              className="text-[#E5E5E5]"
+              style={styles.guideHeading}
+            >
               🔥 응원 문화 가이드
             </AppText>
             <View style={styles.guideList}>
-              <AppText variant="labelSmall" className="text-[#9B9B9B]">
+              <AppText
+                variant="labelSmall"
+                className="text-[#9B9B9B]"
+                style={styles.guideLine}
+              >
                 · 상대팀 비하 및 욕설은 자동으로 신고됩니다.
               </AppText>
-              <AppText variant="labelSmall" className="text-[#9B9B9B]">
+              <AppText
+                variant="labelSmall"
+                className="text-[#9B9B9B]"
+                style={styles.guideLine}
+              >
                 · 부적절한 게시물은 사전 통보 없이 삭제될 수 있습니다.
               </AppText>
-              <AppText variant="labelSmall" className="text-[#9B9B9B]">
+              <AppText
+                variant="labelSmall"
+                className="text-[#9B9B9B]"
+                style={styles.guideLine}
+              >
                 · 게시글은 작성 후 24시간 내 수정 가능합니다.
               </AppText>
             </View>
@@ -1275,8 +1327,14 @@ const CreatePostScreen = () => {
           >
             <Pressable style={styles.limitModalCard} onPress={() => {}}>
               <View style={styles.limitModalContent}>
-                <AppText variant="middle">⚠️</AppText>
-                <AppText variant="middle" className="text-[#E5E5E5]">
+                <AppText variant="middle" style={styles.limitModalText}>
+                  ⚠️
+                </AppText>
+                <AppText
+                  variant="middle"
+                  className="text-[#E5E5E5]"
+                  style={styles.limitModalText}
+                >
                   {limitModalMessage || ""}
                 </AppText>
               </View>
@@ -1306,7 +1364,10 @@ const CreatePostScreen = () => {
             style={styles.uploadHintToastOverlay}
           >
             <View pointerEvents="none" style={styles.uploadHintToast}>
-              <AppText variant="caption" style={styles.uploadHintToastText}>
+              <AppText
+                variant="caption"
+                style={styles.uploadHintToastText}
+              >
                 {UPLOAD_REQUIRES_BODY_TOAST}
               </AppText>
             </View>
@@ -1361,6 +1422,10 @@ const styles = StyleSheet.create({
   uploadHintToastText: {
     color: "#E5E5E5",
     textAlign: "center",
+    lineHeight: 18,
+  },
+  screenTitle: {
+    lineHeight: 29,
   },
   uploadButtonEnabled: {
     backgroundColor: "#F9F9F9",
@@ -1399,9 +1464,11 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16,
   },
   categorySubText: {
     color: "#E5E5E5",
+    lineHeight: 19,
   },
   divider: {
     borderWidth: 1,
@@ -1429,6 +1496,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  profileNickname: {
+    lineHeight: 18,
+  },
+  teamName: {
+    lineHeight: 14,
+  },
   teamChip: {
     paddingHorizontal: 7,
     paddingVertical: 2,
@@ -1448,12 +1521,12 @@ const styles = StyleSheet.create({
   },
   richTextContainer: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
     color: "#E5E5E5",
   },
   richTextBase: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
   },
   richTextNormal: {
     color: "#E5E5E5",
@@ -1463,14 +1536,14 @@ const styles = StyleSheet.create({
   },
   richTextPlaceholder: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
     color: "#6F6F6F",
   },
   richInput: {
     ...StyleSheet.absoluteFillObject,
     color: "transparent",
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
     padding: 0,
   },
   counterRow: {
@@ -1481,9 +1554,11 @@ const styles = StyleSheet.create({
   },
   counterText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16,
   },
   counterTextMax: {
     color: "#EEEEEE",
+    lineHeight: 16,
   },
   loadingOverlay: {
     flex: 1,
@@ -1520,10 +1595,17 @@ const styles = StyleSheet.create({
   },
   hashtagText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16.3,
   },
 
   guideBox: {
     marginTop: 18,
+  },
+  guideHeading: {
+    lineHeight: 18,
+  },
+  guideLine: {
+    lineHeight: 16,
   },
   guideList: {
     marginTop: 10,
@@ -1567,6 +1649,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 6,
+  },
+  limitModalText: {
+    lineHeight: 18,
   },
 
 });

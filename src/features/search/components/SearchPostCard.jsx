@@ -109,6 +109,7 @@ const SearchPostCard = ({ post }) => {
             onPress={handlePressProfile}
             showTeam
             teamCode={post.author?.teamCode}
+            feedList
           />
         </View>
 
@@ -218,19 +219,19 @@ const styles = StyleSheet.create({
   },
   snippetWrapper: {
     color: "#F9F9F9",
-    lineHeight: 20,
+    lineHeight: 19,
   },
   snippetText: {
     color: "#F9F9F9",
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 19,
     fontFamily: "NotoSansKR_Regular",
   },
   highlightText: {
     color: "#FFFFFF",
     backgroundColor: "#6E1833",
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 19,
     fontFamily: "NotoSansKR_SemiBold",
   },
   hashText: {

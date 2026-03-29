@@ -55,18 +55,20 @@ export const TEXT_COLORS = [
   "#FFC8D8",
 ];
 
-/** 탭별 하단 패널 높이 */
+
 export const getOverlayHeight = (tool) =>
   tool === "photo" || tool === "frame"
-    ? 154
+    ? 185
     : tool === "text"
       ? 142
       : tool === "sticker"
         ? 280
         : 154;
 
-/** 텍스트 탭 / 텍스트 스타일 패널 공통 */
-export const TEXT_STYLE_PANEL_HEIGHT = 142;
+/**
+ * 폰트/색 패널일 때 하단 오버레이 세로 높이
+ */
+export const TEXT_STYLE_PANEL_HEIGHT = 158;
 
 /**
  * EDIT_TOP_BAR_HEIGHT_ESTIMATE: 실제 EditTopBar 높이와 다르면 피그마와 세로 정렬이 틀어짐!!!

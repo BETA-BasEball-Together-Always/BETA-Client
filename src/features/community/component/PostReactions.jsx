@@ -5,8 +5,13 @@ import {
   Modal,
   Pressable,
   Platform,
+  // Alert,
 } from "react-native";
-import { AppText } from "../../../shared/theme/components/AppText";
+// 다음 버전 링크 클립보드 복사
+// import * as Clipboard from "expo-clipboard";
+// import api from "../../../shared/libs/api";
+// 다음 버전 링크 복사 모달에서 사용
+// import { AppText } from "../../../shared/theme/components/AppText";
 import {
   COMMUNITY_REACTIONS,
   normalizeCommunityEmotionType,
@@ -90,8 +95,9 @@ const PostReactions = ({
   );
 
   const [commentMode, setCommentMode] = useState(false);
-  const [linkPressed, setLinkPressed] = useState(false);
-  const [copyModalVisible, setCopyModalVisible] = useState(false);
+  // 다음 버전 링크 클립보드 복사
+  // const [linkPressed, setLinkPressed] = useState(false);
+  // const [copyModalVisible, setCopyModalVisible] = useState(false);
 
   const heartSelected = Boolean(currentEmotionUiId);
 
@@ -153,15 +159,34 @@ const PostReactions = ({
     onCommentPress?.();
   };
 
-  const handleCopyLink = async () => {
-    setLinkPressed(true);
-    setCopyModalVisible(true);
-
-    setTimeout(() => {
-      setLinkPressed(false);
-      setCopyModalVisible(false);
-    }, 1500);
-  };
+  // 다음 버전: 게시글 링크 클립보드 복사 (PostActionBar LinkIcon + 모달)
+  // const handleCopyLink = async () => {
+  //   const postId = resolveCommunityPostId(post);
+  //   if (postId == null) {
+  //     Alert.alert("알림", "복사할 게시글 정보를 찾지 못했어요.");
+  //     return;
+  //   }
+  //
+  //   const baseRaw = api.defaults.baseURL ?? "https://beta-app.kr";
+  //   const base = String(baseRaw).replace(/\/+$/, "");
+  //   const shareUrl = `${base}/community/posts/${postId}`;
+  //
+  //   try {
+  //     await Clipboard.setStringAsync(shareUrl);
+  //     setLinkPressed(true);
+  //     setCopyModalVisible(true);
+  //     setTimeout(() => {
+  //       setLinkPressed(false);
+  //       setCopyModalVisible(false);
+  //     }, 1500);
+  //   } catch (e) {
+  //     console.warn("[PostReactions] copy link", e);
+  //     Alert.alert(
+  //       "오류",
+  //       "클립보드에 복사하지 못했어요. 다시 시도해 주세요.",
+  //     );
+  //   }
+  // };
 
   const commentCount = post.commentCount ?? post.comments?.length ?? 0;
 
@@ -191,11 +216,11 @@ const PostReactions = ({
           <PostActionBar
             selected={heartSelected}
             commentMode={commentMode}
-            linkPressed={linkPressed}
+            // linkPressed={linkPressed}
             onLikePress={handleLikePress}
             onLongLikePress={handleLongLikePress}
             onCommentPress={handleCommentPress}
-            onCopyPress={handleCopyLink}
+            // onCopyPress={handleCopyLink}
             likeDisabled={isEmotionPending}
           />
         </View>
@@ -243,6 +268,7 @@ const PostReactions = ({
         ) : null}
       </Modal>
 
+      {/* 다음 버전: 링크 복사 완료 토스트 모달
       <Modal transparent visible={copyModalVisible} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalBox}>
@@ -252,6 +278,7 @@ const PostReactions = ({
           </View>
         </View>
       </Modal>
+      */}
     </>
   );
 };

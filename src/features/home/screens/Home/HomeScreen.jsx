@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useMemo } from "react";
-import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
+// 다음 버전 알림
+// import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
 import SearchIcon from "../../../community/assets/svg/TopBar/searchIcon.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useNavigation } from "@react-navigation/native";
@@ -126,7 +127,7 @@ const HomeScreen = () => {
           <Text style={styles.appName}>BETA</Text>
 
           <View style={styles.btnContainer}>
-            {/* 검색 페이지 navigation 연결! */}
+            {/* 검색: 기존 알림 아이콘 자리(맨 오른쪽)에 배치 */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={() => navigation.navigate("Search")}
@@ -134,10 +135,11 @@ const HomeScreen = () => {
               <SearchIcon width={24} height={24} />
             </TouchableOpacity>
 
-            {/* 나중에 알림 페이지 만들면 여기에 연결할 것! */}
+            {/* 다음 버전 알림
             <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
               <AlarmIcon width={24} height={24} />
             </TouchableOpacity>
+            */}
           </View>
         </View>
 

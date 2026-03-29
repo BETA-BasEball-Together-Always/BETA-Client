@@ -206,7 +206,7 @@ const ProfileScreen = ({ navigation, route }) => {
           <AppText
             variant="displayTitle2"
             className="text-white"
-            style={{ lineHeight: 29 }}
+            style={styles.profileHeaderTitle}
           >
             마이스타디움
           </AppText>
@@ -251,7 +251,7 @@ const ProfileScreen = ({ navigation, route }) => {
                   <AppText
                     variant="heading"
                     className="text-white"
-                    style={{ lineHeight: 24.5 }}
+                    style={styles.profileNickname}
                   >
                     {displayNickname}
                   </AppText>
@@ -312,7 +312,7 @@ const ProfileScreen = ({ navigation, route }) => {
               <AppText
                 variant="semi14"
                 className="text-white"
-                style={{ lineHeight: 19 }}
+                style={styles.tabLabel}
               >
                 {tab.label}
               </AppText>
@@ -333,6 +333,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#121212",
+  },
+  profileHeaderTitle: {
+    lineHeight: 29,
+  },
+  profileNickname: {
+    lineHeight: 24.5,
+  },
+  tabLabel: {
+    lineHeight: 19,
   },
   header: {
     flexDirection: "row",

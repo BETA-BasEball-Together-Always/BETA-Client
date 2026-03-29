@@ -136,7 +136,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
       const token = match[0];
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`}>
+          <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
             {displayContent.slice(lastIndex, start)}
           </Text>,
         );
@@ -151,7 +151,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
 
     if (lastIndex < displayContent.length) {
       nodes.push(
-        <Text key={`t-${segIdx++}-${lastIndex}`}>
+        <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
           {displayContent.slice(lastIndex)}
         </Text>,
       );
@@ -160,11 +160,23 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     return nodes;
   }, [displayContent]);
 
-  /** numberOfLines={3}만 쓰면 onTextLayout에서 실제 줄 수를 알 수 없어 1회 측정 */
+  const logicalLineCount = useMemo(() => {
+    if (typeof displayContent !== "string" || displayContent.length === 0) {
+      return 0;
+    }
+    return displayContent.split("\n").length;
+  }, [displayContent]);
+
   const [bodyLineCount, setBodyLineCount] = useState(null);
   const bodySectionWidthRef = useRef(null);
   const bodyNeedsMore =
-    bodyLineCount != null && bodyLineCount > 3 && !showAsUnavailable;
+    !showAsUnavailable &&
+    (logicalLineCount > 3 ||
+      (bodyLineCount != null && bodyLineCount > 3));
+
+  const shouldClampToThreeLines =
+    !showAsUnavailable &&
+    (logicalLineCount > 3 || (bodyLineCount != null && bodyLineCount > 3));
 
   useEffect(() => {
     bodySectionWidthRef.current = null;
@@ -259,6 +271,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
           showTeam={showTeam}
           onPress={handlePressProfile}
           postMenu={postMenu}
+          feedList
         />
       </View>
 
@@ -274,8 +287,10 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
               ? (e) => {
                   const w = Math.round(e.nativeEvent.layout.width);
                   if (w <= 0) return;
-                  if (bodySectionWidthRef.current !== w) {
-                    bodySectionWidthRef.current = w;
+                  const prev = bodySectionWidthRef.current;
+                  bodySectionWidthRef.current = w;
+                  /* 첫 너비 확정 시에는 줄 수를 지우지 않음 — onTextLayout이 먼저 오면 더보기가 영구히 사라짐 */
+                  if (prev != null && prev !== w) {
                     setBodyLineCount(null);
                   }
                 }
@@ -284,9 +299,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
         >
           <AppText
             variant="caption"
-            numberOfLines={
-              bodyLineCount != null && bodyLineCount > 3 ? 3 : undefined
-            }
+            numberOfLines={shouldClampToThreeLines ? 3 : undefined}
             ellipsizeMode="tail"
             onTextLayout={(e) => {
               if (bodyLineCount !== null) return;
@@ -352,6 +365,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "column",
     position: "relative",
+    padding: 2,
   },
   deletingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -393,9 +407,15 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     lineHeight: 19,
   },
+  contentInline: {
+    fontSize: 15,
+    lineHeight: 19,
+    color: "#F9F9F9",
+  },
   moreLink: {
     color: "rgba(228, 228, 228, 0.5)",
     marginTop: 4,
+    lineHeight: 16.3,
   },
   unavailableText: {
     color: "rgba(228, 228, 228, 0.55)",

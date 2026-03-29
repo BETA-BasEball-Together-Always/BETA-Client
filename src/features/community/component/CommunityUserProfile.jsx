@@ -27,6 +27,7 @@ const CommunityUserProfile = ({
   showTeam = false,
   onPress,
   postMenu,
+  feedList = false,
 }) => {
   const team = TEAM_DATA[teamCode];
   const ProfileIcon = team?.ProfileIcon;
@@ -65,7 +66,10 @@ const CommunityUserProfile = ({
 
         <View style={styles.textWrapper}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <AppText variant="caption" style={styles.nickname}>
+            <AppText
+              variant="caption"
+              style={[styles.nickname, feedList && styles.nicknameFeed]}
+            >
               {nickname}
             </AppText>
 
@@ -73,7 +77,7 @@ const CommunityUserProfile = ({
           </View>
 
           {createdAt && (
-            <AppText style={styles.timeAgo}>
+            <AppText style={[styles.timeAgo, feedList && styles.timeAgoFeed]}>
               {getRelativeTimeForPostBody(createdAt)}
             </AppText>
           )}
@@ -177,10 +181,16 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginRight: 6,
   },
+  nicknameFeed: {
+    lineHeight: 18,
+  },
   timeAgo: {
     color: "#A1A1AA",
     fontSize: 11,
     marginTop: 2,
+    lineHeight: 15,
+  },
+  timeAgoFeed: {
     lineHeight: 12,
   },
   modalRoot: {

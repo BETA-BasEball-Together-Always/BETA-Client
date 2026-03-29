@@ -1,7 +1,8 @@
 import React from "react";
-import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import { View, StyleSheet, Text } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
-import AlarmIcon from "../../assets/svg/TopBar/alarmIcon.svg";
+// 다음 버전 알림
+// import AlarmIcon from "../../assets/svg/TopBar/alarmIcon.svg";
 
 const CommunityTopBar = ({ isTeam = false, teamName = "" }) => {
   return (
@@ -16,10 +17,12 @@ const CommunityTopBar = ({ isTeam = false, teamName = "" }) => {
         <Text style={[styles.centerTitle, styles.appNameCenter]}>BETA</Text>
       )}
 
-      {/* 나중에 알림 페이지 만들면 여기에 연결할 것! */}
+      {/* 다음 버전 알림 — 레이아웃 유지용 빈 영역(기존 알림 버튼 폭)
       <TouchableOpacity style={styles.alarmButton} onPress={() => {}}>
         <AlarmIcon width={24} height={24} />
       </TouchableOpacity>
+      */}
+      <View style={styles.alarmButton} />
     </View>
   );
 };

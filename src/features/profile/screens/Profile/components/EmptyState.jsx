@@ -24,5 +24,8 @@ export default EmptyState;
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  message: { textAlign: "center" },
+  message: {
+    textAlign: "center",
+    lineHeight: 17.7,
+  },
 });
