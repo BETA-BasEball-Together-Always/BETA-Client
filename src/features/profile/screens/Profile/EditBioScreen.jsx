@@ -18,6 +18,7 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import AppHeader from "../../../../shared/component/AppHeader";
+import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import CloseIcon from "../../assets/svg/closeIcon.svg";
@@ -38,6 +39,7 @@ const EditBioScreen = () => {
   const updateBioMutation = useUpdateBioMutation();
   const [bioDraft, setBioDraft] = useState("");
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const initialBioRef = useRef("");
 
   useEffect(() => {
@@ -73,14 +75,7 @@ const EditBioScreen = () => {
     const normalized = bioDraft.trim().slice(0, BIO_MAX_LEN);
     const initial = (initialBioRef.current ?? "").trim();
     if (normalized !== initial) {
-      Alert.alert(
-        "나가기",
-        "저장하지 않은 변경 사항이 있습니다. 나가시겠습니까?",
-        [
-          { text: "취소", style: "cancel" },
-          { text: "나가기", onPress: () => navigation.goBack() },
-        ],
-      );
+      setLeaveModalVisible(true);
     } else {
       navigation.goBack();
     }
@@ -246,6 +241,14 @@ const EditBioScreen = () => {
           ) : null}
         </KeyboardAvoidingView>
       </View>
+
+      <LeaveConfirmModal
+        visible={leaveModalVisible}
+        onClose={() => setLeaveModalVisible(false)}
+        title="나가시겠어요?"
+        description="지금 나가시면 작성 내용이 사라져요 😭"
+        onLeave={() => navigation.goBack()}
+      />
     </SafeAreaView>
   );
 };

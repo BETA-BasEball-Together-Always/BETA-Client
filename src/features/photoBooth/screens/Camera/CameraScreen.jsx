@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
+import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Camera,
@@ -71,7 +72,7 @@ export default function CameraScreen({ navigation, route }) {
   }, [hasPermission, requestPermission]);
 
   // camera
-  const [cameraPosition, setCameraPosition] = useState("front"); // 'front' | 'back'
+  const [cameraPosition, setCameraPosition] = useState("front"); 
   const device = useCameraDevice(cameraPosition);
   const cameraRef = useRef(null);
 
@@ -83,6 +84,7 @@ export default function CameraScreen({ navigation, route }) {
   const [isShooting, setIsShooting] = useState(false);
   const [photos, setPhotos] = useState([]); // VisionCamera PhotoFile[]
   const [countdown, setCountdown] = useState(0);
+  const [leaveModalVisible, setLeaveModalVisible] = useState(false);
 
   const flashOverlayOpacity = useSharedValue(0);
   const zoomAnim = useSharedValue(1);
@@ -198,7 +200,7 @@ export default function CameraScreen({ navigation, route }) {
         withTiming(0, { duration: 250 }),
       );
 
-      // ✅ 촬영 순간 살짝 줌인
+      // 촬영 순간 살짝 줌인
       zoomAnim.value = withTiming(1.05, { duration: 100 }, () => {
         zoomAnim.value = withTiming(1, { duration: 150 });
       });
@@ -209,7 +211,7 @@ export default function CameraScreen({ navigation, route }) {
         qualityPrioritization: "quality",
       });
 
-      // ✅ 촬영 직후 테스트 로그 추가
+      // 촬영 직후 테스트 로그 추가
       if (photo) {
         console.log("📸 photo size:", photo.width, photo.height);
         console.log(
@@ -315,7 +317,11 @@ export default function CameraScreen({ navigation, route }) {
       {/* 기존 <SvgButton>들을 아래처럼 교체 */}
       <View style={styles.topBar}>
         {/* Back: 라벨 필요 없으면 text="" 그대로 두면 됨 */}
-        <IconWithLabel onPress={() => navigation.goBack()} text="" color={ON}>
+        <IconWithLabel
+          onPress={() => setLeaveModalVisible(true)}
+          text=""
+          color={ON}
+        >
           <BackIcon width={24} height={24} />
         </IconWithLabel>
 
@@ -364,7 +370,7 @@ export default function CameraScreen({ navigation, route }) {
             isActive
             photo
             enableZoomGesture
-            // ✅ 실제 촬영은 9:16 비율에 가장 가까운 포맷으로 고정
+            // 실제 촬영은 9:16 비율에 가장 가까운 포맷으로 고정
             format={format9x16 ?? undefined}
           />
         </Animated.View>
@@ -386,7 +392,7 @@ export default function CameraScreen({ navigation, route }) {
             <Text style={styles.countdownText}>{countdown}</Text>
           </View>
         )}
-        {/* ✅ stageGuide는 요청대로 제거됨 */}
+        {/* stageGuide는 요청대로 제거됨 */}
       </View>
 
       {/* BottomBar (썸네일/셔터/전환) */}
@@ -433,7 +439,7 @@ export default function CameraScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ 전체 화면 플래시 오버레이 (화면 전체 덮기) */}
+      {/* 전체 화면 플래시 오버레이 (화면 전체 덮기) */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -441,6 +447,14 @@ export default function CameraScreen({ navigation, route }) {
           { backgroundColor: "#ffffffa0", zIndex: 100 },
           flashOverlayStyle,
         ]}
+      />
+
+      <LeaveConfirmModal
+        visible={leaveModalVisible}
+        onClose={() => setLeaveModalVisible(false)}
+        title="촬영을 종료할까요?"
+        description="지금 나가면 촬영한 사진이 저장되지 않아요 🥲"
+        onLeave={() => navigation.goBack()}
       />
     </View>
   );

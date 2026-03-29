@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 import { FRAMES } from "@features/photoBooth/constants/framesMap";
 import { FRAME_OPTIONS } from "../editConstants";
 import { editStyles } from "../editStyles";
@@ -14,11 +14,17 @@ function FrameOptionCard({ id, label, teamKey, frameKey, onSelect }) {
       activeOpacity={0.9}
       style={[editStyles.frameCard, active && editStyles.frameCardActive]}
     >
-      <Image
-        source={src}
-        style={editStyles.frameCardImg}
-        resizeMode="contain"
-      />
+      {/*
+        프레임 PNG는 editStyles.frameCardIconWrap 패딩(피그마 수치) 안에만 그림.
+        카드 전체 패딩을 쓰면 라벨까지 밀려 아이콘이 작아 보였음 → 래퍼 분리.
+      */}
+      <View style={editStyles.frameCardIconWrap}>
+        <Image
+          source={src}
+          style={editStyles.frameCardImg}
+          resizeMode="contain"
+        />
+      </View>
       <AppText
         variant="smallRegular"
         style={[

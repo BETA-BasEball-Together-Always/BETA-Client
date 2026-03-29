@@ -28,10 +28,12 @@ import * as ImagePicker from "expo-image-picker";
 import {
   getOverlayHeight,
   getOverlayBackdropMode,
+  computeEditFrameLayout,
   SNAP_THRESHOLD,
   TEXT_STYLE_PANEL_HEIGHT,
 } from "./editConstants";
 import { editStyles } from "./editStyles";
+import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
 import EditTopBar from "./components/EditTopBar";
 import EditBottomToolbar from "./components/EditBottomToolbar";
 import EditOverlayBackdrop from "./components/EditOverlayBackdrop";
@@ -54,6 +56,7 @@ export default function EditScreen() {
 
   const [activeTool, setActiveTool] = useState("photo");
   const [bottomBarH, setBottomBarH] = useState(86);
+  const [leaveModalVisible, setLeaveModalVisible] = useState(false);
 
   const [stickers, setStickers] = useState([]);
   const [selectedStickerId, setSelectedStickerId] = useState(null);
@@ -184,13 +187,17 @@ export default function EditScreen() {
     return theme?.[frameKey] || FRAMES.base?.[frameKey] || null;
   }, [teamKey, frameKey]);
 
-  const frameW = width * 1;
-  const frameH = height * 0.8;
-  const aspect = frameKey === "1x4" ? 1 / 3 : 2 / 3;
-  const frameStyle =
-    frameKey === "1x4"
-      ? { height: frameH, aspectRatio: aspect }
-      : { width: frameW, aspectRatio: aspect };
+  /** 피그마 좌표·패딩: `editConstants.js` 의 FIGMA_EDIT_2X2_* / FIGMA_EDIT_1X4_* */
+  const editFrameLayout = useMemo(
+    () =>
+      computeEditFrameLayout({
+        frameKey,
+        windowWidth: width,
+        windowHeight: height,
+        safeTopInset: insets.top,
+      }),
+    [frameKey, width, height, insets.top],
+  );
 
   const slots = useMemo(() => {
     if (frameKey === "1x4") {
@@ -226,7 +233,8 @@ export default function EditScreen() {
         result: "tmpfile",
       });
       if (!uri) return;
-      /** ViewShot tmpfile는 캡처마다 고유 경로이며, Share에서 복사 없이 file:// 그대로 사용 */
+
+      /** ViewShot tmpfile는 캡처마다 고유 경로이며 Share에서 복사 없이 file:// 그대로 사용 */
       store.setExportedFrameUri(uri);
       navigation.navigate("Share");
     } catch (e) {
@@ -419,9 +427,7 @@ export default function EditScreen() {
 
   const renderOverlayContent = () => {
     if (isTextStylePanel) {
-      return (
-        <TextStylePanel selectedText={selectedText} setTexts={setTexts} />
-      );
+      return <TextStylePanel selectedText={selectedText} setTexts={setTexts} />;
     }
 
     if (activeTool === "photo") {
@@ -464,22 +470,42 @@ export default function EditScreen() {
   return (
     <View style={[editStyles.screen, { paddingTop: insets.top }]}>
       <EditTopBar
-        onBack={() => navigation.goBack()}
+        onBack={() => setLeaveModalVisible(true)}
         onSave={handleSave}
         title="야구네컷 편집"
       />
 
+      <LeaveConfirmModal
+        visible={leaveModalVisible}
+        onClose={() => setLeaveModalVisible(false)}
+        title="아직 저장하지 않았어요"
+        description="나가면 편집 내용이 사라져요 😭"
+        onLeave={() => navigation.goBack()}
+      />
+
       <Pressable
-        style={editStyles.canvasArea}
+        style={[
+          editStyles.canvasArea,
+          {
+            paddingLeft: editFrameLayout.padL,
+            paddingRight: editFrameLayout.padR,
+          },
+        ]}
         onPress={() => {
           saveAndClearEditing();
         }}
       >
-        <ViewShot
-          ref={viewShotRef}
-          style={[editStyles.frameBox, frameStyle]}
-          options={{ format: "png", quality: 1 }}
+        <View
+          style={{
+            marginTop: editFrameLayout.marginTop,
+            alignItems: "center",
+          }}
         >
+          <ViewShot
+            ref={viewShotRef}
+            style={[editStyles.frameBox, editFrameLayout.frameStyle]}
+            options={{ format: "png", quality: 1 }}
+          >
           {frameSource ? (
             <ImageBackground
               source={frameSource}
@@ -565,7 +591,8 @@ export default function EditScreen() {
               }}
             />
           ))}
-        </ViewShot>
+          </ViewShot>
+        </View>
       </Pressable>
 
       <Animated.View
@@ -573,7 +600,7 @@ export default function EditScreen() {
         style={[
           editStyles.overlayWrap,
           overlayBackdropMode === "sticker" && editStyles.overlayWrapSticker,
-          overlayBackdropMode === "text" && editStyles.overlayWrapText,
+          overlayBackdropMode === "none" && editStyles.overlayWrapTextAddOnly,
           {
             height: overlayHeight,
             transform: [{ translateY: overlayY }],

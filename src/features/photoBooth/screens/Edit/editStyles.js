@@ -51,11 +51,16 @@ export const editStyles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: 8,
+    paddingTop: 0,
     overflow: "hidden",
   },
-  frameBox: { position: "relative", overflow: "hidden" },
-  photo: { position: "absolute" },
+  frameBox: {
+    position: "relative",
+    overflow: "hidden",
+  },
+  photo: {
+    position: "absolute",
+  },
 
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -107,10 +112,15 @@ export const editStyles = StyleSheet.create({
     elevation: 16,
   },
 
-  /** 사진·프레임 글래스: 블러 위 옅은 틴트 */
+  /** 사진/프레임 글래스 */
   overlayGlassTint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  overlayTextStyleGlassTint: {
+    backgroundColor: "rgba(18, 18, 18, 0.20)",
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
   },
@@ -118,10 +128,11 @@ export const editStyles = StyleSheet.create({
     borderWidth: 0,
     borderColor: "transparent",
   },
-  overlayWrapText: {
+  overlayWrapTextAddOnly: {
     borderWidth: 0,
     borderColor: "transparent",
   },
+
   /** 스티커 탭 상단 드래그 바 */
   stickerTopHandleBar: {
     width: 134,
@@ -212,25 +223,43 @@ export const editStyles = StyleSheet.create({
     flex: 1,
   },
 
+  /**
+   * 수정 시: FrameToolPanel의 frameCardIconWrap + frameCardImg와 함께 봐야 함!!
+   */
   frameCard: {
-    width: 124,
-    height: 138,
+    width: 152,
+    minHeight: 156,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 8,
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+    padding: 0,
+    overflow: "hidden",
   },
   frameCardActive: {
     backgroundColor: "#FFFFFF",
   },
+
+  frameCardIconWrap: {
+    paddingTop: 10.574,
+    paddingRight: 18.66,
+    paddingBottom: 8.282,
+    paddingLeft: 17.416,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 122,
+    width: "100%",
+  },
   frameCardImg: {
     width: "100%",
-    height: 97.033,
+    height: "100%",
   },
   frameCardLabel: {
     fontSize: 13,
-    marginTop: 8,
+    marginTop: 4,
+    marginBottom: 10,
+    textAlign: "center",
     color: "rgba(228, 228, 228, 0.50)",
   },
   frameCardLabelActive: {
@@ -291,9 +320,18 @@ export const editStyles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: "center",
   },
-  handleTL: { left: -11, top: -11 },
-  handleBR: { right: -11, bottom: -11 },
-  handleTR: { right: -11, top: -11 },
+  handleTL: {
+    left: -11,
+    top: -11,
+  },
+  handleBR: {
+    right: -11,
+    bottom: -11,
+  },
+  handleTR: {
+    right: -11,
+    top: -11,
+  },
 
   actionSave: {
     backgroundColor: "rgba(0, 0, 0, 0.8)",

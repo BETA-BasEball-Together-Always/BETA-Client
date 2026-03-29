@@ -21,6 +21,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import AppHeader from "../../../../shared/component/AppHeader";
+import LeaveConfirmModal from "../../../../shared/component/LeaveConfirmModal";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import CameraIcon from "../../../community/assets/svg/CommunityPost/camera.svg";
@@ -1283,45 +1284,13 @@ const CreatePostScreen = () => {
           </Pressable>
         </Modal>
 
-        {/* 사용자가 게시글 작성 도중 뒤로가기 버튼 누르면 뜨는 모달창! */}
-        <Modal
-          transparent
+        <LeaveConfirmModal
           visible={isLeaveModalVisible}
-          animationType="fade"
-          onRequestClose={() => setIsLeaveModalVisible(false)}
-        >
-          <View style={styles.leaveModalOverlay}>
-            <View style={styles.leaveModalCard}>
-              <AppText variant="displayTitle" style={styles.leaveModalTitle}>
-                나가시겠어요?
-              </AppText>
-              <AppText variant="middle" style={styles.leaveModalDesc}>
-                {"지금 나가시면 작성 내용이 사라져요 😭"}
-              </AppText>
-
-              <TouchableOpacity
-                style={styles.leaveConfirmBtn}
-                onPress={() => {
-                  setIsLeaveModalVisible(false);
-                  navigation.goBack();
-                }}
-              >
-                <AppText variant="medium" style={styles.leaveConfirmText}>
-                  나가기
-                </AppText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.leaveCancelBtn}
-                onPress={() => setIsLeaveModalVisible(false)}
-              >
-                <AppText variant="medium" style={styles.leaveCancelText}>
-                  취소
-                </AppText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+          onClose={() => setIsLeaveModalVisible(false)}
+          title="나가시겠어요?"
+          description="지금 나가시면 작성 내용이 사라져요 😭"
+          onLeave={() => navigation.goBack()}
+        />
         {/* 이미지 첨부 + 업로드 관련 로딩 */}
         <Modal transparent visible={isSpinning} animationType="fade">
           <View style={styles.loadingOverlay}>
@@ -1600,49 +1569,4 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
-  // 나가기 모달창
-  leaveModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  leaveModalCard: {
-    width: "100%",
-    borderRadius: 16,
-    backgroundColor: "#202325",
-    paddingTop: 28,
-    paddingBottom: 8,
-    paddingHorizontal: 20,
-    alignItems: "center",
-  },
-  leaveModalTitle: {
-    color: "#E5E5E5",
-    marginBottom: 8,
-  },
-  leaveModalDesc: {
-    color: "rgba(228, 228, 228, 0.50)",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  leaveConfirmBtn: {
-    width: "100%",
-    backgroundColor: "#F9F9F9",
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  leaveConfirmText: {
-    color: "#1E1E1E",
-  },
-  leaveCancelBtn: {
-    width: "100%",
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  leaveCancelText: {
-    color: "#9B9B9B",
-  },
 });
