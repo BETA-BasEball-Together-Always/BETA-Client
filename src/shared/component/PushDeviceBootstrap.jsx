@@ -23,9 +23,14 @@ const PushDeviceBootstrap = () => {
 
     syncedTokenRef.current = accessToken;
 
-    syncCurrentDevicePushSettings({ requestPermission: false }).catch((error) => {
-      console.warn("[푸시] 로그인 후 디바이스 푸시 설정 동기화에 실패했습니다.", error);
-    });
+    syncCurrentDevicePushSettings({ requestPermission: false }).catch(
+      (error) => {
+        console.warn(
+          "[푸시] 로그인 후 디바이스 푸시 설정 동기화에 실패했습니다.",
+          error,
+        );
+      },
+    );
   }, [accessToken]);
 
   useEffect(() => {
@@ -49,7 +54,10 @@ const PushDeviceBootstrap = () => {
 
       syncCurrentDevicePushSettings({ requestPermission: false }).catch(
         (error) => {
-          console.warn("[푸시] 앱 활성화 후 디바이스 푸시 설정 동기화에 실패했습니다.", error);
+          console.warn(
+            "[푸시] 앱 활성화 후 디바이스 푸시 설정 동기화에 실패했습니다.",
+            error,
+          );
         },
       );
     });

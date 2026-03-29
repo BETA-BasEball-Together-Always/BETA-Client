@@ -19,16 +19,34 @@ const isAuthorizedStatus = (status) =>
 const getErrorMessage = (error) =>
   error?.message ?? error?.nativeErrorMessage ?? String(error ?? "");
 
+/** UI/직렬화에서 true|false 외 타입이 섞여도 PATCH 본문은 boolean으로 고정 (typeof 검증 실패로 요청 자체가 안 나가는 경우 방지) */
+function coercePushDetailBool(value) {
+  if (value === true || value === false) {
+    return value;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return Boolean(value);
+}
+
 const normalizePushSettings = (settings) => {
   const postCommentPushEnabled = Boolean(settings?.postCommentPushEnabled);
   const postEmotionPushEnabled = Boolean(settings?.postEmotionPushEnabled);
+  const anySubOn = postCommentPushEnabled || postEmotionPushEnabled;
+  const hasExplicitMaster = typeof settings?.pushEnabled === "boolean";
+
+  // GET/일부 응답에서 pushEnabled가 (댓글∧공감)로만 계산되면 한쪽만 켠 상태에서 전체 OFF로 보이고 세부 토글이 막힘 → 명시값 OR 세부 한 개라도 ON이면 전체 ON으로 해석
+  const pushEnabled = hasExplicitMaster
+    ? Boolean(settings.pushEnabled) || anySubOn
+    : anySubOn;
 
   return {
     deviceId: settings?.deviceId ?? null,
-    pushEnabled:
-      typeof settings?.pushEnabled === "boolean"
-        ? settings.pushEnabled
-        : postCommentPushEnabled && postEmotionPushEnabled,
+    pushEnabled,
     postCommentPushEnabled,
     postEmotionPushEnabled,
   };
@@ -53,7 +71,9 @@ async function getAndroidNotificationPermissionStatus() {
     };
   }
 
-  const granted = await PermissionsAndroid.check(ANDROID_NOTIFICATION_PERMISSION);
+  const granted = await PermissionsAndroid.check(
+    ANDROID_NOTIFICATION_PERMISSION,
+  );
 
   return {
     granted,
@@ -206,6 +226,12 @@ async function patchDevicePushEnabled(accessToken, deviceId, pushEnabled) {
     throw error;
   }
 
+  // 디버그: 전체 푸시 토글 시 서버 응답 확인용 (안정화 후 제거 가능)
+  console.log(
+    "[푸시설정] PATCH /api/v1/devices/push-enabled 서버 응답",
+    JSON.stringify(data ?? null, null, 2),
+  );
+
   return data;
 }
 
@@ -231,6 +257,12 @@ async function patchDevicePushDetailSettings(
     throw error;
   }
 
+  // 디버그: 댓글/공감 세부 토글 시 서버 응답 확인용 (안정화 후 제거 가능)
+  console.log(
+    "[푸시설정] PATCH /api/v1/devices/push-detail-settings 서버 응답",
+    JSON.stringify(data ?? null, null, 2),
+  );
+
   return data;
 }
 
@@ -249,6 +281,12 @@ async function putDevicePushSettings(accessToken, deviceId, fcmToken) {
     error.apiPayload = data;
     throw error;
   }
+
+  // 디버그: 전체 푸시 ON 직후 FCM 동기화(put) 응답 — 토글 직접 응답은 아니나 흐름 추적용 (안정화 후 제거 가능)
+  console.log(
+    "[푸시설정] PUT /api/v1/devices/push-settings 서버 응답",
+    JSON.stringify(data ?? null, null, 2),
+  );
 
   return data;
 }
@@ -295,6 +333,9 @@ export async function submitPushEnabledToServer(pushEnabled) {
 
   await patchDevicePushEnabled(accessToken, deviceId, true);
 
+  // 전체 푸시 ON 시 댓글/공감 세부 토글도 함께 켜져야 하므로, push-detail-settings에 둘 다 true로 맞춤
+  await patchDevicePushDetailSettings(accessToken, deviceId, true, true);
+
   let fcmToken = null;
   let tokenSync = null;
   try {
@@ -327,22 +368,25 @@ export async function submitPushDetailSettingsToServer({
     return { skipped: true, reason: "NO_ACCESS_TOKEN" };
   }
 
+  const commentOn = coercePushDetailBool(postCommentPushEnabled);
+  const emotionOn = coercePushDetailBool(postEmotionPushEnabled);
+
   const deviceId = await getDeviceId();
 
   await patchDevicePushDetailSettings(
     accessToken,
     deviceId,
-    postCommentPushEnabled,
-    postEmotionPushEnabled,
+    commentOn,
+    emotionOn,
   );
 
   return {
     ok: true,
+    // 세부만 PATCH했을 때 pushEnabled를 AND로 넣으면 한쪽만 켠 경우 전체 스위치가 꺼진 것처럼 normalize됨 → 명시하지 않고 세부 기준으로만 정규화
     settings: normalizePushSettings({
       deviceId,
-      pushEnabled: postCommentPushEnabled && postEmotionPushEnabled,
-      postCommentPushEnabled,
-      postEmotionPushEnabled,
+      postCommentPushEnabled: commentOn,
+      postEmotionPushEnabled: emotionOn,
     }),
   };
 }

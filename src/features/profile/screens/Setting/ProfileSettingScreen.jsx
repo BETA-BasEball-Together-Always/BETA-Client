@@ -6,8 +6,8 @@ import {
   Modal,
   Platform,
   StyleSheet,
-  Text,
   TouchableOpacity,
+  ScrollView,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -42,15 +42,11 @@ import {
 import MoreArrow from "@features/auth/assets/common/svg/more_arrow.svg";
 
 const NOTION_URLS = {
-  /** 공지사항  */
   notice:
     "https://bouncy-bush-b08.notion.site/BETA-331226b7125d80a8ae64c093d74c3744?source=copy_link",
-  /** FAQ */
   faq: "https://bouncy-bush-b08.notion.site/BETA-FAQ-331226b7125d8055bf31f19cad978c6e?source=copy_link",
-  /** 서비스 이용 약관 */
   termsOfService:
     "https://bouncy-bush-b08.notion.site/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
-  /** 개인정보 처리방침 */
   privacyPolicy:
     "https://bouncy-bush-b08.notion.site/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
 };
@@ -61,10 +57,13 @@ const PUSH_TOGGLE_H = 33;
 const PUSH_TOGGLE_THUMB = 28;
 const PUSH_TOGGLE_PAD = 2.5;
 
-/**
- * RN에서 Text에 flex:1을 주면 행 flex가 깨져 라벨/SVG가 세로로 쌓이는 경우가 있음
- * 라벨은 View로 감싸 flex:1, 화살표는 flexShrink:0으로 고정
- */
+// 푸시 설정 기본값
+const EMPTY_PUSH_SETTINGS = {
+  pushEnabled: false,
+  postCommentPushEnabled: false,
+  postEmotionPushEnabled: false,
+};
+
 function LinkMenuRow({ onPress, label }) {
   return (
     <TouchableOpacity
@@ -84,13 +83,15 @@ function LinkMenuRow({ onPress, label }) {
   );
 }
 
-function PushSettingToggle({ value, onValueChange, busy }) {
+function PushSettingToggle({ value, onValueChange, busy, disabled }) {
+  const isDisabled = Boolean(busy || disabled);
   return (
     <TouchableOpacity
       accessibilityRole="switch"
-      accessibilityState={{ checked: value, disabled: busy }}
+      accessibilityState={{ checked: value, disabled: isDisabled }}
       activeOpacity={0.9}
-      disabled={busy}
+      disabled={isDisabled}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       onPress={() => onValueChange(!value)}
       style={[
         styles.pushToggleTrack,
@@ -106,6 +107,38 @@ function PushSettingToggle({ value, onValueChange, busy }) {
         <View style={styles.pushToggleThumb} />
       </View>
     </TouchableOpacity>
+  );
+}
+
+// 개별 푸시 설정 행
+function PushSettingRow({
+  title,
+  description,
+  value,
+  onValueChange,
+  busy,
+  showDivider = true,
+  toggleDisabled = false,
+}) {
+  return (
+    <View style={[styles.pushItem, showDivider && styles.pushItemDivider]}>
+      <View style={styles.pushItemTextWrap}>
+        <AppText variant="bodyMedium" style={styles.pushItemTitle}>
+          {title}
+        </AppText>
+        {description ? (
+          <AppText variant="smallRegular" style={styles.pushItemDescription}>
+            {description}
+          </AppText>
+        ) : null}
+      </View>
+      <PushSettingToggle
+        value={value}
+        onValueChange={onValueChange}
+        busy={busy}
+        disabled={toggleDisabled}
+      />
+    </View>
   );
 }
 
@@ -125,22 +158,39 @@ const ProfileSettingScreen = () => {
   const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
   const [pushToggleBusy, setPushToggleBusy] = useState(false);
 
-  const refreshPushSettings = useCallback(async () => {
+  // 세부 토글 PATCH 시 다른 쪽 값은 항상 최신 state에서 읽기
+  const pushSettingsRef = useRef(pushSettings);
+  pushSettingsRef.current = pushSettings;
+  // 첫 진입만 푸시 카드 전체 로딩; 이후 포커스 재조회는 백그라운드로 해서 스피너/ isPushBusy 로 토글 터치가 막히지 않게 함
+  const pushSettingsInitialFetchDoneRef = useRef(false);
+
+  const refreshPushSettings = useCallback(async (opts) => {
+    const showLoading =
+      typeof opts?.showLoading === "boolean"
+        ? opts.showLoading
+        : !pushSettingsInitialFetchDoneRef.current;
     try {
-      setPushSettingsLoading(true);
+      if (showLoading) {
+        setPushSettingsLoading(true);
+      }
       const result = await fetchCurrentDevicePushSettings();
       setPushSettings(result.settings ?? EMPTY_PUSH_SETTINGS);
     } catch (error) {
       logAxiosError("fetchDevicePushSettings", error);
       setPushSettings(EMPTY_PUSH_SETTINGS);
     } finally {
-      setPushSettingsLoading(false);
+      if (showLoading) {
+        setPushSettingsLoading(false);
+      }
+      pushSettingsInitialFetchDoneRef.current = true;
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      refreshPushSettings();
+      refreshPushSettings({
+        showLoading: !pushSettingsInitialFetchDoneRef.current,
+      });
     }, [refreshPushSettings]),
   );
 
@@ -166,6 +216,116 @@ const ProfileSettingScreen = () => {
       }),
     );
   }, [clearAuth, navigation, queryClient]);
+
+  // 전체 푸시 토글: 서비스에서 push-detail-settings까지 맞추므로 성공 시 반환 settings로 댓글/공감 UI도 동기화
+  const onPushSwitchChange = useCallback(
+    async (nextOn) => {
+      if (pushToggleBusy) return;
+      setPushToggleBusy(true);
+      try {
+        const result = await submitPushEnabledToServer(nextOn);
+        // 디버그: 전체 토글 후 서비스 레이어가 조합한 결과(위 pushDeviceService에서 PATCH/PUT 응답도 별도 로그) (안정화 후 제거 가능)
+        console.log("[푸시설정] 전체 토글 — submitPushEnabledToServer 반환", {
+          nextOn,
+          skipped: result.skipped,
+          reason: result.reason,
+          ok: result.ok,
+          settings: result.settings,
+          tokenSync: result.tokenSync,
+          hasFcmToken: Boolean(result.fcmToken),
+        });
+        if (result.skipped) {
+          if (result.reason === "NOTIFICATION_PERMISSION_NOT_GRANTED") {
+            Alert.alert(
+              "알림 권한 필요",
+              Platform.select({
+                ios: "설정 > 알림에서 이 앱의 알림을 허용해 주세요.",
+                default: "설정에서 이 앱의 알림 권한을 허용해 주세요.",
+              }),
+            );
+          }
+          await refreshPushSettings({ showLoading: false });
+          return;
+        }
+        if (result.settings) {
+          setPushSettings((prev) => ({
+            ...prev,
+            ...result.settings,
+          }));
+        } else {
+          setPushSettings((prev) => ({ ...prev, pushEnabled: nextOn }));
+        }
+      } catch (e) {
+        logAxiosError("pushSettingsToggle", e);
+        Alert.alert(
+          "오류",
+          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        );
+        await refreshPushSettings({ showLoading: false });
+      } finally {
+        setPushToggleBusy(false);
+      }
+    },
+    [pushToggleBusy, refreshPushSettings],
+  );
+
+  // 세부 푸시 토글 — API는 postComment/postEmotion 둘 다 필수; 변경하지 않은 쪽은 ref의 최신 값 사용
+  const onPushDetailChange = useCallback(
+    async (key, value) => {
+      if (pushToggleBusy) return;
+      setPushToggleBusy(true);
+      const prev = pushSettingsRef.current;
+      const nextComment =
+        key === "postCommentPushEnabled"
+          ? value
+          : Boolean(prev.postCommentPushEnabled);
+      const nextEmotion =
+        key === "postEmotionPushEnabled"
+          ? value
+          : Boolean(prev.postEmotionPushEnabled);
+      try {
+        const result = await submitPushDetailSettingsToServer({
+          postCommentPushEnabled: nextComment,
+          postEmotionPushEnabled: nextEmotion,
+        });
+        // 디버그: 세부 토글 후 서비스 반환값 (실제 HTTP 응답 본문은 pushDeviceService PATCH 로그 참고) (안정화 후 제거 가능)
+        console.log(
+          "[푸시설정] 세부 토글 — submitPushDetailSettingsToServer 반환",
+          {
+            key,
+            requested: { nextComment, nextEmotion },
+            skipped: result.skipped,
+            reason: result.reason,
+            ok: result.ok,
+            settings: result.settings,
+          },
+        );
+        if (result.skipped) {
+          await refreshPushSettings({ showLoading: false });
+          return;
+        }
+        if (result.settings) {
+          setPushSettings((s) => ({ ...s, ...result.settings }));
+        } else {
+          setPushSettings((s) => ({
+            ...s,
+            postCommentPushEnabled: nextComment,
+            postEmotionPushEnabled: nextEmotion,
+          }));
+        }
+      } catch (e) {
+        logAxiosError("pushDetailChange", e);
+        Alert.alert(
+          "오류",
+          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        );
+        await refreshPushSettings({ showLoading: false });
+      } finally {
+        setPushToggleBusy(false);
+      }
+    },
+    [pushToggleBusy, refreshPushSettings],
+  );
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -220,97 +380,13 @@ const ProfileSettingScreen = () => {
   const openNotionLink = useCallback((url, labelForEmpty) => {
     const trimmed = String(url ?? "").trim();
     if (!trimmed) {
-      Alert.alert(
-        "안내",
-        `${labelForEmpty} 노션 링크가 비어 있습니다. 이 파일 상단의 NOTION_URLS 객체에 해당 필드(notice / faq / termsOfService / privacyPolicy)에 URL을 넣어 주세요.`,
-      );
+      Alert.alert("안내", `${labelForEmpty} 링크가 비어 있습니다.`);
       return;
     }
     Linking.openURL(trimmed).catch(() => {
       Alert.alert("오류", "링크를 열 수 없습니다.");
     });
   }, []);
-
-  const onPushSwitchChange = useCallback(
-    async (nextOn) => {
-      if (pushToggleBusy) return;
-      setPushToggleBusy(true);
-      try {
-        if (nextOn) {
-          const result = await submitPushEnabledToServer(true);
-          if (result.skipped) {
-            if (result.reason === "NOTIFICATION_PERMISSION_NOT_GRANTED") {
-              const msg = Platform.select({
-                ios: "설정 > 알림에서 이 앱의 알림을 허용해 주세요.",
-                default: "설정에서 이 앱의 알림 권한을 허용해 주세요.",
-              });
-              console.warn(
-                "[PUSH][ProfileSetting] NOTIFICATION_PERMISSION_NOT_GRANTED:",
-                msg,
-                "(설정 앱: Linking.openSettings() 로 열 수 있음)",
-              );
-              await refreshPushSwitchFromOs();
-              return;
-            }
-            if (result.reason === "NO_ACCESS_TOKEN") {
-              console.warn(
-                "[PUSH][ProfileSetting] NO_ACCESS_TOKEN: 로그인이 필요합니다.",
-              );
-              await refreshPushSwitchFromOs();
-              return;
-            }
-            if (result.reason === "FCM_TOKEN_ERROR") {
-              const hint =
-                result.error?.message ?? result.error?.nativeErrorMessage ?? "";
-              const apsHint =
-                Platform.OS === "ios" &&
-                String(hint).includes("aps-environment")
-                  ? " (iOS) Apple 푸시(APS) 인타이틀먼트·앱 ID Push Notifications·재빌드 확인. 백엔드 문제가 아닐 수 있음."
-                  : "";
-              console.warn(
-                "[PUSH][ProfileSetting] FCM_TOKEN_ERROR:",
-                hint || "(no error message)",
-                apsHint,
-                result.error,
-              );
-              await refreshPushSwitchFromOs();
-              return;
-            }
-            console.warn(
-              "[PUSH][ProfileSetting] skipped:",
-              result.reason ?? "(unknown)",
-              result,
-            );
-            await refreshPushSwitchFromOs();
-            return;
-          }
-          lastServerPushEnabledRef.current = true;
-          setPushSwitchOn(true);
-        } else {
-          const result = await submitPushEnabledToServer(false);
-          if (result.skipped && result.reason === "NO_ACCESS_TOKEN") {
-            console.warn(
-              "[PUSH][ProfileSetting] NO_ACCESS_TOKEN (off): 로그인이 필요합니다.",
-            );
-          } else {
-            lastServerPushEnabledRef.current = false;
-            setPushSwitchOn(false);
-          }
-        }
-      } catch (e) {
-        logAxiosError("pushSettingsToggle", e);
-        console.warn(
-          "[PUSH][ProfileSetting] submitPushEnabledToServer threw:",
-          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
-          e,
-        );
-        await refreshPushSettings();
-      } finally {
-        setPushToggleBusy(false);
-      }
-    },
-    [isPushBusy, pushSettings, refreshPushSettings],
-  );
 
   const renderConfirmModal = ({
     visible,
@@ -335,7 +411,6 @@ const ProfileSettingScreen = () => {
           <AppText variant="middle" style={styles.modalDesc}>
             {description}
           </AppText>
-
           <TouchableOpacity
             style={[styles.cancelBtn, pending && styles.btnDisabled]}
             disabled={pending}
@@ -345,7 +420,6 @@ const ProfileSettingScreen = () => {
               취소
             </AppText>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.dangerBtn, pending && styles.btnDisabled]}
             disabled={pending}
@@ -367,155 +441,155 @@ const ProfileSettingScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <AppHeader pageName="설정" showBack />
-
-      <View style={styles.section}>
-        <AppText
-          variant="semi18"
-          className="text-white"
-          style={styles.sectionTitle}
-        >
-          푸시 알림 설정
-        </AppText>
-
-        <View style={styles.pushCard}>
-          {pushSettingsLoading ? (
-            <View style={styles.pushLoadingWrap}>
-              <ActivityIndicator color="#FFF" />
-            </View>
-          ) : (
-            <>
-              <PushSettingRow
-                title="푸시 알람 전체"
-                description="알림을 끄면 모든 소식을 받을 수 없어요."
-                value={pushSettings.pushEnabled}
-                onValueChange={onPushSwitchChange}
-                busy={isPushBusy}
-              />
-              <PushSettingRow
-                title="댓글 알림"
-                value={pushSettings.postCommentPushEnabled}
-                onValueChange={(value) =>
-                  onPushDetailChange("postCommentPushEnabled", value)
-                }
-                busy={isPushBusy}
-              />
-              <PushSettingRow
-                title="공감 알림"
-                value={pushSettings.postEmotionPushEnabled}
-                onValueChange={(value) =>
-                  onPushDetailChange("postEmotionPushEnabled", value)
-                }
-                busy={isPushBusy}
-                showDivider={false}
-              />
-            </>
-          )}
+      <ScrollView>
+        <View style={styles.section}>
+          <AppText
+            variant="semi18"
+            className="text-white"
+            style={styles.sectionTitle}
+          >
+            푸시 알림 설정
+          </AppText>
+          <View style={styles.pushCard}>
+            {pushSettingsLoading ? (
+              <View style={styles.pushLoadingWrap}>
+                <ActivityIndicator color="#FFF" />
+              </View>
+            ) : (
+              <>
+                <PushSettingRow
+                  title="푸시 알람 전체"
+                  description="알림을 끄면 모든 소식을 받을 수 없어요."
+                  value={pushSettings.pushEnabled}
+                  onValueChange={onPushSwitchChange}
+                  busy={isPushBusy}
+                />
+                <PushSettingRow
+                  title="댓글 알림"
+                  value={pushSettings.postCommentPushEnabled}
+                  onValueChange={(value) =>
+                    onPushDetailChange("postCommentPushEnabled", value)
+                  }
+                  busy={isPushBusy}
+                  toggleDisabled={!pushSettings.pushEnabled}
+                />
+                <PushSettingRow
+                  title="공감 알림"
+                  value={pushSettings.postEmotionPushEnabled}
+                  onValueChange={(value) =>
+                    onPushDetailChange("postEmotionPushEnabled", value)
+                  }
+                  busy={isPushBusy}
+                  showDivider={false}
+                  toggleDisabled={!pushSettings.pushEnabled}
+                />
+              </>
+            )}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <AppText
-          variant="semi18"
-          className="text-white"
-          style={styles.sectionTitle}
-        >
-          계정
-        </AppText>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setLogoutModalVisible(true)}
-          disabled={isAuthBusy}
-          style={[styles.accountRow, isAuthBusy && styles.rowDisabled]}
-        >
-          <AppText variant="bodyMedium" style={styles.menuItemText}>
-            로그아웃
+        <View style={styles.section}>
+          <AppText
+            variant="semi18"
+            className="text-white"
+            style={styles.sectionTitle}
+          >
+            계정
           </AppText>
-        </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setLogoutModalVisible(true)}
+            disabled={isAuthBusy}
+            style={[styles.accountRow, isAuthBusy && styles.rowDisabled]}
+          >
+            <AppText variant="bodyMedium" style={styles.menuItemText}>
+              로그아웃
+            </AppText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setWithdrawModalVisible(true)}
+            disabled={isAuthBusy}
+            style={[styles.accountRow, isAuthBusy && styles.rowDisabled]}
+          >
+            <AppText variant="bodyMedium" style={styles.menuItemText}>
+              계정 탈퇴
+            </AppText>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setWithdrawModalVisible(true)}
-          disabled={isAuthBusy}
-          style={[styles.accountRow, isAuthBusy && styles.rowDisabled]}
-        >
-          <AppText variant="bodyMedium" style={styles.menuItemText}>
-            계정 탈퇴
+        <View style={styles.section}>
+          <AppText
+            variant="semi18"
+            className="text-white"
+            style={styles.sectionTitle}
+          >
+            안내
           </AppText>
-        </TouchableOpacity>
-      </View>
+          <LinkMenuRow
+            label="공지사항"
+            onPress={() => openNotionLink(NOTION_URLS.notice, "공지사항")}
+          />
+          <LinkMenuRow
+            label="FAQ"
+            onPress={() => openNotionLink(NOTION_URLS.faq, "FAQ")}
+          />
+        </View>
 
-      <View style={styles.section}>
-        <AppText
-          variant="semi18"
-          className="text-white"
-          style={styles.sectionTitle}
-        >
-          안내
-        </AppText>
-        <LinkMenuRow
-          label="공지사항"
-          onPress={() => openNotionLink(NOTION_URLS.notice, "공지사항")}
-        />
-        <LinkMenuRow
-          label="FAQ"
-          onPress={() => openNotionLink(NOTION_URLS.faq, "FAQ")}
-        />
-      </View>
-
-      <View style={styles.section}>
-        <AppText
-          variant="semi18"
-          className="text-white"
-          style={styles.sectionTitle}
-        >
-          서비스 정보
-        </AppText>
-        <LinkMenuRow
-          label="서비스 이용약관"
-          onPress={() =>
-            openNotionLink(NOTION_URLS.termsOfService, "서비스 이용약관")
-          }
-        />
-        <LinkMenuRow
-          label="개인정보 처리방침"
-          onPress={() =>
-            openNotionLink(NOTION_URLS.privacyPolicy, "개인정보 처리방침")
-          }
-        />
-
-        <View style={styles.versionRow}>
-          <View style={styles.versionRowLabel}>
-            <AppText variant="bodyMedium" style={styles.linkRowText}>
-              현재버전
+        <View style={styles.section}>
+          <AppText
+            variant="semi18"
+            className="text-white"
+            style={styles.sectionTitle}
+          >
+            서비스 정보
+          </AppText>
+          <LinkMenuRow
+            label="서비스 이용약관"
+            onPress={() =>
+              openNotionLink(NOTION_URLS.termsOfService, "서비스 이용약관")
+            }
+          />
+          <LinkMenuRow
+            label="개인정보 처리방침"
+            onPress={() =>
+              openNotionLink(NOTION_URLS.privacyPolicy, "개인정보 처리방침")
+            }
+          />
+          <View style={styles.versionRow}>
+            <View style={styles.versionRowLabel}>
+              <AppText variant="bodyMedium" style={styles.linkRowText}>
+                현재버전
+              </AppText>
+            </View>
+            <AppText variant="smallRegular" style={styles.versionMeta}>
+              V.{APP_VERSION} 최신버전
             </AppText>
           </View>
-          <AppText variant="smallRegular" style={styles.versionMeta}>
-            V.{APP_VERSION} 최신버전
-          </AppText>
         </View>
-      </View>
 
-      {renderConfirmModal({
-        visible: logoutModalVisible,
-        onClose: () =>
-          !logoutMutation.isPending && setLogoutModalVisible(false),
-        title: "로그아웃 하시겠어요?",
-        description: LOGOUT_SUB,
-        confirmLabel: "로그아웃",
-        onConfirm: () => logoutMutation.mutate(),
-        pending: logoutMutation.isPending,
-      })}
+        {renderConfirmModal({
+          visible: logoutModalVisible,
+          onClose: () =>
+            !logoutMutation.isPending && setLogoutModalVisible(false),
+          title: "로그아웃 하시겠어요?",
+          description: LOGOUT_SUB,
+          confirmLabel: "로그아웃",
+          onConfirm: () => logoutMutation.mutate(),
+          pending: logoutMutation.isPending,
+        })}
 
-      {renderConfirmModal({
-        visible: withdrawModalVisible,
-        onClose: () =>
-          !withdrawMutation.isPending && setWithdrawModalVisible(false),
-        title: "정말 탈퇴하시겠어요?",
-        description: WITHDRAW_SUB,
-        confirmLabel: "회원탈퇴",
-        onConfirm: () => withdrawMutation.mutate(),
-        pending: withdrawMutation.isPending,
-      })}
+        {renderConfirmModal({
+          visible: withdrawModalVisible,
+          onClose: () =>
+            !withdrawMutation.isPending && setWithdrawModalVisible(false),
+          title: "정말 탈퇴하시겠어요?",
+          description: WITHDRAW_SUB,
+          confirmLabel: "회원탈퇴",
+          onConfirm: () => withdrawMutation.mutate(),
+          pending: withdrawMutation.isPending,
+        })}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -597,7 +671,6 @@ const styles = StyleSheet.create({
   },
   accountRow: {
     alignSelf: "stretch",
-    minHeight: 44,
     paddingVertical: 4,
     justifyContent: "center",
   },
@@ -610,10 +683,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "stretch",
     width: "100%",
-    minHeight: 44,
     paddingVertical: 4,
   },
-  /** Text에 flex:1 금지 — 행 레이아웃용 래퍼만 flex */
   linkRowLabel: {
     flex: 1,
     marginRight: 12,
@@ -629,18 +700,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // 작은 글씨(버전)가 세로 가운데 정렬일 때 위로 떠 보여서, 행 하단 기준으로 맞춤
   versionRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-end",
     alignSelf: "stretch",
     width: "100%",
-    minHeight: 44,
-    paddingVertical: 4,
+    paddingBottom: 2,
   },
   versionRowLabel: {
     flex: 1,
     marginRight: 12,
     minWidth: 0,
+    paddingBottom: 1,
   },
   versionMeta: {
     flexShrink: 0,

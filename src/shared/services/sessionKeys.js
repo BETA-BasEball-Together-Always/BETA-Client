@@ -6,7 +6,7 @@ export const sessionKeys = {
 
   tokens: () => [...sessionKeys.all, "tokens"],
 
-  // 🔁 토큰 재발급
+  // 토큰 재발급
   refresh: () => [...sessionKeys.tokens(), "refresh"],
 };
 export default sessionKeys;
