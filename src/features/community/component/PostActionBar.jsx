@@ -8,7 +8,6 @@ import CommentOnPressIcon from "../assets/svg/CommunityPost/commentOnPressIcon.s
 // import LinkIcon from "../assets/svg/CommunityPost/linkIcon.svg";
 // import LinkOnPressIcon from "../assets/svg/CommunityPost/linkOnPressIcon.svg";
 
-/** 아이콘 옆 count 없음 — ReactionSummary에서만 집계 표시 */
 const PostActionBar = ({
   selected,
   commentMode,
