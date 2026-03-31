@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   header: {
     color: "#F9F9F9",
-    marginTop: 17,
+    marginTop: 10,
     lineHeight: 32.7,
   },
   subText: {

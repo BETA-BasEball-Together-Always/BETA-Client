@@ -151,11 +151,14 @@ export function pickEmotionTypeFromPostCoalesced(post) {
  * 없을 때만 로컬 스토어(옵티미스틱/영속)를 사용한다.
  */
 export function resolveSelectedEmotionForPost(post, storeEmotion) {
-  const fromPost = pickEmotionTypeFromPostCoalesced(post);
-  if (fromPost) return fromPost;
+  // storeEmotion이 명시적으로 존재하면(특히 null=취소) 서버 값보다 우선한다.
+  // 서버 응답/캐시가 잠깐 stale일 때도 UI가 즉시 토글되도록 하기 위함.
   if (storeEmotion === null) return null;
   if (storeEmotion !== undefined) {
     return normalizeCommunityEmotionType(storeEmotion) ?? undefined;
   }
+
+  const fromPost = pickEmotionTypeFromPostCoalesced(post);
+  if (fromPost) return fromPost;
   return undefined;
 }

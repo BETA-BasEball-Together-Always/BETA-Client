@@ -368,7 +368,10 @@ const PopularPostCard = ({ post }) => {
             <Image source={{ uri: primaryImageUri }} style={styles.image} />
             {extraImageCount > 0 ? (
               <View style={styles.imageCountBadge} pointerEvents="none">
-                <AppText variant="middle" style={styles.imageCountBadgeText}>
+                <AppText
+                  variant="numMediumRegular"
+                  style={styles.imageCountBadgeText}
+                >
                   +{extraImageCount}
                 </AppText>
               </View>
@@ -586,13 +589,13 @@ const styles = StyleSheet.create({
   },
   imageCountBadge: {
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 7,
+    right: 8,
     backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    minWidth: 35,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    minWidth: 30,
     alignItems: "center",
     justifyContent: "center",
   },

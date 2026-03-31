@@ -86,13 +86,13 @@ const PostReactions = ({
     [reactionCounts],
   );
   const currentEmotionUiId = useMemo(() => {
-    const fromPost = pickEmotionTypeFromPostCoalesced(post);
-    if (fromPost && COMMUNITY_REACTIONS.some((r) => r.id === fromPost)) {
-      return fromPost;
-    }
     const fromProp = normalizeCommunityEmotionType(selectedEmotionType);
     if (fromProp && COMMUNITY_REACTIONS.some((r) => r.id === fromProp)) {
       return fromProp;
+    }
+    const fromPost = pickEmotionTypeFromPostCoalesced(post);
+    if (fromPost && COMMUNITY_REACTIONS.some((r) => r.id === fromPost)) {
+      return fromPost;
     }
     if (selectedEmotionType === null) return null;
     return null;
