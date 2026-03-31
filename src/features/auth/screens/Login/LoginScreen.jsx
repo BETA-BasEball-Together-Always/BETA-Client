@@ -23,6 +23,7 @@ import { getDeviceId } from "../../libs/Login/deviceUtils";
 import { useUserStore } from "../../../../shared/store/userStore";
 
 import api from "../../../../shared/libs/api";
+import { cancelWithdrawAccountApi } from "../../services/authSessionService";
 
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
@@ -85,6 +86,7 @@ const LoginScreen = ({ navigation, route }) => {
   );
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
+  const clearAuth = useUserStore((state) => state.clearAuth);
 
   const authErrorMessage = route?.params?.authErrorMessage ?? null;
 
@@ -150,11 +152,48 @@ const LoginScreen = ({ navigation, route }) => {
     api.defaults.headers.Authorization = `Bearer ${userResponse.accessToken}`;
 
     if (!isNewUser) {
+      const baseUser = userResponse?.user ? userResponse.user : userResponse;
+      const withdrawnAt = baseUser?.withdrawnAt ?? null;
+      const scheduledDeletionAt = baseUser?.scheduledDeletionAt ?? null;
+
+      const scheduled =
+        scheduledDeletionAt && !Number.isNaN(new Date(scheduledDeletionAt).getTime())
+          ? new Date(scheduledDeletionAt)
+          : null;
+
+      // 30일이 지나 영구 삭제 대상(또는 삭제 완료)로 판단되면 앱 세션을 즉시 비우고 안내
+      if (scheduled && Date.now() >= scheduled.getTime()) {
+        await clearAuth();
+        delete api.defaults.headers.Authorization;
+        Alert.alert(
+          "로그인 안내",
+          "탈퇴한 계정은 30일이 지나 삭제되었습니다. 새 계정으로 가입해 주세요.",
+        );
+        return;
+      }
+
+      // 탈퇴 요청 상태면(30일 이내) 재로그인 시 탈퇴 취소 시도
+      if (withdrawnAt || scheduledDeletionAt) {
+        try {
+          await cancelWithdrawAccountApi();
+        } catch (e) {
+          // 취소가 실패하더라도 로그인 자체는 진행되게 하되 사용자에게는 안내
+          console.warn("[withdraw/cancel] failed", e?.response?.data ?? e);
+          Alert.alert(
+            "안내",
+            "계정 탈퇴 취소 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+        }
+      }
+
       // 기존 회원 → 유저 정보 전역 저장 후 메인으로
-      if (userResponse?.user) {
-        setUser(userResponse.user);
-      } else if (userResponse) {
-        setUser(userResponse);
+      if (baseUser) {
+        // 탈퇴 취소가 성공했더라도 응답이 업데이트되지 않는 케이스가 있어, 클라이언트 표시는 정상 상태로 보정
+        const normalizedUser =
+          withdrawnAt || scheduledDeletionAt
+            ? { ...baseUser, withdrawnAt: null, scheduledDeletionAt: null }
+            : baseUser;
+        setUser(normalizedUser);
       }
       navigation.replace("Main");
       return;
