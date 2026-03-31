@@ -27,6 +27,7 @@ export default function ThreadItem({
   onToggleLike,
   onLongPress,
   onPressProfile,
+  onThreadLayout,
   showReplyActions = false,
   onReplyPress,
   isPressed = false,
@@ -65,6 +66,12 @@ export default function ThreadItem({
 
   return (
     <View
+      onLayout={(e) => {
+        if (typeof onThreadLayout !== "function") return;
+        const id = item?.commentId ?? item?.id;
+        if (id == null) return;
+        onThreadLayout(id, e?.nativeEvent?.layout?.y ?? 0);
+      }}
       style={[
         styles.container,
         variant === "reply" && styles.replyContainer,
@@ -285,10 +292,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   contentComment: {
-    lineHeight: 19.4,
+    lineHeight: 20,
   },
   contentReply: {
-    lineHeight: 19.4,
+    lineHeight: 20,
   },
   deletedContent: {
     color: "rgba(228, 228, 228, 0.55)",

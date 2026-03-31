@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import HeartIcon from "../assets/svg/CommunityPost/heartIcon.svg";
 import HeartFilledIcon from "../assets/svg/CommunityPost/heartFilledIcon.svg";
@@ -29,20 +29,24 @@ const PostActionBar = ({
   const heartH = compact ? 20.7 : 27;
   const commentSz = compact ? 20 : 25;
 
-  /* 댓글 stroke — profileCommentHighlight(마이스타디움 댓글 탭) vs 일반(Team/All 리스트/인기 피드 등) */
+  /* 댓글 스타일: profileCommentHighlight(마이스타디움 댓글 탭) vs 일반(Team/All 리스트/인기 피드 등) */
   const commentColorNormal = profileCommentHighlight ? "#6F9D48" : "#E5E5E5";
   const commentColorPressed = profileCommentHighlight ? "#6F9D48" : "#6F6F6F";
-  /* commentMode: PostReactions 내부 상태(댓글 버튼 눌림) — 일반 리스트에서만 회색 전환, 마이스타디움 댓글 탭은 둘 다 초록 유지 */
-  const commentIconColor = commentMode ? commentColorPressed : commentColorNormal;
+  /* commentMode(prop)는 더 이상 색상 토글에 사용하지 않고,
+     실제 터치 중 여부만 로컬 상태로 관리 */
+  const [commentPressed, setCommentPressed] = useState(false);
+  const commentIconColor = commentPressed
+    ? commentColorPressed
+    : commentColorNormal;
 
-  /** 마이스타디움 댓글 탭: 말풍선 내부 fill + stroke(#6F9D48) — 별도 SVG */
+  /** 마이스타디움 댓글 탭 */
   const renderCommentIcon = () => {
     if (profileCommentHighlight) {
       return (
         <CommentIconProfileHighlight width={commentSz} height={commentSz} />
       );
     }
-    if (commentMode) {
+    if (commentPressed) {
       return (
         <CommentOnPressIcon
           width={commentSz}
@@ -52,7 +56,11 @@ const PostActionBar = ({
       );
     }
     return (
-      <CommentIcon width={commentSz} height={commentSz} color={commentIconColor} />
+      <CommentIcon
+        width={commentSz}
+        height={commentSz}
+        color={commentIconColor}
+      />
     );
   };
 
@@ -65,6 +73,7 @@ const PostActionBar = ({
         <TouchableOpacity
           onPress={onLikePress}
           onLongPress={onLongLikePress}
+          delayLongPress={onLongLikePress ? 1000 : undefined}
           disabled={likeDisabled}
         >
           {selected ? (
@@ -76,6 +85,8 @@ const PostActionBar = ({
 
         <TouchableOpacity
           onPress={onCommentPress}
+          onPressIn={() => setCommentPressed(true)}
+          onPressOut={() => setCommentPressed(false)}
           style={styles.commentBtn}
           activeOpacity={0.75}
         >

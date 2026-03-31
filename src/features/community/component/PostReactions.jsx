@@ -103,7 +103,6 @@ const PostReactions = ({
     [currentEmotionUiId],
   );
 
-  const [commentMode, setCommentMode] = useState(false);
   // 다음 버전 링크 클립보드 복사
   // const [linkPressed, setLinkPressed] = useState(false);
   // const [copyModalVisible, setCopyModalVisible] = useState(false);
@@ -119,11 +118,11 @@ const PostReactions = ({
 
     const uiEmotionToToggle = likeOnlyInteraction
       ? COMMUNITY_REACTIONS[0]?.id
-      : currentEmotionUiId ??
+      : (currentEmotionUiId ??
         (selectedEmotionType === null
           ? COMMUNITY_REACTIONS[0]?.id
-          : pickEmotionTypeFromPostCoalesced(post) ??
-            COMMUNITY_REACTIONS[0]?.id);
+          : (pickEmotionTypeFromPostCoalesced(post) ??
+            COMMUNITY_REACTIONS[0]?.id)));
     setShowReactionPicker(false);
     setPickerAnchor(null);
     longPressJustTriggeredRef.current = false;
@@ -167,9 +166,6 @@ const PostReactions = ({
   };
 
   const handleCommentPress = () => {
-    if (!suppressCommentModeToggle) {
-      setCommentMode((prev) => !prev);
-    }
     onCommentPress?.();
   };
 
@@ -233,7 +229,7 @@ const PostReactions = ({
         >
           <PostActionBar
             selected={heartSelected}
-            commentMode={commentMode}
+            commentMode={false}
             // linkPressed={linkPressed}
             onLikePress={handleLikePress}
             onLongLikePress={
@@ -272,9 +268,7 @@ const PostReactions = ({
               {
                 left: Math.max(
                   8,
-                  pickerAnchor.x +
-                    pickerAnchor.width / 2 -
-                    260 / 1.5,
+                  pickerAnchor.x + pickerAnchor.width / 2 - 260 / 1.5,
                 ),
                 top: pickerAnchor.y - PICKER_BAR_APPROX_H - 8,
               },

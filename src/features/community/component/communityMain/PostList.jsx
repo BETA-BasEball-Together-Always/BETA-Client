@@ -24,6 +24,8 @@ const PostList = ({
   onEndReached,
   isLoading,
   isFeedBusy = false,
+  onRefresh,
+  refreshing = false,
   showTeam = false,
   createPostBoardId,
   removeClippedSubviews,
@@ -181,6 +183,8 @@ const PostList = ({
             />
           </View>
         )}
+        refreshing={Boolean(refreshing)}
+        onRefresh={typeof onRefresh === "function" ? onRefresh : undefined}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         onScroll={onScroll}

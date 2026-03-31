@@ -18,8 +18,11 @@ export default function CommentInput({
   cancelReply,
   editTarget,
   cancelEdit,
-  /** 목록·인기 카드에서 댓글 아이콘으로 진입 시 키보드와 함께 포커스 */
+  /** 목록/인기 카드에서 댓글 아이콘으로 진입 시 키보드와 함께 포커스 */
   autoFocusOnMount = false,
+  /** 상세 화면 등에서 외부에서 포커스를 다시 요청할 때 사용하는 키 */
+  focusRequestKey,
+  onHeightChange,
 }) {
   const inputRef = useRef(null);
   const [text, setText] = useState("");
@@ -65,6 +68,24 @@ export default function CommentInput({
     };
   }, [autoFocusOnMount, editTarget?.commentId]);
 
+  // 상세 화면 내에서 댓글 아이콘/답글 버튼 등을 눌렀을 때 다시 포커스를 요청
+  useEffect(() => {
+    if (!focusRequestKey || editTarget?.commentId) return;
+
+    let cancelled = false;
+    InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      const delay = Platform.OS === "ios" ? 200 : 220;
+      setTimeout(() => {
+        if (!cancelled) inputRef.current?.focus();
+      }, delay);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusRequestKey, editTarget?.commentId]);
+
   const isSubmitEnabled = text.trim().length > 0;
 
   const handleSubmit = () => {
@@ -75,7 +96,14 @@ export default function CommentInput({
   };
 
   return (
-    <View style={[styles.wrapper, isFocused && styles.wrapperWithBorder]}>
+    <View
+      style={[styles.wrapper, isFocused && styles.wrapperWithBorder]}
+      onLayout={(e) => {
+        if (typeof onHeightChange !== "function") return;
+        const h = e?.nativeEvent?.layout?.height;
+        if (typeof h === "number" && Number.isFinite(h)) onHeightChange(h);
+      }}
+    >
       {isEditing ? (
         <TouchableOpacity onPress={cancelEdit}>
           <View>

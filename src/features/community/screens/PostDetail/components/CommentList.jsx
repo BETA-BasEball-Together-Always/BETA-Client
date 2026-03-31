@@ -13,9 +13,18 @@ export default function CommentList({
   onToggleCommentLike,
   isAllChannel = false,
   onPressProfile,
+  onThreadLayout,
+  onListLayout,
 }) {
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(e) => {
+        if (typeof onListLayout !== "function") return;
+        const y = e?.nativeEvent?.layout?.y ?? 0;
+        onListLayout(typeof y === "number" ? y : 0);
+      }}
+    >
       {comments.map((comment) => (
         <CommentItem
           key={comment.commentId}
@@ -29,6 +38,7 @@ export default function CommentList({
           onToggleLike={onToggleCommentLike}
           isAllChannel={isAllChannel}
           onPressProfile={onPressProfile}
+          onThreadLayout={onThreadLayout}
         />
       ))}
     </View>

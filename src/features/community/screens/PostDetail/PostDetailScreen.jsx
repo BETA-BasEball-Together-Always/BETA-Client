@@ -12,10 +12,12 @@ import {
   Modal,
   ActivityIndicator,
   Text,
+  RefreshControl,
+  Keyboard,
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/components/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
@@ -61,8 +63,9 @@ import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 import FetchStateView from "../../../../shared/components/FetchStateView";
 import { useRemoteImageAspectRatio } from "../../utils/useRemoteImageAspectRatio";
 
-const { width } = Dimensions.get("window");
+const { width, height: SCREEN_H } = Dimensions.get("window");
 const DETAIL_IMAGE_HEIGHT = 450;
+const POST_DETAIL_REFETCH_MS = 3000;
 
 function PostDetailImageItem({ uri, maxWidth, imageStyle }) {
   const aspectRatio = useRemoteImageAspectRatio(uri, 1);
@@ -100,13 +103,17 @@ const PostDetailScreen = ({ route, navigation }) => {
   const postId = paramPostId ?? initialPostParam?.postId;
 
   const currentUser = useUserStore((s) => s.user);
+  const isFocused = useIsFocused();
 
   const {
     data: detail,
     isFetched: isPostDetailFetched,
     isError: isPostDetailError,
     refetch: refetchPostDetail,
-  } = usePostDetailQuery(postId);
+  } = usePostDetailQuery(postId, {
+    refetchInterval: isFocused ? POST_DETAIL_REFETCH_MS : false,
+    refetchIntervalInBackground: false,
+  });
   const post = detail ?? initialPostParam ?? {};
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
@@ -190,6 +197,7 @@ const PostDetailScreen = ({ route, navigation }) => {
   }, [displayContent]);
 
   const scrollRef = useRef(null);
+  const threadYByIdRef = useRef(new Map());
 
   const [replyTarget, setReplyTarget] = useState(null);
   const [threadActionModal, setThreadActionModal] = useState({
@@ -209,6 +217,56 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetType: null,
     targetId: null,
   });
+
+  const [commentInputFocusKey, setCommentInputFocusKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [commentInputHeight, setCommentInputHeight] = useState(0);
+  const [pendingAutoScrollToBottom, setPendingAutoScrollToBottom] =
+    useState(false);
+  const [commentSectionY, setCommentSectionY] = useState(0);
+  const [commentListY, setCommentListY] = useState(0);
+
+  const scrollToCommentBottom = () => {
+    if (!scrollRef.current) return;
+    // 약간의 딜레이 후 리스트 최하단으로 스크롤 (키보드/레이아웃 반영 시간 고려)
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 250);
+  };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      const h = e?.endCoordinates?.height;
+      setKeyboardHeight(typeof h === "number" ? h : 0);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub?.remove?.();
+      hideSub?.remove?.();
+    };
+  }, []);
+
+  const registerThreadLayout = (threadId, y) => {
+    if (threadId == null) return;
+    threadYByIdRef.current.set(String(threadId), y);
+  };
+
+  const scrollToThread = (threadId) => {
+    if (!scrollRef.current || threadId == null) return;
+    const y = threadYByIdRef.current.get(String(threadId));
+    if (typeof y !== "number") return;
+
+    const absoluteY = Math.max(0, commentSectionY + commentListY + y);
+    const visibleH = Math.max(
+      1,
+      SCREEN_H - keyboardHeight - Math.max(commentInputHeight, 56),
+    );
+    const desiredTop = Math.max(0, absoluteY - visibleH * 0.25);
+    scrollRef.current.scrollTo({ y: desiredTop, animated: true });
+  };
 
   const myEmotionTypeFromStore = useUserEmotionSelection(postId);
 
@@ -289,6 +347,23 @@ const PostDetailScreen = ({ route, navigation }) => {
       commentAuthorFallbackMap,
     ],
   );
+
+  // 목록/인기 피드에서 댓글 아이콘으로 진입 시: 댓글 리스트 최하단까지 스크롤 + 입력창 포커스
+  useEffect(() => {
+    if (!focusCommentInput) return;
+    // 첫 진입 프레임에는 ScrollView content 높이가 아직 확정되지 않아
+    // scrollToEnd가 무시될 수 있어, contentSize 변경 시점에도 한 번 더 트리거한다.
+    setPendingAutoScrollToBottom(true);
+    scrollToCommentBottom();
+    setCommentInputFocusKey((prev) => prev + 1);
+  }, [focusCommentInput]);
+
+  useEffect(() => {
+    if (!pendingAutoScrollToBottom) return;
+    if (keyboardHeight <= 0) return;
+    // 키보드가 올라온 뒤에도 한 번 더 보정 스크롤
+    scrollToCommentBottom();
+  }, [pendingAutoScrollToBottom, keyboardHeight]);
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
   const openThreadActionModal = ({ targetType, targetId }) => {
@@ -543,7 +618,32 @@ const PostDetailScreen = ({ route, navigation }) => {
           }
         />
 
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.container}
+          onContentSizeChange={() => {
+            if (!pendingAutoScrollToBottom) return;
+            requestAnimationFrame(() => {
+              scrollToCommentBottom();
+              // 한 번만 수행 (추가 렌더/측정 루프 방지)
+              setTimeout(() => setPendingAutoScrollToBottom(false), 350);
+            });
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={async () => {
+                try {
+                  setIsRefreshing(true);
+                  await refetchPostDetail();
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+              tintColor="#F9F9F9"
+            />
+          }
+        >
           <View style={styles.containerSection}>
             <View style={styles.header}>
               <CommunityUserProfile
@@ -626,18 +726,36 @@ const PostDetailScreen = ({ route, navigation }) => {
                   emotionType: reaction.id,
                 });
               }}
+              onCommentPress={() => {
+                scrollToCommentBottom();
+                setCommentInputFocusKey((prev) => prev + 1);
+              }}
             />
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.commentSection}>
+          <View
+            style={styles.commentSection}
+            onLayout={(e) => {
+              const y = e?.nativeEvent?.layout?.y;
+              if (typeof y === "number" && Number.isFinite(y)) {
+                setCommentSectionY(y);
+              }
+            }}
+          >
             <AppText variant="middle" style={styles.commentTitle}>
               댓글
             </AppText>
             <CommentList
               comments={displayComments}
-              onReplyPress={(commentId) => setReplyTarget(commentId)}
+              onReplyPress={(commentId) => {
+                setReplyTarget(commentId);
+                setCommentInputFocusKey((prev) => prev + 1);
+                // 키보드/인풋이 올라오는 걸 고려해서 대상 댓글이 보이도록 스크롤
+                setTimeout(() => scrollToThread(commentId), 0);
+                setTimeout(() => scrollToThread(commentId), 300);
+              }}
               setCommentData={() => {}}
               postAuthorNickname={post?.author?.nickname}
               onLongPressThread={openThreadActionModal}
@@ -679,6 +797,8 @@ const PostDetailScreen = ({ route, navigation }) => {
                       },
                 });
               }}
+              onThreadLayout={registerThreadLayout}
+              onListLayout={setCommentListY}
             />
           </View>
         </ScrollView>
@@ -689,6 +809,8 @@ const PostDetailScreen = ({ route, navigation }) => {
           editTarget={editTarget}
           cancelEdit={() => setEditTarget(null)}
           autoFocusOnMount={!!focusCommentInput}
+          focusRequestKey={commentInputFocusKey}
+          onHeightChange={setCommentInputHeight}
         />
 
         <Modal visible={showDeleteBusy} transparent animationType="fade">

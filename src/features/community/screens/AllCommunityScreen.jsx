@@ -23,6 +23,7 @@ const AllCommunityScreen = ({ route }) => {
   const user = useUserStore((state) => state.user);
   const queryClient = useQueryClient();
   const isFocused = useIsFocused();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (paramSort === "popular" || paramSort === "latest") setSort(paramSort);
@@ -77,6 +78,15 @@ const AllCommunityScreen = ({ route }) => {
             onEndReached={loadMore}
             isLoading={isFetchingNextPage}
             isFeedBusy={isLoading || isFetching}
+            refreshing={isRefreshing}
+            onRefresh={async () => {
+              try {
+                setIsRefreshing(true);
+                await refetch();
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
             createPostBoardId="ALL"
             showTeam={true}
             sort={sort}

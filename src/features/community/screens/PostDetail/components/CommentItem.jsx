@@ -14,6 +14,7 @@ export default function CommentItem({
   onToggleLike,
   isAllChannel = false,
   onPressProfile,
+  onThreadLayout,
 }) {
   const [showReplies, setShowReplies] = useState(false);
 
@@ -37,7 +38,8 @@ export default function CommentItem({
         pressedThread?.targetType === "comment" &&
         pressedThread?.targetId === comment.commentId
       }
-        onPressProfile={onPressProfile}
+      onPressProfile={onPressProfile}
+      onThreadLayout={onThreadLayout}
       onLongPress={
         isMine && onLongPressThread
           ? () =>
