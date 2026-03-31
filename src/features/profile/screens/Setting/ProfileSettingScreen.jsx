@@ -28,6 +28,7 @@ import {
   logoutApi,
   withdrawAccountApi,
 } from "../../../auth/services/authSessionService";
+import { notifyOfflineIfNeeded } from "../../../../shared/utils/networkErrors";
 import { getDeviceId } from "../../../auth/libs/Login/deviceUtils";
 import { getRootNavigation } from "../../utils/navigation/getRootNavigation";
 import {
@@ -257,10 +258,15 @@ const ProfileSettingScreen = () => {
         }
       } catch (e) {
         logAxiosError("pushSettingsToggle", e);
-        Alert.alert(
-          "오류",
-          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        if (notifyOfflineIfNeeded(e)) {
+          await refreshPushSettings({ showLoading: false });
+          return;
+        }
+        const msg = getApiErrorUserMessage(
+          e,
+          "푸시 설정을 변경하지 못했습니다.\n네트워크 상태를 확인해 주세요.",
         );
+        if (msg != null) Alert.alert("오류", msg);
         await refreshPushSettings({ showLoading: false });
       } finally {
         setPushToggleBusy(false);
@@ -315,10 +321,15 @@ const ProfileSettingScreen = () => {
         }
       } catch (e) {
         logAxiosError("pushDetailChange", e);
-        Alert.alert(
-          "오류",
-          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        if (notifyOfflineIfNeeded(e)) {
+          await refreshPushSettings({ showLoading: false });
+          return;
+        }
+        const msg = getApiErrorUserMessage(
+          e,
+          "푸시 설정을 변경하지 못했습니다.",
         );
+        if (msg != null) Alert.alert("오류", msg);
         await refreshPushSettings({ showLoading: false });
       } finally {
         setPushToggleBusy(false);
@@ -338,10 +349,12 @@ const ProfileSettingScreen = () => {
     },
     onError: (error) => {
       logAxiosError("logout", error);
+      if (notifyOfflineIfNeeded(error)) return;
       const message = getApiErrorUserMessage(
         error,
         "로그아웃에 실패했습니다. 다시 시도해 주세요.",
       );
+      if (message == null) return;
       Alert.alert("오류", String(message));
     },
   });
@@ -366,10 +379,12 @@ const ProfileSettingScreen = () => {
     },
     onError: (error) => {
       logAxiosError("withdrawAccount", error);
+      if (notifyOfflineIfNeeded(error)) return;
       const message = getApiErrorUserMessage(
         error,
         "회원 탈퇴 요청에 실패했습니다. 다시 시도해 주세요.",
       );
+      if (message == null) return;
       Alert.alert("오류", String(message));
     },
   });

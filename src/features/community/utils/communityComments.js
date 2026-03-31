@@ -136,8 +136,10 @@ export function normalizeCommentAuthorFields(comments, fallbackMap = {}) {
 
   const mapNode = (c) => {
     if (!c) return c;
+    const liked = c.isLiked ?? c.liked;
     return {
       ...c,
+      isLiked: typeof liked === "boolean" ? liked : Boolean(liked),
       author: mergeAuthorWithFallback(c, fallbackMap),
       replies: (c.replies ?? []).map(mapNode),
     };

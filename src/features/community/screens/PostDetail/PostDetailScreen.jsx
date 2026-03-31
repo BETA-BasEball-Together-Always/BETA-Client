@@ -56,6 +56,7 @@ import {
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 import FetchStateView from "../../../../shared/components/FetchStateView";
 import { useRemoteImageAspectRatio } from "../../utils/useRemoteImageAspectRatio";
@@ -91,7 +92,7 @@ const PostDetailScreen = ({ route, navigation }) => {
     postId: paramPostId,
     from,
     initialSelectedEmotionType,
-    /** 게시글 리스트·인기 피드 등에서 댓글 아이콘으로 진입 시 댓글 입력 포커스 */
+    /** 게시글 리스트/인기 피드 등에서 댓글 아이콘으로 진입 시 댓글 입력 포커스 */
     focusCommentInput,
   } = route.params ?? {};
   const postId = paramPostId ?? initialPostParam?.postId;
@@ -309,7 +310,9 @@ const PostDetailScreen = ({ route, navigation }) => {
               navigation.goBack();
             },
             onError: (e) => {
+              if (isOfflineError(e)) return;
               const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+              if (msg == null) return;
               setTimeout(() => Alert.alert("오류", msg), 0);
             },
           });
@@ -361,10 +364,10 @@ const PostDetailScreen = ({ route, navigation }) => {
                 if (editTarget?.commentId === targetId) setEditTarget(null);
               },
               onError: (err) => {
-                Alert.alert(
-                  "오류",
-                  getApiErrorMessage(err, "댓글 삭제에 실패했습니다."),
-                );
+                if (isOfflineError(err)) return;
+                const msg = getApiErrorMessage(err, "댓글 삭제에 실패했습니다.");
+                if (msg == null) return;
+                Alert.alert("오류", msg);
               },
             },
           );

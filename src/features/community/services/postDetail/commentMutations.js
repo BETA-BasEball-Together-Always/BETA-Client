@@ -289,19 +289,44 @@ export const useToggleCommentLikeMutation = (postId) => {
 
   return useMutation({
     mutationFn: ({ commentId }) => toggleCommentLikeApi({ commentId }),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      const targetCommentId = variables?.commentId ?? data?.commentId;
+      const likedFromApi =
+        typeof data?.liked === "boolean"
+          ? data.liked
+          : typeof data?.isLiked === "boolean"
+            ? data.isLiked
+            : undefined;
+
       queryClient.setQueryData(postDetailKeys.detail(postId), (prev) => {
         if (!prev) return prev;
 
         const apply = (list) =>
-          list.map((c) =>
-            c.commentId === data.commentId
-              ? { ...c, likeCount: data.likeCount, isLiked: data.liked }
-              : {
-                  ...c,
-                  replies: c.replies ? apply(c.replies) : c.replies,
-                },
-          );
+          list.map((c) => {
+            const idMatch =
+              targetCommentId != null &&
+              String(c.commentId) === String(targetCommentId);
+            if (idMatch) {
+              const nextLiked =
+                likedFromApi !== undefined
+                  ? likedFromApi
+                  : !Boolean(c.isLiked ?? c.liked);
+              const nextCount =
+                typeof data?.likeCount === "number"
+                  ? data.likeCount
+                  : c.likeCount;
+              return {
+                ...c,
+                likeCount: nextCount,
+                isLiked: nextLiked,
+                liked: nextLiked,
+              };
+            }
+            return {
+              ...c,
+              replies: c.replies ? apply(c.replies) : c.replies,
+            };
+          });
 
         return { ...prev, comments: apply(prev.comments ?? []) };
       });

@@ -5,18 +5,28 @@ import { NavigationContainer } from "@react-navigation/native";
 
 import NetInfo from "@react-native-community/netinfo";
 import {
+  MutationCache,
   QueryClient,
   QueryClientProvider,
   onlineManager,
   focusManager,
 } from "@tanstack/react-query";
+import { notifyOfflineIfNeeded } from "../shared/utils/networkErrors";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { initializeNaver } from "../features/auth/libs/Login/naverInit";
 import { hydrateUserEmotionSelectionsFromStorage } from "../features/community/store/userEmotionSelectionStore";
 import PushDeviceBootstrap from "../shared/components/PushDeviceBootstrap";
+import CommunityDataSync from "../shared/components/CommunityDataSync";
+
+const mutationCache = new MutationCache({
+  onError: (error) => {
+    notifyOfflineIfNeeded(error);
+  },
+});
 
 const queryClient = new QueryClient({
+  mutationCache,
   defaultOptions: {
     queries: {
       // 데이터 신선도/수명 관련 기본값
@@ -93,6 +103,7 @@ const AppProviders = ({ children }) => {
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>{children}</NavigationContainer>
         <PushDeviceBootstrap />
+        <CommunityDataSync />
       </QueryClientProvider>
     </SafeAreaProvider>
   );

@@ -7,10 +7,10 @@ export const usePostDetailQuery = (postId, options) => {
     queryKey: postDetailKeys.detail(postId),
     queryFn: () => fetchPostDetailApi(postId),
     enabled: !!postId,
-    /** 댓글은 작성/수정/삭제 API 성공 후 로컬 캐시만 갱신(방법 A) — 포커스 시 GET으로 트리 덮어쓰기 방지 */
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: 30 * 60 * 1000,
+    /** 다른 사용자 활동 반영: 포그라운드·재연결 시 서버와 동기화 (댓글 CRUD는 여전히 onSuccess로 로컬 패치) */
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 45 * 1000,
     ...options,
   });
 };

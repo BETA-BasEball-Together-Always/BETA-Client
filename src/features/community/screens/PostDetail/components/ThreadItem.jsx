@@ -169,7 +169,7 @@ export default function ThreadItem({
               <View style={styles.likeIconWrap}>
                 {heartPressed ? (
                   <HeartOnPressIcon width={HEART_SIZE} height={HEART_SIZE} />
-                ) : item.isLiked ? (
+                ) : item.isLiked || item.liked ? (
                   <HeartFilledIcon width={HEART_SIZE} height={HEART_SIZE} />
                 ) : (
                   <HeartIcon width={HEART_SIZE} height={HEART_SIZE} />

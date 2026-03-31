@@ -1,6 +1,7 @@
 // src/shared/api/api.js
 import axios from "axios";
 import Constants from "expo-constants";
+import NetInfo from "@react-native-community/netinfo";
 // import * as SecureStore from "expo-secure-store";
 // import {useAuthStore} from "../store/authStore"; // 경로는 프로젝트에 맞게 수정해줘
 
@@ -54,6 +55,30 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+function canSendRequest(state) {
+  if (state.isConnected === false) return false;
+  if (state.isInternetReachable === false) return false;
+  return true;
+}
+
+api.interceptors.request.use(
+  async (config) => {
+    try {
+      const state = await NetInfo.fetch();
+      if (!canSendRequest(state)) {
+        const err = new Error("NETWORK_UNAVAILABLE");
+        err.code = "CLIENT_OFFLINE";
+        err.isOffline = true;
+        return Promise.reject(err);
+      }
+    } catch {
+      // NetInfo 실패 시 요청은 진행
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
 // // ✅ 요청 인터셉터: Zustand에서 accessToken 읽어서 Authorization 헤더에 세팅
 // api.interceptors.request.use(

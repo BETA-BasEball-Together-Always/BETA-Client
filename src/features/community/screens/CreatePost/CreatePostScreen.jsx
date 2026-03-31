@@ -38,6 +38,7 @@ import {
   useCreatePostMutation,
 } from "../../services/post/createPostMutation";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import { useUpdatePostMutation } from "../../services/post/updatePostMutation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -862,6 +863,7 @@ const CreatePostScreen = () => {
             navigation.goBack();
           },
           onError: (e) => {
+            if (isOfflineError(e)) return;
             const status = e?.response?.status;
             const data = e?.response?.data;
             if (status === 413) {
@@ -956,6 +958,7 @@ const CreatePostScreen = () => {
         });
       },
       onError: (e) => {
+        if (isOfflineError(e)) return;
         const status = e?.response?.status;
         const data = e?.response?.data;
         if (status === 413) {
@@ -1134,11 +1137,22 @@ const CreatePostScreen = () => {
                 >
                   {author?.nickname}
                 </AppText>
-                <View style={styles.teamChip}>
+                <View
+                  style={[
+                    styles.teamChip,
+                    team?.labelStyle?.backgroundColor != null && {
+                      backgroundColor: team.labelStyle.backgroundColor,
+                    },
+                  ]}
+                >
                   <AppText
                     variant="smallRegular"
-                    className="text-[#FF4D6D]"
-                    style={styles.teamName}
+                    style={[
+                      styles.teamName,
+                      {
+                        color: team?.labelStyle?.color ?? "#CCCCCC",
+                      },
+                    ]}
                   >
                     {author?.favoriteTeamName}
                   </AppText>
@@ -1506,7 +1520,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 5,
-    backgroundColor: "rgba(255,77,109,0.12)",
+    backgroundColor: "rgba(60, 60, 60, 0.5)",
   },
   inputCard: {
     justifyContent: "flex-start",

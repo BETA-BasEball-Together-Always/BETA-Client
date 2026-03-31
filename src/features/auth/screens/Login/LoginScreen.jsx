@@ -30,6 +30,37 @@ import KakaoIcon from "../../assets/Login/kakao.svg";
 import NaverIcon from "../../assets/Login/naver.svg";
 import AppleIcon from "../../assets/Login/apple.svg";
 
+const SOCIAL_PROVIDER_KEYS = ["KAKAO", "NAVER", "APPLE"];
+
+function normalizeSocialProviderKey(value) {
+  const u = String(value ?? "").toUpperCase();
+  return SOCIAL_PROVIDER_KEYS.includes(u) ? u : null;
+}
+
+/**
+ * USER006 — 이미 가입된 소셜 제공자 (백엔드 message 예: "이미 KAKAO로 가입된 이메일입니다.")
+ * 현재 로그인 시도 provider로 추측하지 않는다.
+ */
+function inferRegisteredProviderFromMessage(message) {
+  const msg = String(message ?? "");
+  if (!msg.trim()) return null;
+  const upper = msg.toUpperCase();
+  for (const p of SOCIAL_PROVIDER_KEYS) {
+    if (upper.includes(p)) return p;
+  }
+  if (/카카오/.test(msg)) return "KAKAO";
+  if (/네이버/.test(msg)) return "NAVER";
+  if (/애플/.test(msg)) return "APPLE";
+  return null;
+}
+
+function getRegisteredProviderForUser006(error) {
+  const data = error?.response?.data;
+  const fromApi = normalizeSocialProviderKey(data?.socialProvider);
+  if (fromApi) return fromApi;
+  return inferRegisteredProviderFromMessage(data?.message);
+}
+
 const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
@@ -53,11 +84,6 @@ const LoginScreen = ({ navigation, route }) => {
     Alert.alert(title, msg);
   };
 
-  const inferProviderFromMessage = (message) => {
-    const msg = String(message ?? "");
-    return ["KAKAO", "NAVER", "APPLE"].find((p) => msg.includes(p)) ?? null;
-  };
-
   const conflictColors = useMemo(
     () => ({
       KAKAO: "#FEE500",
@@ -75,6 +101,20 @@ const LoginScreen = ({ navigation, route }) => {
     }),
     [],
   );
+
+  const handleUser006ProviderConflict = (error) => {
+    const registered = getRegisteredProviderForUser006(error);
+    if (registered) {
+      setProviderConflict(registered);
+    } else {
+      Alert.alert(
+        "로그인 안내",
+        error?.response?.data?.message ??
+          "이미 다른 소셜 계정으로 가입된 이메일입니다. 가입에 사용한 방식으로 로그인해 주세요.",
+      );
+    }
+    setIsSocialLoading(false);
+  };
 
   const handleSocialLoginResult = async (provider, response) => {
     const data = response?.data;
@@ -221,13 +261,8 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("요청 URL:", error.config?.baseURL + error.config?.url);
 
             const code = error?.response?.data?.code;
-            const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              const inferred = inferProviderFromMessage(
-                error?.response?.data?.message,
-              );
-              setProviderConflict(socialProvider || inferred || "APPLE");
-              setIsSocialLoading(false);
+              handleUser006ProviderConflict(error);
               return;
             }
 
@@ -296,13 +331,8 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("요청 URL:", error.config?.baseURL + error.config?.url);
 
             const code = error?.response?.data?.code;
-            const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              const inferred = inferProviderFromMessage(
-                error?.response?.data?.message,
-              );
-              setProviderConflict(socialProvider || inferred || "KAKAO");
-              setIsSocialLoading(false);
+              handleUser006ProviderConflict(error);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -404,13 +434,8 @@ const LoginScreen = ({ navigation, route }) => {
           onError: (error) => {
             console.log("네이버 소셜 로그인 실패:", error);
             const code = error?.response?.data?.code;
-            const socialProvider = error?.response?.data?.socialProvider;
             if (error?.response?.status === 409 && code === "USER006") {
-              const inferred = inferProviderFromMessage(
-                error?.response?.data?.message,
-              );
-              setProviderConflict(socialProvider || inferred || "NAVER");
-              setIsSocialLoading(false);
+              handleUser006ProviderConflict(error);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -515,7 +540,7 @@ const LoginScreen = ({ navigation, route }) => {
                       >
                         {conflictProviderName[providerConflict]}
                       </Text>
-                      로 가입된 계정입니다.
+                      로 가입한 이메일입니다.
                     </Text>
                     <Text style={styles.modalLine}>
                       <Text

@@ -32,7 +32,16 @@ function getNextPopularOffset(lastPage, pageParam) {
   return prev + 1;
 }
 
-export default function useCommunityPosts({ channel, sort, enabled = true }) {
+/**
+ * @param {object} opts
+ * @param {number|false} [opts.refetchInterval] — 포커스 중 주기 리패치(ms). false면 비활성.
+ */
+export default function useCommunityPosts({
+  channel,
+  sort,
+  enabled = true,
+  refetchInterval = false,
+}) {
   const channelForList = channel ?? null;
 
   const query = useInfiniteQuery({
@@ -65,6 +74,9 @@ export default function useCommunityPosts({ channel, sort, enabled = true }) {
       }
       return getNextLatestCursor(lastPage);
     },
+    staleTime: 0,
+    refetchInterval,
+    refetchIntervalInBackground: false,
   });
 
   const posts = useMemo(

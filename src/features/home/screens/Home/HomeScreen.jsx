@@ -8,12 +8,17 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+} from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 // 다음 버전 알림
 // import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
 import SearchIcon from "../../../community/assets/svg/TopBar/searchIcon.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
-import { useNavigation } from "@react-navigation/native";
 
 import AllCommunityBackgroundLayer from "../../../community/component/AllCommunityBackgroundLayer";
 import Banner from "../../assets/png/banner.png";
@@ -24,19 +29,34 @@ import KboRankCard from "./component/KboRankCard";
 import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
 import useHomeQuery from "../../hooks/useHomeQuery";
 import FetchStateView from "../../../../shared/components/FetchStateView";
+import { homeKeys } from "../../services/homeKeys";
+
+const HOME_REFETCH_MS = 45 * 1000;
 
 const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
+  const isFocused = useIsFocused();
 
   const year = useMemo(() => new Date().getFullYear(), []);
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: homeKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
+    }, [queryClient]),
+  );
 
   const {
     data: homeData,
     isPending: isHomePending,
     isError: isHomeError,
     refetch: refetchHome,
-  } = useHomeQuery({ enabled: !!user });
+  } = useHomeQuery({
+    enabled: !!user,
+    refetchInterval: isFocused ? HOME_REFETCH_MS : false,
+  });
 
   const allTeamRankings = useMemo(() => {
     const list = homeData?.teamRankings;

@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import PostList from "../component/communityMain/PostList";
 import useCommunityPosts from "../hooks/useCommunityPosts";
 // import CommunityLoadingSpinner from "../../../shared/components/CommunityLoadingSpinner";
@@ -16,16 +18,26 @@ import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
 import { AppText } from "../../../shared/theme/components/AppText";
 
+const FEED_REFETCH_MS = 45 * 1000;
+
 const TeamCommunityScreen = ({ route }) => {
   const paramSort = route?.params?.initialSort;
   const [sort, setSort] = useState(() =>
     paramSort === "popular" || paramSort === "latest" ? paramSort : "latest",
   );
   const user = useUserStore((state) => state.user);
+  const queryClient = useQueryClient();
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     if (paramSort === "popular" || paramSort === "latest") setSort(paramSort);
   }, [paramSort]);
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ["community"] });
+    }, [queryClient]),
+  );
   const favoriteTeamCode = user?.favoriteTeamCode;
   const favoriteTeamName = user?.favoriteTeamName;
 
@@ -53,6 +65,7 @@ const TeamCommunityScreen = ({ route }) => {
   } = useCommunityPosts({
     channel: null,
     sort,
+    refetchInterval: isFocused ? FEED_REFETCH_MS : false,
   });
 
   const blockingLoad =

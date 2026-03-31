@@ -17,6 +17,7 @@ import {
 } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import AppHeader from "../../../../shared/components/AppHeader";
 import LeaveConfirmModal from "../../../../shared/components/LeaveConfirmModal";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -101,6 +102,7 @@ const EditBioScreen = () => {
           navigation.goBack();
         },
         onError: (e) => {
+          if (isOfflineError(e)) return;
           const msg =
             e?.response?.data?.message ??
             e?.message ??

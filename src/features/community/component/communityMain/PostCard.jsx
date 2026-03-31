@@ -22,6 +22,7 @@ import CommunityUserProfile from "../CommunityUserProfile";
 import { useUserStore } from "../../../../shared/store/userStore";
 import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
@@ -78,7 +79,9 @@ const PostCard = ({
                 onPress: () => {
                   deletePostMutation.mutate(resolvedPostId, {
                     onError: (e) => {
+                      if (isOfflineError(e)) return;
                       const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+                      if (msg == null) return;
                       setTimeout(() => {
                         Alert.alert("오류", msg);
                       }, 0);
