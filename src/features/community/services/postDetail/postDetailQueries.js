@@ -2,15 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import postDetailKeys from "./postDetailKeys";
 import { fetchPostDetailApi, fetchPostCommentsApi } from "./postDetailApi";
 
-export const usePostDetailQuery = (postId, options) => {
+export const usePostDetailQuery = (postId, options = {}) => {
   return useQuery({
     queryKey: postDetailKeys.detail(postId),
     queryFn: () => fetchPostDetailApi(postId),
     enabled: !!postId,
-    /** 다른 사용자 활동 반영: 포그라운드·재연결 시 서버와 동기화 (댓글 CRUD는 여전히 onSuccess로 로컬 패치) */
+    /** 다른 사용자 활동 반영: 포그라운드/재연결 시 서버와 동기화 */
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    staleTime: 45 * 1000,
+    refetchOnMount: "always",
+    staleTime: 0,
     ...options,
   });
 };

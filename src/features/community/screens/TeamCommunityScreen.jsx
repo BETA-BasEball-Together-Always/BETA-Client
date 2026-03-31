@@ -16,9 +16,10 @@ import { useUserStore } from "../../../shared/store/userStore";
 import { TEAM_DATA } from "../../../shared/constants/teams";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
+import communityKeys from "../services/communityKeys";
 import { AppText } from "../../../shared/theme/components/AppText";
 
-const FEED_REFETCH_MS = 45 * 1000;
+const FEED_REFETCH_MS = 10 * 1000;
 
 const TeamCommunityScreen = ({ route }) => {
   const paramSort = route?.params?.initialSort;
@@ -35,7 +36,7 @@ const TeamCommunityScreen = ({ route }) => {
 
   useFocusEffect(
     useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: ["community"] });
+      queryClient.invalidateQueries({ queryKey: communityKeys.all });
     }, [queryClient]),
   );
   const favoriteTeamCode = user?.favoriteTeamCode;

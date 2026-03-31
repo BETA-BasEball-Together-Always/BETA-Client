@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/components/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
@@ -69,7 +69,9 @@ function PostDetailImageItem({ uri, maxWidth, imageStyle }) {
   if (!uri) return null;
 
   const safeAspectRatio =
-    typeof aspectRatio === "number" && Number.isFinite(aspectRatio) && aspectRatio > 0
+    typeof aspectRatio === "number" &&
+    Number.isFinite(aspectRatio) &&
+    aspectRatio > 0
       ? aspectRatio
       : 1;
   const naturalWidth = DETAIL_IMAGE_HEIGHT * safeAspectRatio;
@@ -98,13 +100,18 @@ const PostDetailScreen = ({ route, navigation }) => {
   const postId = paramPostId ?? initialPostParam?.postId;
 
   const currentUser = useUserStore((s) => s.user);
+  const isFocused = useIsFocused();
 
   const {
     data: detail,
     isFetched: isPostDetailFetched,
     isError: isPostDetailError,
     refetch: refetchPostDetail,
-  } = usePostDetailQuery(postId);
+  } = usePostDetailQuery(postId, {
+    // 댓글/감정 등 다른 유저 활동 실시간 반영: 화면 포커스 중 5초마다 서버 데이터 동기화
+    refetchInterval: isFocused ? 5 * 1000 : false,
+    refetchIntervalInBackground: false,
+  });
   const post = detail ?? initialPostParam ?? {};
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
@@ -149,16 +156,24 @@ const PostDetailScreen = ({ route, navigation }) => {
 
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
+          <AppText
+            variant="caption"
+            key={`t-${segIdx++}-${lastIndex}`}
+            style={styles.contentInline}
+          >
             {displayContent.slice(lastIndex, start)}
-          </Text>,
+          </AppText>,
         );
       }
 
       nodes.push(
-        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+        <AppText
+          variant="caption"
+          key={`h-${segIdx++}-${start}`}
+          style={styles.hashText}
+        >
           {token}
-        </Text>,
+        </AppText>,
       );
 
       lastIndex = start + token.length;
@@ -166,9 +181,13 @@ const PostDetailScreen = ({ route, navigation }) => {
 
     if (lastIndex < displayContent.length) {
       nodes.push(
-        <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
+        <AppText
+          variant="caption"
+          key={`t-${segIdx++}-${lastIndex}`}
+          style={styles.contentInline}
+        >
           {displayContent.slice(lastIndex)}
-        </Text>,
+        </AppText>,
       );
     }
 
@@ -365,7 +384,10 @@ const PostDetailScreen = ({ route, navigation }) => {
               },
               onError: (err) => {
                 if (isOfflineError(err)) return;
-                const msg = getApiErrorMessage(err, "댓글 삭제에 실패했습니다.");
+                const msg = getApiErrorMessage(
+                  err,
+                  "댓글 삭제에 실패했습니다.",
+                );
                 if (msg == null) return;
                 Alert.alert("오류", msg);
               },

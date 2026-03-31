@@ -144,24 +144,36 @@ const PostCard = ({
       const token = match[0];
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
+          <AppText
+            key={`t-${segIdx++}-${lastIndex}`}
+            variant="caption"
+            style={styles.contentInline}
+          >
             {displayContent.slice(lastIndex, start)}
-          </Text>,
+          </AppText>,
         );
       }
       nodes.push(
-        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+        <AppText
+          key={`h-${segIdx++}-${start}`}
+          variant="caption"
+          style={styles.hashText}
+        >
           {token}
-        </Text>,
+        </AppText>,
       );
       lastIndex = start + token.length;
     }
 
     if (lastIndex < displayContent.length) {
       nodes.push(
-        <Text key={`t-${segIdx++}-${lastIndex}`} style={styles.contentInline}>
+        <AppText
+          key={`t-${segIdx++}-${lastIndex}`}
+          variant="caption"
+          style={styles.contentInline}
+        >
           {displayContent.slice(lastIndex)}
-        </Text>,
+        </AppText>,
       );
     }
 

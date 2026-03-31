@@ -50,7 +50,9 @@ export default function ThreadItem({
     item?.authorNickname ??
     "";
 
-  const displayNickname = isDeleted ? DELETED_USER_NICKNAME : rawDisplayNickname;
+  const displayNickname = isDeleted
+    ? DELETED_USER_NICKNAME
+    : rawDisplayNickname;
   const avatarLetter =
     displayNickname === DELETED_USER_NICKNAME
       ? DELETED_USER_AVATAR_INITIAL
@@ -135,7 +137,9 @@ export default function ThreadItem({
                 variant="caption"
                 style={[
                   styles.content,
-                  variant === "reply" ? styles.contentReply : styles.contentComment,
+                  variant === "reply"
+                    ? styles.contentReply
+                    : styles.contentComment,
                   isDeleted && styles.deletedContent,
                 ]}
               >
@@ -281,10 +285,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   contentComment: {
-    lineHeight: 17.7,
+    lineHeight: 19,
   },
   contentReply: {
-    lineHeight: 17,
+    lineHeight: 19,
   },
   deletedContent: {
     color: "rgba(228, 228, 228, 0.55)",

@@ -11,8 +11,9 @@ import FetchStateView from "../../../shared/components/FetchStateView";
 import AllCommunityBackgroundLayer from "../component/AllCommunityBackgroundLayer";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
+import communityKeys from "../services/communityKeys";
 
-const FEED_REFETCH_MS = 45 * 1000;
+const FEED_REFETCH_MS = 10 * 1000;
 
 const AllCommunityScreen = ({ route }) => {
   const paramSort = route?.params?.initialSort;
@@ -29,7 +30,7 @@ const AllCommunityScreen = ({ route }) => {
 
   useFocusEffect(
     useCallback(() => {
-      queryClient.invalidateQueries({ queryKey: ["community"] });
+      queryClient.invalidateQueries({ queryKey: communityKeys.all });
     }, [queryClient]),
   );
 
