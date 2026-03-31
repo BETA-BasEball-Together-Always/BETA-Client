@@ -91,6 +91,8 @@ const PostDetailScreen = ({ route, navigation }) => {
     postId: paramPostId,
     from,
     initialSelectedEmotionType,
+    /** 게시글 리스트·인기 피드 등에서 댓글 아이콘으로 진입 시 댓글 입력 포커스 */
+    focusCommentInput,
   } = route.params ?? {};
   const postId = paramPostId ?? initialPostParam?.postId;
 
@@ -666,6 +668,7 @@ const PostDetailScreen = ({ route, navigation }) => {
           cancelReply={() => setReplyTarget(null)}
           editTarget={editTarget}
           cancelEdit={() => setEditTarget(null)}
+          autoFocusOnMount={!!focusCommentInput}
         />
 
         <Modal visible={showDeleteBusy} transparent animationType="fade">

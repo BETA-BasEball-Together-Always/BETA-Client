@@ -15,6 +15,8 @@ const FeedTabContent = ({
   hasNext = false,
   isError = false,
   onRetry,
+  /** 마이스타디움 댓글 탭: 댓글 아이콘 강조 */
+  profileCommentHighlight = false,
 }) => {
   const hasPosts = posts && posts.length > 0;
 
@@ -32,6 +34,7 @@ const FeedTabContent = ({
             onEndReached={onEndReached}
             isLoading={isFetchingNextPage}
             hasNext={hasNext}
+            profileCommentHighlight={profileCommentHighlight}
           />
         ) : (
           <EmptyState message={emptyMessage} />

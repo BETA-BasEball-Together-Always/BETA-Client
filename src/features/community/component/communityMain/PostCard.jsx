@@ -31,7 +31,12 @@ import { stripPhotoOnlyPlaceholderForDisplay } from "../../utils/photoOnlyPostPl
 import { useSoftDeletedPostStore } from "../../store/softDeletedPostStore";
 import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 
-const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
+const PostCard = ({
+  post,
+  showTeam = false,
+  stabilizeBodyMeasure = false,
+  profileCommentHighlight = false,
+}) => {
   const navigation = useNavigation();
   const { user: currentUser } = useUserStore();
   const deletePostMutation = useDeletePostMutation();
@@ -198,7 +203,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     [reactionCounts],
   );
 
-  const handlePressCard = () => {
+  const openPostDetail = (focusCommentInput = false) => {
     if (showAsUnavailable) {
       setTimeout(() => {
         Alert.alert("알림", listUnavailableBody ?? DELETED_POST_MESSAGE);
@@ -207,9 +212,17 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     }
     navigation.navigate("Community", {
       screen: "PostDetail",
-      params: { post, initialSelectedEmotionType: selectedEmotionType },
+      params: {
+        post,
+        initialSelectedEmotionType: selectedEmotionType,
+        ...(focusCommentInput ? { focusCommentInput: true } : {}),
+      },
     });
   };
+
+  const handlePressCard = () => openPostDetail(false);
+
+  const handleCommentPress = () => openPostDetail(true);
 
   const handlePressProfile = () => {
     if (!authorUserId) return;
@@ -351,7 +364,9 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
               toggleEmotionMutation.mutate({ emotionType });
             }}
             onSelectReaction={handleSelectReaction}
-            onCommentPress={handlePressCard}
+            onCommentPress={handleCommentPress}
+            profileCommentHighlight={profileCommentHighlight}
+            suppressCommentModeToggle
           />
         ) : null}
       </TouchableOpacity>

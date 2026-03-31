@@ -36,9 +36,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   circle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: "#555", // 비활성 테두리 색
     backgroundColor: "#333", // 비활성 배경 (어두운 회색)
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
   },
   number: {
     fontSize: 12,
+    lineHeight: 32.7,
     color: "#AAAAAA", // 비활성 숫자색
     fontWeight: "700",
   },

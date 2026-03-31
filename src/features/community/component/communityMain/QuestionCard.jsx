@@ -1,11 +1,11 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { TEAM_DATA } from "../../../../shared/constants/teams";
 
 import { LinearGradient } from "expo-linear-gradient";
 
-const QuestionCard = ({ user }) => {
+const QuestionCard = ({ user, onPress }) => {
   if (!user) return null;
 
   const { nickname, favoriteTeamCode } = user;
@@ -14,7 +14,13 @@ const QuestionCard = ({ user }) => {
   const ProfileIcon = team?.ProfileIcon;
 
   return (
-    <View style={styles.questionCard}>
+    <TouchableOpacity
+      style={styles.questionCard}
+      activeOpacity={0.85}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="게시글 작성"
+    >
       <LinearGradient
         colors={team?.gradient?.colors || ["#3A3D44", "#3A3D44"]}
         locations={team?.gradient?.locations}
@@ -43,7 +49,7 @@ const QuestionCard = ({ user }) => {
           오늘은 어떤 마음으로 응원하고 계신가요?
         </AppText>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

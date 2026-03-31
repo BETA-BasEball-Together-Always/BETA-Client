@@ -12,6 +12,7 @@ const ReactionSummary = ({
   commentCount,
   style,
   hideReactionStrip = false,
+  compact = false,
 }) => {
   const showStrip = !hideReactionStrip && totalReactions > 0;
 
@@ -26,13 +27,21 @@ const ReactionSummary = ({
                   key={reaction.id}
                   style={[
                     styles.summaryCircle,
+                    compact && styles.summaryCircleCompact,
                     {
                       backgroundColor: reaction.bgColor,
                       zIndex: reactions.length - index,
                     },
                   ]}
                 >
-                  <Text style={styles.emojiInCircle}>{reaction.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.emojiInCircle,
+                      compact && styles.emojiInCircleCompact,
+                    ]}
+                  >
+                    {reaction.emoji}
+                  </Text>
                 </View>
               ) : null,
             )}
@@ -40,7 +49,11 @@ const ReactionSummary = ({
           <AppText
             variant="numMediumRegular"
             className="text-gray-400"
-            style={[styles.totalText, styles.summaryMetricText]}
+            style={[
+              styles.totalText,
+              compact && styles.totalTextCompact,
+              styles.summaryMetricText,
+            ]}
           >
             {totalReactions}
           </AppText>
@@ -53,6 +66,7 @@ const ReactionSummary = ({
         variant="numMediumRegular"
         style={[
           styles.commentCountText,
+          compact && styles.commentCountTextCompact,
           styles.summaryMetricText,
           !showStrip ? styles.commentOnly : undefined,
         ]}
@@ -96,8 +110,17 @@ const styles = StyleSheet.create({
     marginRight: -3,
     overflow: "hidden",
   },
+  summaryCircleCompact: {
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    marginRight: -2,
+  },
   totalText: {
     marginLeft: 12,
+  },
+  totalTextCompact: {
+    marginLeft: 8,
   },
   summaryMetricText: {
     lineHeight: 15,
@@ -116,8 +139,17 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  emojiInCircleCompact: {
+    width: 17,
+    height: 17,
+    fontSize: 10,
+    lineHeight: 17,
+  },
   commentCountText: {
     color: "#D4D4D4",
     fontSize: 11,
+  },
+  commentCountTextCompact: {
+    fontSize: 10,
   },
 });

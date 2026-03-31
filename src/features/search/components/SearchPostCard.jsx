@@ -61,16 +61,23 @@ const SearchPostCard = ({ post }) => {
     setLocalEmotions(post?.emotions ?? {});
   }, [post?.postId, post?.emotions]);
 
-  const handlePressPost = () => {
+  const openPostDetail = (focusCommentInput = false) => {
     if (!post?.postId) {
       return;
     }
 
     navigation.navigate("Community", {
       screen: "PostDetail",
-      params: { postId: post.postId },
+      params: {
+        postId: post.postId,
+        ...(focusCommentInput ? { focusCommentInput: true } : {}),
+      },
     });
   };
+
+  const handlePressPost = () => openPostDetail(false);
+
+  const handleCommentPress = () => openPostDetail(true);
 
   const handlePressProfile = () => {
     if (!post?.author?.userId) {
@@ -165,7 +172,8 @@ const SearchPostCard = ({ post }) => {
 
         <PostReactions
           isEmotionPending={toggleEmotionMutation.isPending}
-          onCommentPress={handlePressPost}
+          onCommentPress={handleCommentPress}
+          suppressCommentModeToggle
           onSelectReaction={(_postId, reaction) => {
             if (!reaction?.id) {
               return;

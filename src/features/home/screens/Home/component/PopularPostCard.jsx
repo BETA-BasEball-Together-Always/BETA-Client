@@ -97,8 +97,6 @@ const PopularPostCard = ({ post }) => {
         }
       : undefined;
 
-  const [showMore, setShowMore] = useState(false);
-
   const storeEmotion = useUserEmotionSelection(resolvedPostId);
   const selectedEmotionType = useMemo(
     () => resolveSelectedEmotionForPost(post, storeEmotion),
@@ -370,50 +368,53 @@ const PopularPostCard = ({ post }) => {
         >
           <AppText
             variant="spaced"
-            numberOfLines={3}
+            numberOfLines={2}
             ellipsizeMode="tail"
             style={[
               styles.content,
               showAsUnavailable && styles.unavailableText,
             ]}
-            onTextLayout={(e) => {
-              if (e.nativeEvent.lines.length > 3) setShowMore(true);
-            }}
           >
             {showAsUnavailable
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
               : renderContentWithHighlightedHashtags(post.content)}
           </AppText>
-
-          {!showAsUnavailable && showMore ? (
-            <TouchableOpacity onPress={handlePressPost}>
-              <AppText variant="spaced" style={styles.moreText}>
-                ...더보기
-              </AppText>
-            </TouchableOpacity>
-          ) : null}
         </View>
-
-        {!showAsUnavailable ? (
-          <View style={styles.reactionsSlot}>
-            <PostReactions
-              post={reactionPost}
-              selectedEmotionType={selectedEmotionType}
-              isEmotionPending={toggleEmotionMutation.isPending}
-              onToggleEmotion={(_postId, emotionType) => {
-                if (!emotionType) return;
-                toggleEmotionMutation.mutate({ emotionType });
-              }}
-              onSelectReaction={(_, reaction) => {
-                if (!reaction) return;
-                toggleEmotionMutation.mutate({
-                  emotionType: reaction.id,
-                });
-              }}
-            />
-          </View>
-        ) : null}
       </TouchableOpacity>
+
+      {!showAsUnavailable ? (
+        <View style={styles.reactionsSlot}>
+          <PostReactions
+            post={reactionPost}
+            selectedEmotionType={selectedEmotionType}
+            isEmotionPending={toggleEmotionMutation.isPending}
+            onToggleEmotion={(_postId, emotionType) => {
+              if (!emotionType) return;
+              toggleEmotionMutation.mutate({ emotionType });
+            }}
+            onSelectReaction={(_, reaction) => {
+              if (!reaction) return;
+              toggleEmotionMutation.mutate({
+                emotionType: reaction.id,
+              });
+            }}
+            onCommentPress={() => {
+              navigation.navigate("Community", {
+                screen: "PostDetail",
+                params: {
+                  post,
+                  initialSelectedEmotionType: selectedEmotionType,
+                  focusCommentInput: true,
+                },
+              });
+            }}
+            compact
+            likeOnlyInteraction
+            disableLongPressPicker
+            suppressCommentModeToggle
+          />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -583,10 +584,6 @@ const styles = StyleSheet.create({
     color: "#6F9D48",
     fontSize: 13,
     fontFamily: "NotoSansKR-Medium",
-  },
-  moreText: {
-    color: "rgba(228, 228, 228, 0.50)",
-    marginTop: 2,
   },
   unavailableText: {
     color: "rgba(228, 228, 228, 0.55)",

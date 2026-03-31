@@ -52,6 +52,15 @@ const PostReactions = ({
   onToggleEmotion,
   onCommentPress,
   isEmotionPending = false,
+  compact = false,
+  /** 인기 피드 등: 좋아요(LIKE)만 토글 */
+  likeOnlyInteraction = false,
+  /** 인기 피드 등: 롱프레스 감정 피커 비활성화 */
+  disableLongPressPicker = false,
+  /** 마이스타디움 댓글 탭 전용 댓글 버튼 스타일 */
+  profileCommentHighlight = false,
+  /** true면 댓글 버튼이 로컬 commentMode 토글을 하지 않음 */
+  suppressCommentModeToggle = false,
 }) => {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [pickerAnchor, setPickerAnchor] = useState(null);
@@ -99,19 +108,22 @@ const PostReactions = ({
   // const [linkPressed, setLinkPressed] = useState(false);
   // const [copyModalVisible, setCopyModalVisible] = useState(false);
 
-  const heartSelected = Boolean(currentEmotionUiId);
+  const heartSelected = likeOnlyInteraction
+    ? currentEmotionUiId === "LIKE"
+    : Boolean(currentEmotionUiId);
 
   const handleLikePress = () => {
     if (isEmotionPending) return;
     // long-press 직후 RN이 onPress를 함께 호출하는 케이스를 방어
     if (longPressJustTriggeredRef.current) return;
 
-    const uiEmotionToToggle =
-      currentEmotionUiId ??
-      (selectedEmotionType === null
-        ? COMMUNITY_REACTIONS[0]?.id
-        : pickEmotionTypeFromPostCoalesced(post) ??
-          COMMUNITY_REACTIONS[0]?.id);
+    const uiEmotionToToggle = likeOnlyInteraction
+      ? COMMUNITY_REACTIONS[0]?.id
+      : currentEmotionUiId ??
+        (selectedEmotionType === null
+          ? COMMUNITY_REACTIONS[0]?.id
+          : pickEmotionTypeFromPostCoalesced(post) ??
+            COMMUNITY_REACTIONS[0]?.id);
     setShowReactionPicker(false);
     setPickerAnchor(null);
     longPressJustTriggeredRef.current = false;
@@ -121,7 +133,7 @@ const PostReactions = ({
   };
 
   const handleLongLikePress = () => {
-    if (isEmotionPending) return;
+    if (disableLongPressPicker || isEmotionPending) return;
     longPressJustTriggeredRef.current = true;
     setPickerAnchor(null);
     requestAnimationFrame(() => {
@@ -155,7 +167,9 @@ const PostReactions = ({
   };
 
   const handleCommentPress = () => {
-    setCommentMode((prev) => !prev);
+    if (!suppressCommentModeToggle) {
+      setCommentMode((prev) => !prev);
+    }
     onCommentPress?.();
   };
 
@@ -203,8 +217,12 @@ const PostReactions = ({
             reactionCounts={reactionCounts}
             totalReactions={totalReactions}
             commentCount={commentCount}
-            style={styles.summaryTightTop}
+            style={[
+              styles.summaryTightTop,
+              compact && styles.summaryTightTopCompact,
+            ]}
             hideReactionStrip={totalReactions === 0}
+            compact={compact}
           />
         </View>
 
@@ -218,10 +236,14 @@ const PostReactions = ({
             commentMode={commentMode}
             // linkPressed={linkPressed}
             onLikePress={handleLikePress}
-            onLongLikePress={handleLongLikePress}
+            onLongLikePress={
+              disableLongPressPicker ? undefined : handleLongLikePress
+            }
             onCommentPress={handleCommentPress}
             // onCopyPress={handleCopyLink}
             likeDisabled={isEmotionPending}
+            compact={compact}
+            profileCommentHighlight={profileCommentHighlight}
           />
         </View>
       </View>
@@ -296,6 +318,10 @@ const styles = StyleSheet.create({
   summaryTightTop: {
     marginTop: 19,
     marginHorizontal: 4,
+  },
+  summaryTightTopCompact: {
+    marginTop: 6,
+    marginHorizontal: 2,
   },
   pickerModalBackdrop: {
     backgroundColor: "rgba(0,0,0,0.25)",

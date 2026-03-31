@@ -1,5 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  InteractionManager,
+  Platform,
+} from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../../shared/store/userStore";
 
@@ -11,7 +18,10 @@ export default function CommentInput({
   cancelReply,
   editTarget,
   cancelEdit,
+  /** 목록·인기 카드에서 댓글 아이콘으로 진입 시 키보드와 함께 포커스 */
+  autoFocusOnMount = false,
 }) {
+  const inputRef = useRef(null);
   const [text, setText] = useState("");
 
   //피그마 기준 입력창 포커스 시 ui 변경 위함!! 구분선 + 등록 버튼 표시
@@ -37,6 +47,23 @@ export default function CommentInput({
     setText("");
     setIsFocused(false);
   }, [editTarget?.commentId]);
+
+  useEffect(() => {
+    if (!autoFocusOnMount || editTarget?.commentId) return;
+
+    let cancelled = false;
+    InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      const delay = Platform.OS === "ios" ? 400 : 450;
+      setTimeout(() => {
+        if (!cancelled) inputRef.current?.focus();
+      }, delay);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoFocusOnMount, editTarget?.commentId]);
 
   const isSubmitEnabled = text.trim().length > 0;
 
@@ -69,6 +96,7 @@ export default function CommentInput({
 
       <View style={styles.inputContainer}>
         <TextInput
+          ref={inputRef}
           value={text}
           onChangeText={setText}
           onFocus={() => setIsFocused(true)}

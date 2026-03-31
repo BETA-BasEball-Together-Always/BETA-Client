@@ -294,6 +294,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: "NotoSansKR_SemiBold",
     color: "#FFFFFF",
+    lineHeight: 32.7,
   },
   optional: {
     color: "rgba(255,255,255,0.6)",

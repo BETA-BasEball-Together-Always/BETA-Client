@@ -250,7 +250,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingHorizontal: 20,
     paddingBottom: 100, //선택 완료 버튼 때문에 마지막 구단 선택 카드 가려짐
     position: "relative",
   },
@@ -288,6 +287,7 @@ const styles = StyleSheet.create({
   title: {
     paddingHorizontal: 30,
     color: "#FFFFFF",
+    lineHeight: 32.7,
     marginBottom: 24,
   },
 
@@ -333,6 +333,7 @@ const styles = StyleSheet.create({
   teamLabel: {
     marginTop: 10,
     color: "rgba(255,255,255,0.75)",
+    lineHeight: 24.5,
     textAlign: "center",
   },
 

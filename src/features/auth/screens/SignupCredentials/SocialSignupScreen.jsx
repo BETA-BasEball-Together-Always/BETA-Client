@@ -239,6 +239,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: "#FFFFFF",
+    lineHeight: 32.7,
     marginBottom: 8,
   },
   sectionDescription: {

@@ -118,10 +118,21 @@ const PostList = ({
           onChange={onSortChange}
           compact={sortNavCompact}
         />
-        <QuestionCard user={user} />
+        <QuestionCard
+          user={user}
+          onPress={() =>
+            navigation.navigate("Community", {
+              screen: "CreatePost",
+              params:
+                createPostBoardId != null
+                  ? { initialBoardId: createPostBoardId }
+                  : undefined,
+            })
+          }
+        />
       </View>
     ),
-    [sort, onSortChange, user, sortNavCompact],
+    [sort, onSortChange, user, sortNavCompact, createPostBoardId, navigation],
   );
 
   return (

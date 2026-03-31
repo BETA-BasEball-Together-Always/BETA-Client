@@ -99,6 +99,7 @@ const TeamCommunityScreen = ({ route }) => {
           sort={sort}
           onSortChange={setSort}
           user={user}
+          createPostBoardId="TEAM"
         />
       </FetchStateView>
 

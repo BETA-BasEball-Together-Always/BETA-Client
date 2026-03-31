@@ -21,8 +21,8 @@ export const TEAM_DATA = {
       end: { x: 1, y: 1 },
     },
     labelStyle: {
-      color: "#D5D5D5",
-      backgroundColor: "rgba(36, 36, 36, 0.80)",
+      color: "#F0F0F0",
+      backgroundColor: "rgba(53, 53, 53, 0.80)",
     },
   },
   LG: {
@@ -36,8 +36,8 @@ export const TEAM_DATA = {
       end: { x: 1, y: 1 },
     },
     labelStyle: {
-      color: "rgba(255, 247, 248, 0.80)",
-      backgroundColor: "rgba(176, 41, 60, 0.56)",
+      color: "#BB263B",
+      backgroundColor: "rgba(176, 41, 60, 0.17)",
     },
   },
 
@@ -53,7 +53,7 @@ export const TEAM_DATA = {
     },
     labelStyle: {
       color: "#E3E3E3",
-      backgroundColor: "rgba(0, 101, 178, 0.29)",
+      backgroundColor: "rgba(26, 156, 255, 0.55)",
     },
   },
   KIA: {
@@ -67,8 +67,8 @@ export const TEAM_DATA = {
       end: { x: 1, y: 1 },
     },
     labelStyle: {
-      color: "rgba(221, 27, 30, 0.81)",
-      backgroundColor: "rgba(3, 3, 3, 0.58)",
+      color: "rgba(255, 0, 0, 0.80)",
+      backgroundColor: "rgba(238, 45, 61, 0.53)",
     },
   },
   DOOSAN: {
@@ -98,7 +98,7 @@ export const TEAM_DATA = {
     },
     labelStyle: {
       color: "#E95C28",
-      backgroundColor: "rgba(233, 92, 40, 0.17)",
+      backgroundColor: "rgba(255, 128, 82, 0.26)",
     },
   },
   KIWOOM: {

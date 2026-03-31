@@ -188,6 +188,7 @@ const ProfileScreen = ({ navigation, route }) => {
             hasNext={!!myCommentedQuery.hasNextPage}
             isError={myCommentedQuery.isError}
             onRetry={() => myCommentedQuery.refetch()}
+            profileCommentHighlight
           />
         );
       default:

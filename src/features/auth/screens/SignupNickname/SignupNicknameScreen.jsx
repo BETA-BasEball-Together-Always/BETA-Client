@@ -1,4 +1,4 @@
-﻿// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
+// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
 import React, { useMemo } from "react";
 import {
   View,
@@ -216,6 +216,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     color: "#FFFFFF",
+    lineHeight: 32.7,
     marginBottom: 24,
   },
   formWrapper: {
