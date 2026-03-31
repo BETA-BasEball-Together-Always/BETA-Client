@@ -174,6 +174,10 @@ const PopularPostCard = ({ post }) => {
   }, [post]);
 
   const showCardImage = !showAsUnavailable && !!primaryImageUri;
+  const extraImageCount = useMemo(() => {
+    const n = getActivePostImages(post)?.length ?? 0;
+    return Math.max(n - 1, 0);
+  }, [post]);
 
   const teamCode = post?.author?.teamCode;
   const team = TEAM_DATA[teamCode];
@@ -360,7 +364,16 @@ const PopularPostCard = ({ post }) => {
         activeOpacity={0.8}
       >
         {showCardImage ? (
-          <Image source={{ uri: primaryImageUri }} style={styles.image} />
+          <View style={styles.imageFrame}>
+            <Image source={{ uri: primaryImageUri }} style={styles.image} />
+            {extraImageCount > 0 ? (
+              <View style={styles.imageCountBadge} pointerEvents="none">
+                <AppText variant="middle" style={styles.imageCountBadgeText}>
+                  +{extraImageCount}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
         ) : null}
 
         <View
@@ -567,6 +580,25 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginTop: 6,
     flexShrink: 0,
+  },
+  imageFrame: {
+    position: "relative",
+  },
+  imageCountBadge: {
+    position: "absolute",
+    top: 7,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.62)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    minWidth: 38,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageCountBadgeText: {
+    color: "#F9F9F9",
+    lineHeight: 18,
   },
   /** 본문만 좌우 12 — marginBottom 대신 이미지·블록 간격으로 간격 조절 */
   contentBlock: {

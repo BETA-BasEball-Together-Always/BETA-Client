@@ -113,6 +113,7 @@ const PostCard = ({
 
   const activeImages = useMemo(() => getActivePostImages(post), [post]);
   const primaryImageRow = activeImages[0];
+  const extraImageCount = Math.max((activeImages?.length ?? 0) - 1, 0);
   const primaryImageUri =
     primaryImageRow?.imageUrl || primaryImageRow?.url || null;
   const primaryImageStableKey =
@@ -365,6 +366,13 @@ const PostCard = ({
                 style={styles.image}
                 resizeMode="cover"
               />
+              {extraImageCount > 0 ? (
+                <View style={styles.imageCountBadge} pointerEvents="none">
+                  <AppText variant="middle" style={styles.imageCountBadgeText}>
+                    +{extraImageCount}
+                  </AppText>
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -424,10 +432,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 10,
     overflow: "hidden",
+    position: "relative",
   },
   image: {
     width: "100%",
     height: "100%",
+  },
+  imageCountBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    minWidth: 38,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageCountBadgeText: {
+    color: "#F9F9F9",
+    lineHeight: 18,
   },
   contentSection: {
     paddingVertical: 2,
