@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   },
   compactTeamText: {
     fontSize: 11,
-    lineHeight: 13.5,
+    lineHeight: 15,
   },
   teamBadgeShadowIOS: {
     shadowColor: "#000",
