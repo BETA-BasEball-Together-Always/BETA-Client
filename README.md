@@ -57,6 +57,7 @@ API baseURL은 TestFlight/런타임 환경 차이를 고려해 아래 우선순�
 
 관련 구현은 `src/shared/libs/api.js`에서 관리합니다.
 
+<br>
 
 ## ▶️ Getting Started
 
