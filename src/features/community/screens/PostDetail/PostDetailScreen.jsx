@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/components/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
@@ -100,18 +100,13 @@ const PostDetailScreen = ({ route, navigation }) => {
   const postId = paramPostId ?? initialPostParam?.postId;
 
   const currentUser = useUserStore((s) => s.user);
-  const isFocused = useIsFocused();
 
   const {
     data: detail,
     isFetched: isPostDetailFetched,
     isError: isPostDetailError,
     refetch: refetchPostDetail,
-  } = usePostDetailQuery(postId, {
-    // 댓글/감정 등 다른 유저 활동 실시간 반영: 화면 포커스 중 5초마다 서버 데이터 동기화
-    refetchInterval: isFocused ? 5 * 1000 : false,
-    refetchIntervalInBackground: false,
-  });
+  } = usePostDetailQuery(postId);
   const post = detail ?? initialPostParam ?? {};
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
@@ -247,7 +242,7 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
   const toggleEmotionMutation = useTogglePostEmotionMutation(postId);
-  const blockUserMutation = useBlockUserMutation();
+  // const blockUserMutation = useBlockUserMutation(); 사용자 차단은 다음 버전으로
 
   const imageList = useMemo(() => {
     const source = detail ?? initialPostParam;

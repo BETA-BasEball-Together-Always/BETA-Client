@@ -285,10 +285,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   contentComment: {
-    lineHeight: 19,
+    lineHeight: 19.4,
   },
   contentReply: {
-    lineHeight: 19,
+    lineHeight: 19.4,
   },
   deletedContent: {
     color: "rgba(228, 228, 228, 0.55)",
