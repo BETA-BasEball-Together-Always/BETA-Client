@@ -10,21 +10,17 @@ import {
   Keyboard,
   Platform,
   ScrollView,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AuthBackground from "../../components/AuthBackground";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupCompleteMutation } from "../../services/signupCompleteMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../shared/store/userStore";
 import api from "../../../../shared/libs/api";
-
-const { height } = Dimensions.get("window");
 
 const SignupGenderAgeScreen = ({ navigation, route }) => {
   const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
@@ -121,21 +117,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
             >
               <View style={styles.inner}>
                 {/* 헤더 */}
-                <View style={styles.headerRow}>
-                  <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={handleBack}
-                    activeOpacity={0.8}
-                  >
-                    <BackIcon />
-                  </TouchableOpacity>
-
-                  <View style={styles.stepWrapper}>
-                    <SignupStepIndicator currentStep={3} />
-                  </View>
-
-                  <View style={styles.rightPlaceholder} />
-                </View>
+                <SignupProgressHeader currentStep={3} onBack={handleBack} />
 
                 {/* 성별 */}
                 <View style={styles.textWrap}>
@@ -261,27 +243,7 @@ const styles = StyleSheet.create({
   },
 
   /* Header */
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    marginBottom: 20,
-  },
-  backButton: {
-    width: 32,
-    alignItems: "center",
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-  },
-  stepWrapper: {
-    width: 150,
-    alignItems: "center",
-  },
-  rightPlaceholder: {
-    width: 32,
-  },
+  // header styles moved to SignupProgressHeader
 
   /* Title */
   textWrap: {

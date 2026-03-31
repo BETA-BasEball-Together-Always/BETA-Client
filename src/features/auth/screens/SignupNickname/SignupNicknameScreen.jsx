@@ -6,22 +6,20 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   Keyboard,
   Platform,
   ScrollView,
-  TouchableOpacity,
   Dimensions,
 } from "react-native";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useStepBack } from "../../hooks/useStepBack";
-
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
 const { height } = Dimensions.get("window");
 
@@ -94,23 +92,7 @@ const SignupNicknameScreen = ({ navigation, route }) => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.inner}>
-              {/* 헤더 (뒤로가기 + 스텝 인디케이터) */}
-              <View style={styles.headerRow}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleBack}
-                  activeOpacity={0.8}
-                >
-                  <BackIcon />
-                </TouchableOpacity>
-
-                <View style={styles.stepWrapper}>
-                  <SignupStepIndicator currentStep={1} />
-                </View>
-
-                {/* 오른쪽 정렬용 더미 뷰 */}
-                <View style={styles.rightPlaceholder} />
-              </View>
+              <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
               {/* 타이틀 */}
               <Text style={styles.title}>닉네임을 입력해주세요</Text>
@@ -182,36 +164,7 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     alignSelf: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    marginBottom: 20,
-    // borderWidth: 1,
-  },
-  backButton: {
-    width: 32,
-    // height: 32,
-    alignItems: "center",
-    // borderWidth: 1,
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    lineHeight: 15,
-    // borderWidth: 1,
-  },
-  stepWrapper: {
-    // flex: 1,
-    alignItems: "center",
-    width: 150,
-    // borderWidth: 1,
-  },
-  rightPlaceholder: {
-    width: 32,
-    // borderWidth: 1,
-  },
+  // header styles moved to SignupProgressHeader
   title: {
     fontSize: 22,
     fontWeight: "700",

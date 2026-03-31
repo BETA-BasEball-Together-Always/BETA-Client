@@ -14,6 +14,7 @@ import {
   useIsFocused,
   useNavigation,
 } from "@react-navigation/native";
+import { useNetInfo } from "@react-native-community/netinfo";
 import { useQueryClient } from "@tanstack/react-query";
 // 다음 버전 알림
 // import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
@@ -38,6 +39,9 @@ const HomeScreen = () => {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const isFocused = useIsFocused();
+  const netInfo = useNetInfo();
+  const isOffline =
+    netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
   const year = useMemo(() => new Date().getFullYear(), []);
 
@@ -54,8 +58,8 @@ const HomeScreen = () => {
     isError: isHomeError,
     refetch: refetchHome,
   } = useHomeQuery({
-    enabled: !!user,
-    refetchInterval: isFocused ? HOME_REFETCH_MS : false,
+    enabled: !!user && !isOffline,
+    refetchInterval: isFocused && !isOffline ? HOME_REFETCH_MS : false,
   });
 
   const allTeamRankings = useMemo(() => {
@@ -76,8 +80,10 @@ const HomeScreen = () => {
   const showPopularEmptyMessage =
     !isHomeError && !isHomePending && popularPosts.length === 0;
 
+  const shouldShowHomeError = isOffline || isHomeError;
+
   const homeBody =
-    isHomePending || isHomeError ? null : (
+    isHomePending || shouldShowHomeError ? null : (
       <>
         <KboRankCard
           year={year}
@@ -180,7 +186,7 @@ const HomeScreen = () => {
             </View>
           ) : null}
 
-          {isHomeError ? (
+          {shouldShowHomeError ? (
             <FetchStateView
               style={styles.homeErrorFetch}
               isError

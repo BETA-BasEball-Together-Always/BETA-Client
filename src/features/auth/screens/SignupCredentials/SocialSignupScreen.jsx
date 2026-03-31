@@ -16,7 +16,7 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
@@ -24,7 +24,6 @@ import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 
 const { height } = Dimensions.get("window");
 
@@ -116,22 +115,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.inner}>
-                {/* 헤더 (뒤로가기 + 스텝 인디케이터) */}
-                <View style={styles.headerRow}>
-                  <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={handleBack}
-                    activeOpacity={0.8}
-                  >
-                    <BackIcon />
-                  </TouchableOpacity>
-
-                  <View style={styles.stepWrapper}>
-                    <SignupStepIndicator currentStep={1} />
-                  </View>
-
-                  <View style={styles.rightPlaceholder} />
-                </View>
+                <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
                 {/* 이메일 (읽기 전용) */}
                 <View style={styles.section}>
@@ -216,24 +200,7 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     alignSelf: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    marginBottom: 20,
-  },
-  backButton: {
-    width: 32,
-    alignItems: "center",
-  },
-  stepWrapper: {
-    alignItems: "center",
-    width: 180,
-  },
-  rightPlaceholder: {
-    width: 32,
-  },
+  // header styles moved to SignupProgressHeader
   section: {
     marginBottom: 16,
   },

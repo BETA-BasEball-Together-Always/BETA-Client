@@ -8,23 +8,19 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as SecureStore from "expo-secure-store";
 
 import SelectTeamBackground from "../../components/SelectTeamBackground";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_DATA, TEAM_LIST } from "../../../../shared/constants/teams";
 
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
-
-const { height } = Dimensions.get("window");
 
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const [selectedTeam, setSelectedTeam] = useState(null);
@@ -132,36 +128,20 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.root}>
+      <SelectTeamBackground />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            {/* 헤더 */}
-            <View style={styles.header}>
-              <View style={styles.headerRow}>
-                <TouchableOpacity
-                  onPress={handleBack}
-                  style={styles.backButton}
-                >
-                  <BackIcon />
-                </TouchableOpacity>
-                <View style={styles.stepWrapper}>
-                  <SignupStepIndicator currentStep={2} />
-                </View>
-
-                <View style={styles.rightPlaceholder} />
-              </View>
-            </View>
-
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
             >
-              <SelectTeamBackground />
-
               <View style={styles.inner}>
+                <SignupProgressHeader currentStep={2} onBack={handleBack} />
+
                 {/* 타이틀 */}
                 <AppText variant="displayTitle" style={styles.title}>
                   회원님의 팬심을 보여줄 구단을 선택해주세요!
@@ -258,31 +238,7 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  header: {
-    maxWidth: 390,
-    width: "100%",
-    alignSelf: "center",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    width: 32,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepWrapper: {
-    alignItems: "center",
-    width: 150,
-  },
-  rightPlaceholder: {
-    width: 32,
-  },
+  // header styles moved to SignupProgressHeader
 
   title: {
     paddingHorizontal: 30,
