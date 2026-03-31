@@ -198,6 +198,7 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const scrollRef = useRef(null);
   const threadYByIdRef = useRef(new Map());
+  const commentInputFocusReasonRef = useRef(null); // 'bottom' | 'thread' | null
 
   const [replyTarget, setReplyTarget] = useState(null);
   const [threadActionModal, setThreadActionModal] = useState({
@@ -233,6 +234,11 @@ const PostDetailScreen = ({ route, navigation }) => {
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 250);
+  };
+
+  const requestCommentInputFocus = (reason) => {
+    commentInputFocusReasonRef.current = reason ?? null;
+    setCommentInputFocusKey((prev) => prev + 1);
   };
 
   useEffect(() => {
@@ -355,7 +361,7 @@ const PostDetailScreen = ({ route, navigation }) => {
     // scrollToEnd가 무시될 수 있어, contentSize 변경 시점에도 한 번 더 트리거한다.
     setPendingAutoScrollToBottom(true);
     scrollToCommentBottom();
-    setCommentInputFocusKey((prev) => prev + 1);
+    requestCommentInputFocus("bottom");
   }, [focusCommentInput]);
 
   useEffect(() => {
@@ -738,7 +744,7 @@ const PostDetailScreen = ({ route, navigation }) => {
               }}
               onCommentPress={() => {
                 scrollToCommentBottom();
-                setCommentInputFocusKey((prev) => prev + 1);
+                requestCommentInputFocus("bottom");
               }}
             />
           </View>
@@ -761,7 +767,7 @@ const PostDetailScreen = ({ route, navigation }) => {
               comments={displayComments}
               onReplyPress={(commentId) => {
                 setReplyTarget(commentId);
-                setCommentInputFocusKey((prev) => prev + 1);
+                requestCommentInputFocus("thread");
                 // 키보드/인풋이 올라오는 걸 고려해서 대상 댓글이 보이도록 스크롤
                 setTimeout(() => scrollToThread(commentId), 0);
                 setTimeout(() => scrollToThread(commentId), 300);
@@ -822,7 +828,13 @@ const PostDetailScreen = ({ route, navigation }) => {
           focusRequestKey={commentInputFocusKey}
           onHeightChange={setCommentInputHeight}
           onFocusInput={() => {
-            // 사용자가 인풋을 직접 탭해 키보드를 올릴 때도 댓글 맨 아래가 보이도록 보정
+            const reason = commentInputFocusReasonRef.current;
+            commentInputFocusReasonRef.current = null;
+
+            // 답글 버튼 → 해당 댓글로 포커스(scrollToThread)가 우선. 최하단 스크롤 금지.
+            if (reason === "thread") return;
+
+            // 댓글 아이콘 / 인풋 직접 탭 → 최하단 보정 스크롤
             setPendingAutoScrollToBottom(true);
             scrollToCommentBottom();
             setTimeout(() => setPendingAutoScrollToBottom(false), 800);
