@@ -58,23 +58,6 @@ API baseURL은 TestFlight/런타임 환경 차이를 고려해 아래 우선순�
 관련 구현은 `src/shared/libs/api.js`에서 관리합니다.
 
 
-## 🔐 Environment Variables
-
-로컬 개발은 `.env.local`을 사용합니다. (레포에는 커밋하지 않는 것을 권장)
-
-`.env.local`을 생성한 뒤 값을 채웁니다.
-
-| Key | Description |
-| --- | --- |
-| `EXPO_PUBLIC_BACKEND_URL` | 백엔드 API Base URL |
-| `NAVER_CLIENT_ID` | 네이버 로그인 Client ID |
-| `NAVER_CLIENT_SECRET` | 네이버 로그인 Client Secret |
-| `NAVER_APP_NAME` | 네이버 앱 이름 |
-| `NAVER_IOS_URL_SCHEME` | iOS URL Scheme (네이버 로그인) |
-
-`app.config.js`가 `.env`와 `.env.local`을 병합 로드하고, `expo.extra`로 주입합니다.
-
-
 ## ▶️ Getting Started
 
 ### Install
