@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   text: {
-    lineHeight: 13.6,
+    lineHeight: 16,
   },
   shadowIOS: {
     shadowColor: "#000",
