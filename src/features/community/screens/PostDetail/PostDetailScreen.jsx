@@ -620,7 +620,17 @@ const PostDetailScreen = ({ route, navigation }) => {
 
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={styles.container}
+          contentContainerStyle={[
+            styles.container,
+            {
+              paddingBottom:
+                Math.max(0, commentInputHeight) + Math.max(0, keyboardHeight) + 24,
+            },
+          ]}
+          scrollIndicatorInsets={{
+            bottom:
+              Math.max(0, commentInputHeight) + Math.max(0, keyboardHeight) + 24,
+          }}
           onContentSizeChange={() => {
             if (!pendingAutoScrollToBottom) return;
             requestAnimationFrame(() => {
@@ -811,6 +821,12 @@ const PostDetailScreen = ({ route, navigation }) => {
           autoFocusOnMount={!!focusCommentInput}
           focusRequestKey={commentInputFocusKey}
           onHeightChange={setCommentInputHeight}
+          onFocusInput={() => {
+            // 사용자가 인풋을 직접 탭해 키보드를 올릴 때도 댓글 맨 아래가 보이도록 보정
+            setPendingAutoScrollToBottom(true);
+            scrollToCommentBottom();
+            setTimeout(() => setPendingAutoScrollToBottom(false), 800);
+          }}
         />
 
         <Modal visible={showDeleteBusy} transparent animationType="fade">

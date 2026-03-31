@@ -23,6 +23,8 @@ export default function CommentInput({
   /** 상세 화면 등에서 외부에서 포커스를 다시 요청할 때 사용하는 키 */
   focusRequestKey,
   onHeightChange,
+  /** 인풋 포커스 시 부모가 스크롤 보정할 수 있도록 */
+  onFocusInput,
 }) {
   const inputRef = useRef(null);
   const [text, setText] = useState("");
@@ -127,7 +129,10 @@ export default function CommentInput({
           ref={inputRef}
           value={text}
           onChangeText={setText}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            setIsFocused(true);
+            if (typeof onFocusInput === "function") onFocusInput();
+          }}
           onBlur={() => setIsFocused(false)}
           placeholder={
             isEditing ? "수정할 댓글을 입력하세요" : defaultPlaceholder
