@@ -163,6 +163,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
                     <SignupCheckedInput
                       label={null}
                       placeholder="닉네임을 입력해주세요."
+                      placeholderTextColor="#E4E4E4"
                       maxLength={13}
                       field={nicknameField}
                       buttonLabel="중복확인"

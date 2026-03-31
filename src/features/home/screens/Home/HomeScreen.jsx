@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 22,
-    paddingVertical: 10,
+    paddingVertical: 7,
   },
   leftPlaceholder: {
     width: 60,
