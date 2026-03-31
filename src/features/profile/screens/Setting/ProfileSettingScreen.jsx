@@ -200,7 +200,7 @@ const ProfileSettingScreen = () => {
     await clearAuth();
     delete api.defaults.headers.Authorization;
 
-    // 모달 닫힘·레이아웃 안정화 후 전환 (iOS 네이티브 스택과의 타이밍 충돌 완화)
+    // 모달 닫힘/레이아웃 안정화 후 전환 (iOS 네이티브 스택과의 타이밍 충돌 완화)
     await new Promise((resolve) => {
       InteractionManager.runAfterInteractions(() => resolve());
     });
@@ -384,25 +384,18 @@ const ProfileSettingScreen = () => {
     onSuccess: async (data) => {
       setWithdrawModalVisible(false);
       const message = data?.message;
+      // 탈퇴 요청 성공 즉시 로그아웃 처리
+      try {
+        await resetAppSession();
+      } catch (e) {
+        console.warn("[withdraw] resetAppSession", e);
+      }
+
+      // 세션 초기화/내비게이션 리셋 이후 안내 메시지 노출
       if (message) {
-        Alert.alert("안내", message, [
-          {
-            text: "확인",
-            onPress: async () => {
-              try {
-                await resetAppSession();
-              } catch (e) {
-                console.warn("[withdraw] resetAppSession", e);
-              }
-            },
-          },
-        ]);
-      } else {
-        try {
-          await resetAppSession();
-        } catch (e) {
-          console.warn("[withdraw] resetAppSession", e);
-        }
+        setTimeout(() => {
+          Alert.alert("안내", message);
+        }, 0);
       }
     },
     onError: (error) => {

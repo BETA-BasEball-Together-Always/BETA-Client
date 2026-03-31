@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
     color: "#EAEAEA",
     lineHeight: 16,
   },
-  /** 본문만 좌우 12 — marginBottom 대신 이미지·블록 간격으로 간격 조절 */
+  /** 본문만 좌우 12 — marginBottom 대신 이미지/블록 간격으로 간격 조절 */
   contentBlock: {
     flex: 1,
     minHeight: 0,
