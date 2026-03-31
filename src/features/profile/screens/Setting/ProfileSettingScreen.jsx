@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  InteractionManager,
   Linking,
   Modal,
   Platform,
@@ -198,24 +199,39 @@ const ProfileSettingScreen = () => {
   const resetAppSession = useCallback(async () => {
     await clearAuth();
     delete api.defaults.headers.Authorization;
-    queryClient.clear();
-    useUserEmotionSelectionStore.setState({ selectionsByPostId: {} });
+
+    // 모달 닫힘·레이아웃 안정화 후 전환 (iOS 네이티브 스택과의 타이밍 충돌 완화)
+    await new Promise((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve());
+    });
 
     const rootNav = getRootNavigation(navigation);
-    rootNav.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: "Auth",
-            state: {
-              routes: [{ name: "Login" }],
-              index: 0,
-            },
-          },
-        ],
-      }),
-    );
+    if (!rootNav?.dispatch) {
+      console.warn("[resetAppSession] root navigation unavailable");
+    } else {
+      try {
+        rootNav.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: "Auth",
+                state: {
+                  routes: [{ name: "Login" }],
+                  index: 0,
+                },
+              },
+            ],
+          }),
+        );
+      } catch (e) {
+        console.warn("[resetAppSession] navigation reset failed", e);
+      }
+    }
+
+    // 메인 탭·스택이 내려간 뒤 캐시 정리 (로그아웃 직후 크래시 완화)
+    queryClient.clear();
+    useUserEmotionSelectionStore.setState({ selectionsByPostId: {} });
   }, [clearAuth, navigation, queryClient]);
 
   // 전체 푸시 토글: 서비스에서 push-detail-settings까지 맞추므로 성공 시 반환 settings로 댓글/공감 UI도 동기화
@@ -345,14 +361,18 @@ const ProfileSettingScreen = () => {
     },
     onSuccess: async () => {
       setLogoutModalVisible(false);
-      await resetAppSession();
+      try {
+        await resetAppSession();
+      } catch (e) {
+        console.warn("[logout] resetAppSession", e);
+      }
     },
     onError: (error) => {
       logAxiosError("logout", error);
       if (notifyOfflineIfNeeded(error)) return;
       const message = getApiErrorUserMessage(
         error,
-        "로그아웃에 실패했습니다. 다시 시도해 주세요.",
+        "로그아웃에 실패했습니다.\n네트워크 상태 확인 후 다시 시도해 주세요.",
       );
       if (message == null) return;
       Alert.alert("오류", String(message));
@@ -369,12 +389,20 @@ const ProfileSettingScreen = () => {
           {
             text: "확인",
             onPress: async () => {
-              await resetAppSession();
+              try {
+                await resetAppSession();
+              } catch (e) {
+                console.warn("[withdraw] resetAppSession", e);
+              }
             },
           },
         ]);
       } else {
-        await resetAppSession();
+        try {
+          await resetAppSession();
+        } catch (e) {
+          console.warn("[withdraw] resetAppSession", e);
+        }
       }
     },
     onError: (error) => {

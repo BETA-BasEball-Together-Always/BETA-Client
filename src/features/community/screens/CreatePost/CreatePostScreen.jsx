@@ -280,8 +280,16 @@ const CreatePostScreen = () => {
 
   const team = useMemo(() => {
     const code = author?.favoriteTeamCode;
-    return code ? TEAM_DATA[code] : null;
-  }, [author?.favoriteTeamCode]);
+    if (code && TEAM_DATA[code]) {
+      return TEAM_DATA[code];
+    }
+
+    // 코드가 없거나 매칭 안 될 경우, 서버에서 내려준 favoriteTeamName으로 보조 매핑
+    const name = author?.favoriteTeamName;
+    if (!name) return null;
+    const entry = Object.values(TEAM_DATA).find((t) => t.label === name);
+    return entry || null;
+  }, [author?.favoriteTeamCode, author?.favoriteTeamName]);
   const ProfileIcon = team?.ProfileIcon;
 
   const boards = useMemo(

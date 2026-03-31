@@ -29,6 +29,7 @@ import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "../../assets/Login/kakao.svg";
 import NaverIcon from "../../assets/Login/naver.svg";
 import AppleIcon from "../../assets/Login/apple.svg";
+import { AppText } from "../../../../shared/theme/components/AppText";
 
 const SOCIAL_PROVIDER_KEYS = ["KAKAO", "NAVER", "APPLE"];
 
@@ -37,10 +38,6 @@ function normalizeSocialProviderKey(value) {
   return SOCIAL_PROVIDER_KEYS.includes(u) ? u : null;
 }
 
-/**
- * USER006 — 이미 가입된 소셜 제공자 (백엔드 message 예: "이미 KAKAO로 가입된 이메일입니다.")
- * 현재 로그인 시도 provider로 추측하지 않는다.
- */
 function inferRegisteredProviderFromMessage(message) {
   const msg = String(message ?? "");
   if (!msg.trim()) return null;
@@ -56,15 +53,36 @@ function inferRegisteredProviderFromMessage(message) {
 
 function getRegisteredProviderForUser006(error) {
   const data = error?.response?.data;
-  const fromApi = normalizeSocialProviderKey(data?.socialProvider);
+
+  // 1순위: API에서 내려주는 user.socialProvider (실제 가입된 소셜)
+  const fromUser =
+    data && typeof data === "object"
+      ? normalizeSocialProviderKey(data?.user?.socialProvider)
+      : null;
+  if (fromUser) return fromUser;
+
+  // 2순위: 서버에서 내려주는 socialProvider 필드 (이메일 중복 체크 결과)
+  const fromApi =
+    data && typeof data === "object"
+      ? normalizeSocialProviderKey(data?.socialProvider)
+      : null;
   if (fromApi) return fromApi;
-  return inferRegisteredProviderFromMessage(data?.message);
+
+  // 3순위: 마지막으로 에러 메시지 내 텍스트로 추론
+  const msg =
+    typeof data === "string" ? data : (data?.message ?? error?.message ?? null);
+  return inferRegisteredProviderFromMessage(msg);
 }
 
 const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
-  const [providerConflict, setProviderConflict] = useState(null);
+
+  const [providerConflict, setProviderConflict] = useState(
+    /** @type {null | { providerKey: null | "KAKAO" | "NAVER" | "APPLE", message: string | null }} */ (
+      null
+    ),
+  );
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
 
@@ -102,17 +120,14 @@ const LoginScreen = ({ navigation, route }) => {
     [],
   );
 
-  const handleUser006ProviderConflict = (error) => {
-    const registered = getRegisteredProviderForUser006(error);
-    if (registered) {
-      setProviderConflict(registered);
-    } else {
-      Alert.alert(
-        "로그인 안내",
-        error?.response?.data?.message ??
-          "이미 다른 소셜 계정으로 가입된 이메일입니다. 가입에 사용한 방식으로 로그인해 주세요.",
-      );
-    }
+  const handleUser006ProviderConflict = (currentProvider, error) => {
+    const registered =
+      getRegisteredProviderForUser006(error) ||
+      normalizeSocialProviderKey(currentProvider);
+    setProviderConflict({
+      providerKey: registered,
+      message: null,
+    });
     setIsSocialLoading(false);
   };
 
@@ -131,8 +146,6 @@ const LoginScreen = ({ navigation, route }) => {
       return;
     }
 
-    // 임시: 토큰을 axios 기본 헤더에만 세팅 (추후 authStore 연동 O)
-    // eslint-disable-next-line global-require
     const api = require("../../../../shared/libs/api").default;
     api.defaults.headers.Authorization = `Bearer ${userResponse.accessToken}`;
 
@@ -150,7 +163,7 @@ const LoginScreen = ({ navigation, route }) => {
     // 회원가입 미완료
     // - SOCIAL_AUTHENTICATED 또는 단계 미표시: 약관만 필요 -> GET /signup/status 생략 가능
     // - 그 외(CONSENT_AGREED, PROFILE_COMPLETED, TEAM_SELECTED 등): 해당 화면 구성용
-    //   email·teamList 등은 반드시 GET /api/v1/auth/signup/status 로 조회
+    //   email/teamList 등은 반드시 GET /api/v1/auth/signup/status 로 조회
     let signupStep = userResponse.signupStep;
     let emailFromServer = null;
     let teamListFromServer = null;
@@ -262,7 +275,7 @@ const LoginScreen = ({ navigation, route }) => {
 
             const code = error?.response?.data?.code;
             if (error?.response?.status === 409 && code === "USER006") {
-              handleUser006ProviderConflict(error);
+              handleUser006ProviderConflict("APPLE", error);
               return;
             }
 
@@ -332,7 +345,7 @@ const LoginScreen = ({ navigation, route }) => {
 
             const code = error?.response?.data?.code;
             if (error?.response?.status === 409 && code === "USER006") {
-              handleUser006ProviderConflict(error);
+              handleUser006ProviderConflict("KAKAO", error);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -435,7 +448,7 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("네이버 소셜 로그인 실패:", error);
             const code = error?.response?.data?.code;
             if (error?.response?.status === 409 && code === "USER006") {
-              handleUser006ProviderConflict(error);
+              handleUser006ProviderConflict("NAVER", error);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -529,30 +542,47 @@ const LoginScreen = ({ navigation, route }) => {
           >
             <View style={styles.modalOverlay}>
               <View style={styles.modalCard}>
-                {providerConflict && (
+                {providerConflict && providerConflict.providerKey && (
                   <>
-                    <Text style={styles.modalLine}>
-                      <Text
+                    <AppText variant="bodyMedium" style={styles.modalLine}>
+                      <AppText
+                        variant="bodyMedium"
                         style={[
                           styles.modalHighlight,
-                          { color: conflictColors[providerConflict] },
+                          {
+                            color:
+                              conflictColors[providerConflict.providerKey] ??
+                              "#FFF",
+                          },
+                          providerConflict.providerKey === "APPLE"
+                            ? { fontWeight: "700" }
+                            : null,
                         ]}
                       >
-                        {conflictProviderName[providerConflict]}
-                      </Text>
-                      로 가입한 이메일입니다.
-                    </Text>
-                    <Text style={styles.modalLine}>
-                      <Text
+                        {conflictProviderName[providerConflict.providerKey]}
+                      </AppText>
+                      {"로 가입된 계정입니다."}
+                    </AppText>
+                    <AppText variant="bodyMedium" style={styles.modalLine}>
+                      <AppText
+                        variant="bodyMedium"
                         style={[
                           styles.modalHighlight,
-                          { color: conflictColors[providerConflict] },
+                          {
+                            color:
+                              conflictColors[providerConflict.providerKey] ??
+                              "#FFF",
+                          },
+                          providerConflict.providerKey === "APPLE"
+                            ? { fontWeight: "700" }
+                            : null,
                         ]}
                       >
-                        {conflictProviderName[providerConflict]} 로그인
-                      </Text>
-                      을 이용해 주세요.
-                    </Text>
+                        {conflictProviderName[providerConflict.providerKey]}{" "}
+                        로그인
+                      </AppText>
+                      {"을 이용해 주세요."}
+                    </AppText>
                   </>
                 )}
 
@@ -561,7 +591,9 @@ const LoginScreen = ({ navigation, route }) => {
                   activeOpacity={0.85}
                   onPress={() => setProviderConflict(null)}
                 >
-                  <Text style={styles.modalButtonText}>확인</Text>
+                  <AppText variant="bodyMedium" style={styles.modalButtonText}>
+                    확인
+                  </AppText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -654,11 +686,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.85)",
     paddingHorizontal: 24,
     paddingVertical: 20,
+    alignItems: "center",
   },
   modalLine: {
     color: "#F9F9F9",
-    fontSize: 15,
     lineHeight: 22,
+    textAlign: "center",
+    alignSelf: "stretch",
   },
   modalHighlight: {
     fontWeight: "700",
@@ -670,6 +704,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "stretch",
   },
   modalButtonText: {
     fontSize: 16,
