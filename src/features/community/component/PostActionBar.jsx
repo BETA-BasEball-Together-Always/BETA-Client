@@ -73,7 +73,7 @@ const PostActionBar = ({
         <TouchableOpacity
           onPress={onLikePress}
           onLongPress={onLongLikePress}
-          delayLongPress={onLongLikePress ? 1000 : undefined}
+          delayLongPress={onLongLikePress ? 400 : undefined}
           disabled={likeDisabled}
         >
           {selected ? (

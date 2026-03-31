@@ -192,8 +192,7 @@ const PostCard = ({
   const bodySectionWidthRef = useRef(null);
   const bodyNeedsMore =
     !showAsUnavailable &&
-    (logicalLineCount > 3 ||
-      (bodyLineCount != null && bodyLineCount > 3));
+    (logicalLineCount > 3 || (bodyLineCount != null && bodyLineCount > 3));
 
   const shouldClampToThreeLines =
     !showAsUnavailable &&
@@ -368,7 +367,10 @@ const PostCard = ({
               />
               {extraImageCount > 0 ? (
                 <View style={styles.imageCountBadge} pointerEvents="none">
-                  <AppText variant="middle" style={styles.imageCountBadgeText}>
+                  <AppText
+                    variant="numMediumRegular"
+                    style={styles.imageCountBadgeText}
+                  >
                     +{extraImageCount}
                   </AppText>
                 </View>
@@ -446,13 +448,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 14,
-    minWidth: 38,
+    minWidth: 35,
     alignItems: "center",
     justifyContent: "center",
   },
   imageCountBadgeText: {
-    color: "#F9F9F9",
-    lineHeight: 18,
+    color: "#EAEAEA",
+    lineHeight: 16,
   },
   contentSection: {
     paddingVertical: 2,

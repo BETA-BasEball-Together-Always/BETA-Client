@@ -4,7 +4,10 @@ import { togglePostEmotionApi } from "./postDetail/postDetailApi";
 import communityKeys from "./communityKeys";
 import { homeKeys } from "../../home/services/homeKeys";
 import { mypageQueryKeys } from "../../profile/mypageQueryKeys";
-import { setUserEmotionSelection } from "../store/userEmotionSelectionStore";
+import {
+  getUserEmotionSelection,
+  setUserEmotionSelection,
+} from "../store/userEmotionSelectionStore";
 import { parseEmotionToggleServerResponse } from "../constants/communityReactions";
 import { resolveCommunityPostId } from "../constants/communityReactions";
 import { useRef } from "react";
@@ -70,12 +73,14 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         mypageQueryKeys.commented(),
       );
 
+      const previousStoreSelection = getUserEmotionSelection(postId) ?? null;
       const prevEmotionTypeRaw =
         previousDetail?.emotionType ??
         previousDetail?.selectedEmotionType ??
         previousDetail?.emotion ??
         null;
-      const prevEmotionType = prevEmotionTypeRaw ?? null;
+      const prevEmotionType =
+        previousStoreSelection ?? (prevEmotionTypeRaw ?? null);
 
       const toggledOff =
         requestedType != null &&
@@ -154,7 +159,7 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         previousCommunityPostsQueries,
         previousMypagePosts,
         previousMypageCommented,
-        previousStoreSelection: prevEmotionType,
+        previousStoreSelection,
       };
     },
     onSuccess: async (data, variables, context) => {

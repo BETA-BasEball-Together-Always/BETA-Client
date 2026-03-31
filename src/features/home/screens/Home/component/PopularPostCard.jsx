@@ -586,19 +586,19 @@ const styles = StyleSheet.create({
   },
   imageCountBadge: {
     position: "absolute",
-    top: 7,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.62)",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
-    minWidth: 38,
+    borderRadius: 14,
+    minWidth: 35,
     alignItems: "center",
     justifyContent: "center",
   },
   imageCountBadgeText: {
-    color: "#F9F9F9",
-    lineHeight: 18,
+    color: "#EAEAEA",
+    lineHeight: 16,
   },
   /** 본문만 좌우 12 — marginBottom 대신 이미지·블록 간격으로 간격 조절 */
   contentBlock: {

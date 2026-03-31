@@ -34,34 +34,35 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
   },
   circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "#555", // 비활성 테두리 색
-    backgroundColor: "#333", // 비활성 배경 (어두운 회색)
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
   },
   circleActive: {
-    backgroundColor: "#FFFFFF", // 활성 단계는 흰색
+    backgroundColor: "#FFFFFF",
     borderColor: "#FFFFFF",
   },
   number: {
     fontSize: 12,
-    lineHeight: 32.7,
-    color: "#AAAAAA", // 비활성 숫자색
+    lineHeight: 14,
+    color: "rgba(255,255,255,0.6)",
     fontWeight: "700",
   },
   numberActive: {
-    color: "#000000", // 활성 숫자색 (검정)
+    color: "#000000",
   },
   line: {
     height: 2,
-    flex: 1,
-    marginHorizontal: 4,
-    backgroundColor: "#555", // 중간 선 색
+    width: 32,
+    marginHorizontal: 8,
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
 });
