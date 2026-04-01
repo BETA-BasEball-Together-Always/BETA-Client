@@ -43,7 +43,10 @@ export default function EditOverlayBackdrop({ mode }) {
           tint="light"
           style={StyleSheet.absoluteFillObject}
         />
-        <View pointerEvents="none" style={editStyles.overlayTextStyleGlassTint} />
+        <View
+          pointerEvents="none"
+          style={editStyles.overlayTextStyleGlassTint}
+        />
       </>
     );
   }

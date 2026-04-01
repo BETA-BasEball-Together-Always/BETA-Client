@@ -61,14 +61,20 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
     },
     onMutate: async (variables) => {
       const requestedType = variables?.emotionType;
-      await queryClient.cancelQueries({ queryKey: postDetailKeys.detail(postId) });
+      await queryClient.cancelQueries({
+        queryKey: postDetailKeys.detail(postId),
+      });
 
-      const previousDetail = queryClient.getQueryData(postDetailKeys.detail(postId));
+      const previousDetail = queryClient.getQueryData(
+        postDetailKeys.detail(postId),
+      );
       const previousHome = queryClient.getQueryData(homeKeys.all);
       const previousCommunityPostsQueries = queryClient.getQueriesData({
         queryKey: communityKeys.posts(),
       });
-      const previousMypagePosts = queryClient.getQueryData(mypageQueryKeys.posts());
+      const previousMypagePosts = queryClient.getQueryData(
+        mypageQueryKeys.posts(),
+      );
       const previousMypageCommented = queryClient.getQueryData(
         mypageQueryKeys.commented(),
       );
@@ -80,14 +86,14 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         previousDetail?.emotion ??
         null;
       const prevEmotionType =
-        previousStoreSelection ?? (prevEmotionTypeRaw ?? null);
+        previousStoreSelection ?? prevEmotionTypeRaw ?? null;
 
       const toggledOff =
         requestedType != null &&
         prevEmotionType != null &&
         String(prevEmotionType) === String(requestedType);
 
-      const nextEmotionType = toggledOff ? null : requestedType ?? null;
+      const nextEmotionType = toggledOff ? null : (requestedType ?? null);
 
       // store가 UI에 직접 영향을 주는 구조라(상세/카드 공통) 먼저 갱신
       setUserEmotionSelection(postId, nextEmotionType);
@@ -97,7 +103,11 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         if (!prev) return prev;
         return {
           ...prev,
-          emotions: patchEmotionCounts(prev.emotions, prev.emotionType ?? null, nextEmotionType),
+          emotions: patchEmotionCounts(
+            prev.emotions,
+            prev.emotionType ?? null,
+            nextEmotionType,
+          ),
           emotionType: nextEmotionType,
         };
       });
@@ -114,7 +124,11 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
               const fromType = p.emotionType ?? null;
               return {
                 ...p,
-                emotions: patchEmotionCounts(p.emotions, fromType, nextEmotionType),
+                emotions: patchEmotionCounts(
+                  p.emotions,
+                  fromType,
+                  nextEmotionType,
+                ),
                 emotionType: nextEmotionType,
               };
             }),
@@ -130,7 +144,8 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
 
       // 3) 홈 인기글 optimistic
       queryClient.setQueryData(homeKeys.all, (prev) => {
-        if (!prev?.popularPosts || !Array.isArray(prev.popularPosts)) return prev;
+        if (!prev?.popularPosts || !Array.isArray(prev.popularPosts))
+          return prev;
         return {
           ...prev,
           popularPosts: prev.popularPosts.map((p) => {
@@ -139,7 +154,11 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
             const fromType = p.emotionType ?? null;
             return {
               ...p,
-              emotions: patchEmotionCounts(p.emotions, fromType, nextEmotionType),
+              emotions: patchEmotionCounts(
+                p.emotions,
+                fromType,
+                nextEmotionType,
+              ),
               emotionType: nextEmotionType,
             };
           }),
@@ -147,7 +166,10 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
       });
 
       // 4) 마이스타디움 탭들 optimistic
-      queryClient.setQueryData(mypageQueryKeys.posts(), patchPostEmotionsInPagesOptimistic);
+      queryClient.setQueryData(
+        mypageQueryKeys.posts(),
+        patchPostEmotionsInPagesOptimistic,
+      );
       queryClient.setQueryData(
         mypageQueryKeys.commented(),
         patchPostEmotionsInPagesOptimistic,
@@ -307,7 +329,10 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
     onError: (_err, _variables, context) => {
       // optimistic 롤백
       if (context?.previousDetail !== undefined) {
-        queryClient.setQueryData(postDetailKeys.detail(postId), context.previousDetail);
+        queryClient.setQueryData(
+          postDetailKeys.detail(postId),
+          context.previousDetail,
+        );
       }
       if (Array.isArray(context?.previousCommunityPostsQueries)) {
         for (const [key, data] of context.previousCommunityPostsQueries) {
@@ -318,7 +343,10 @@ export const useTogglePostEmotionMutation = (postId, options = {}) => {
         queryClient.setQueryData(homeKeys.all, context.previousHome);
       }
       if (context?.previousMypagePosts !== undefined) {
-        queryClient.setQueryData(mypageQueryKeys.posts(), context.previousMypagePosts);
+        queryClient.setQueryData(
+          mypageQueryKeys.posts(),
+          context.previousMypagePosts,
+        );
       }
       if (context?.previousMypageCommented !== undefined) {
         queryClient.setQueryData(

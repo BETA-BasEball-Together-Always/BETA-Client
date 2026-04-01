@@ -22,11 +22,7 @@ export function normalizeCommunityEmotionType(raw) {
   if (raw == null) return null;
 
   if (typeof raw === "number") {
-    if (
-      Number.isInteger(raw) &&
-      raw >= 0 &&
-      raw < EMOTION_INDEX_TO_ID.length
-    ) {
+    if (Number.isInteger(raw) && raw >= 0 && raw < EMOTION_INDEX_TO_ID.length) {
       return EMOTION_INDEX_TO_ID[raw];
     }
     return null;
@@ -56,10 +52,8 @@ export function normalizeCommunityEmotionType(raw) {
 export function parseEmotionToggleServerResponse(data, variables) {
   const t = data?.toggled;
 
-  const explicitOff =
-    t === false || t === 0 || t === "false" || t === "FALSE";
-  const explicitOn =
-    t === true || t === 1 || t === "true" || t === "TRUE";
+  const explicitOff = t === false || t === 0 || t === "false" || t === "FALSE";
+  const explicitOn = t === true || t === 1 || t === "true" || t === "TRUE";
 
   if (explicitOff) {
     return {

@@ -23,7 +23,11 @@ export function mergeFlatAuthor(c) {
   }
 
   const flatNick = c.nickname ?? c.nickName ?? c.authorNickname;
-  if (flatNick || c.userId != null || (c.teamCode != null && c.teamCode !== "")) {
+  if (
+    flatNick ||
+    c.userId != null ||
+    (c.teamCode != null && c.teamCode !== "")
+  ) {
     return {
       nickname: flatNick,
       nickName: flatNick,
@@ -45,7 +49,6 @@ function authorNeedsFallback(author) {
   );
 }
 
-
 function inferAuthorFromDeletedParentFirstReply(c) {
   const replies = c.replies ?? [];
   if (replies.length === 0) return null;
@@ -55,8 +58,7 @@ function inferAuthorFromDeletedParentFirstReply(c) {
     c.deleted === 1 ||
     c.deleted === "1" ||
     c.deleted === "true" ||
-    (typeof c.content === "string" &&
-      c.content.trim() === "삭제된 댓글입니다");
+    (typeof c.content === "string" && c.content.trim() === "삭제된 댓글입니다");
   if (!isDeleted) return null;
 
   const parentAuth = mergeFlatAuthor(c);
@@ -159,7 +161,10 @@ function isMarkedDeleted(c) {
     c.deleted === "true"
   )
     return true;
-  if (typeof c.content === "string" && c.content.trim() === "삭제된 댓글입니다") {
+  if (
+    typeof c.content === "string" &&
+    c.content.trim() === "삭제된 댓글입니다"
+  ) {
     return true;
   }
   return false;

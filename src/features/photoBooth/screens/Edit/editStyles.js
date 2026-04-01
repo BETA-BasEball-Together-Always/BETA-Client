@@ -227,10 +227,10 @@ export const editStyles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#222",
   },
-  thumbImg: { 
-    width: "100%", 
-    height: "100%", 
-    opacity: 1 
+  thumbImg: {
+    width: "100%",
+    height: "100%",
+    opacity: 1,
   },
   thumbPlaceholder: {
     flex: 1,

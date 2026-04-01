@@ -8,7 +8,8 @@ export function navigateFromSignupStatus(status, navigation) {
   const step = status?.signupStep;
   const email = status?.email ?? null;
   const teamList = status?.teamList ?? [];
-  const draftSignup = useSignupDraftStore.getState().buildSignupParams?.() ?? {};
+  const draftSignup =
+    useSignupDraftStore.getState().buildSignupParams?.() ?? {};
 
   switch (step) {
     case "SOCIAL_AUTHENTICATED":

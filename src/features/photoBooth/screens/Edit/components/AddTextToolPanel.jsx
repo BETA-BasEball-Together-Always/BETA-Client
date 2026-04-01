@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Dimensions, Text, TouchableOpacity, View } from "react-native";
 import { editStyles } from "../editStyles";

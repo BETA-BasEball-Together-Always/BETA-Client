@@ -100,7 +100,9 @@ const ProfileScreen = ({ navigation, route }) => {
     });
 
     const payload = {
-      trigger: justSwitchedToLike ? "tab_switch_to_like" : "data_update_while_like",
+      trigger: justSwitchedToLike
+        ? "tab_switch_to_like"
+        : "data_update_while_like",
       postCount: rows.length,
       query: {
         isLoading: myLikedQuery.isLoading,
@@ -113,8 +115,7 @@ const ProfileScreen = ({ navigation, route }) => {
         myLikedQuery.data?.pages?.[0] != null
           ? Object.keys(myLikedQuery.data.pages[0])
           : [],
-      sampleFirstPostFromApi:
-        myLikedQuery.data?.pages?.[0]?.posts?.[0] ?? null,
+      sampleFirstPostFromApi: myLikedQuery.data?.pages?.[0]?.posts?.[0] ?? null,
     };
 
     if (__DEV__) {

@@ -57,7 +57,10 @@ const SignupCompleteScreen = ({ navigation, route }) => {
     try {
       const result = await runSignupPushPermissionFlow();
       if (result?.skipped) {
-        console.warn("[푸시] 회원가입 직후 푸시 권한 처리 건너뜀:", result.reason);
+        console.warn(
+          "[푸시] 회원가입 직후 푸시 권한 처리 건너뜀:",
+          result.reason,
+        );
       }
     } catch (error) {
       console.warn("[푸시] 회원가입 직후 푸시 권한 처리 실패:", error);
@@ -112,7 +115,10 @@ const SignupCompleteScreen = ({ navigation, route }) => {
             </AppText>
 
             <TouchableOpacity
-              style={[styles.primaryButton, permissionBusy && styles.buttonDisabled]}
+              style={[
+                styles.primaryButton,
+                permissionBusy && styles.buttonDisabled,
+              ]}
               disabled={permissionBusy}
               onPress={handleAllowNotifications}
             >
@@ -126,7 +132,10 @@ const SignupCompleteScreen = ({ navigation, route }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.secondaryButton, permissionBusy && styles.buttonDisabled]}
+              style={[
+                styles.secondaryButton,
+                permissionBusy && styles.buttonDisabled,
+              ]}
               disabled={permissionBusy}
               onPress={handleLater}
             >

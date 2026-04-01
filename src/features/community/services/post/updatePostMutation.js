@@ -26,7 +26,9 @@ export const useUpdatePostMutation = () => {
     onSuccess: (data, variables) => {
       const postId = variables?.postId;
       if (postId != null) {
-        queryClient.invalidateQueries({ queryKey: postDetailKeys.detail(postId) });
+        queryClient.invalidateQueries({
+          queryKey: postDetailKeys.detail(postId),
+        });
       }
       queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
       console.log("게시글 수정 성공: ", data);

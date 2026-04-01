@@ -25,7 +25,6 @@ import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
-
 const { height } = Dimensions.get("window");
 
 const SocialSignupScreen = ({ navigation, route }) => {

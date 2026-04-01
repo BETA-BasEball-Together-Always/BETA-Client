@@ -8,10 +8,7 @@ export default function StickerToolPanel({
   selectedStickerPaletteIndex,
   onPickSticker,
 }) {
-  const iconPx = Math.min(
-    56,
-    Math.max(44, stickerPaletteCellSize * 0.78),
-  );
+  const iconPx = Math.min(56, Math.max(44, stickerPaletteCellSize * 0.78));
 
   return (
     <View style={{ flex: 1, width: "100%", minHeight: 0 }}>

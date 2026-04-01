@@ -49,4 +49,3 @@ const styles = StyleSheet.create({
     width: 32,
   },
 });
-

@@ -32,7 +32,10 @@ export function logAxiosError(tag, error) {
   // Metro 터미널에서 객체 전체가 보이도록
   console.error(`[API Error] ${tag}`, summary);
 
-  if (error?.response?.data != null && typeof error.response.data === "object") {
+  if (
+    error?.response?.data != null &&
+    typeof error.response.data === "object"
+  ) {
     try {
       console.error(
         `[API Error] ${tag} response.data (JSON)`,

@@ -55,7 +55,6 @@ export const TEXT_COLORS = [
   "#FFC8D8",
 ];
 
-
 export const getOverlayHeight = (tool) =>
   tool === "photo" || tool === "frame"
     ? 185

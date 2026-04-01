@@ -136,10 +136,7 @@ function PhotoThumbItem({
     : Gesture.Exclusive(tapGesture, panGesture);
 
   return (
-    <View
-      ref={thumbWrapRef}
-      collapsable={false}
-    >
+    <View ref={thumbWrapRef} collapsable={false}>
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <View style={editStyles.thumb}>
@@ -259,15 +256,7 @@ export default function PhotoToolPanel({
   }, []);
 
   const onDragStartMeasure = useCallback(
-    ({
-      index,
-      item,
-      absX,
-      thumbWindowX,
-      thumbWindowY,
-      thumbW,
-      thumbH,
-    }) => {
+    ({ index, item, absX, thumbWindowX, thumbWindowY, thumbW, thumbH }) => {
       // 손가락이 썸 내부 어느 지점을 잡았는지(offset)를 고정해 오버레이가 항상 손가락 아래 오게 함
       const offsetX = absX - thumbWindowX;
       dragFingerOffsetXSV.value = offsetX;
@@ -435,17 +424,10 @@ export default function PhotoToolPanel({
       : null;
   /** 맨 뒤 삽입(n-1). n===1 이면 맨 앞 gap 과 중복되지 않게 제외 */
   const trailGap =
-    draggingIndex != null &&
-    insertPos != null &&
-    n > 1 &&
-    gapIndex === n - 1;
+    draggingIndex != null && insertPos != null && n > 1 && gapIndex === n - 1;
 
   return (
-    <View
-      ref={listWrapRef}
-      style={styles.listWrap}
-      onLayout={onListLayout}
-    >
+    <View ref={listWrapRef} style={styles.listWrap} onLayout={onListLayout}>
       <Animated.ScrollView
         ref={scrollRef}
         horizontal
@@ -486,9 +468,7 @@ export default function PhotoToolPanel({
                 onDragStateChange={onDragStateChange}
                 onDragAbsoluteMoveWorklet={onDragAbsoluteMoveWorklet}
                 onDragStartMeasure={onDragStartMeasure}
-                disableReorder={
-                  draggingIndex !== null && draggingIndex !== i
-                }
+                disableReorder={draggingIndex !== null && draggingIndex !== i}
                 hidden={draggingIndex !== null && draggingIndex === i}
               />
             </React.Fragment>

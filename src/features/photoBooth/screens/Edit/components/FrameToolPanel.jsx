@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { FRAMES } from "@features/photoBooth/constants/framesMap";
@@ -15,7 +14,6 @@ function FrameOptionCard({ id, label, teamKey, frameKey, onSelect }) {
       activeOpacity={0.9}
       style={[editStyles.frameCard, active && editStyles.frameCardActive]}
     >
-  
       <View style={editStyles.frameCardIconWrap}>
         <Image
           source={src}

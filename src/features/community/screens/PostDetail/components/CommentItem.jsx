@@ -19,9 +19,7 @@ export default function CommentItem({
   const [showReplies, setShowReplies] = useState(false);
 
   const displayNick =
-    comment.author?.nickname ??
-    comment.author?.nickName ??
-    comment.nickname;
+    comment.author?.nickname ?? comment.author?.nickName ?? comment.nickname;
   const isAuthor = displayNick === postAuthorNickname;
   const isMine =
     comment.userId != null &&

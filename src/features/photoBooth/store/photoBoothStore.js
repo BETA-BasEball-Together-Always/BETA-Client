@@ -1,9 +1,9 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 const photoBoothStore = create((set) => ({
   selectedTeam: null,
   selectedFrame: null,
-  capturedPhotos: [], 
+  capturedPhotos: [],
   exportedFrameUri: null,
 
   setSelectedTeam: (team) => set({ selectedTeam: team }),

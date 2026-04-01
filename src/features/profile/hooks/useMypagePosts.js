@@ -28,8 +28,7 @@ export const useMyPostsInfiniteQuery = ({ enabled } = {}) => {
 export const useMyCommentedPostsInfiniteQuery = ({ enabled } = {}) => {
   return useInfiniteQuery({
     queryKey: mypageQueryKeys.commented(),
-    queryFn: ({ pageParam }) =>
-      fetchMyCommentedPostsApi({ cursor: pageParam }),
+    queryFn: ({ pageParam }) => fetchMyCommentedPostsApi({ cursor: pageParam }),
     enabled: enabled ?? true,
     initialPageParam: null,
     getNextPageParam: (lastPage) =>
@@ -118,4 +117,3 @@ export const useFlattenMypagePosts = (queryData) => {
     return Array.from(map.values());
   }, [queryData]);
 };
-

@@ -21,9 +21,7 @@ function hasOnlyInactiveImageAttachments(post) {
     if (img == null) return true;
     if (typeof img === "string") return false;
     return (
-      img.active === false ||
-      img.inactive === true ||
-      img.enabled === false
+      img.active === false || img.inactive === true || img.enabled === false
     );
   });
 }

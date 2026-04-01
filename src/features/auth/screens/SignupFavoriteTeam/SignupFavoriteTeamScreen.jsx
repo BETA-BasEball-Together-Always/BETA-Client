@@ -122,7 +122,10 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
             selectedTeamLabel ?? "",
           );
 
-          setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
+          setDraftFavoriteTeam({
+            code: selectedTeam,
+            label: selectedTeamLabel,
+          });
 
           navigation.navigate("SignupGenderAge", {
             signup: {
@@ -138,8 +141,9 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (selectedTeam) {
-      const selectedTeamLabel = TEAM_LIST.find((t) => t.key === selectedTeam)
-        ?.label;
+      const selectedTeamLabel = TEAM_LIST.find(
+        (t) => t.key === selectedTeam,
+      )?.label;
       setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
     }
   }, [selectedTeam, setDraftFavoriteTeam]);

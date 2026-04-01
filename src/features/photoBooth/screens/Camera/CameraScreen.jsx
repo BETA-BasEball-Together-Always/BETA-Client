@@ -72,7 +72,7 @@ export default function CameraScreen({ navigation, route }) {
   }, [hasPermission, requestPermission]);
 
   // camera
-  const [cameraPosition, setCameraPosition] = useState("front"); 
+  const [cameraPosition, setCameraPosition] = useState("front");
   const device = useCameraDevice(cameraPosition);
   const cameraRef = useRef(null);
 
