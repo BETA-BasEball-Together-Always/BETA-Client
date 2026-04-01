@@ -1,4 +1,6 @@
-/** 리스트·카드 본문용 (소프트 삭제 후 서버가 내려주는 경우) */
+import { stripPhotoOnlyPlaceholderForDisplay } from "./photoOnlyPostPlaceholder";
+
+/** 리스트/카드 본문용 (소프트 삭제 후 서버가 내려주는 경우) */
 export const DELETED_POST_MESSAGE = "삭제된 게시글입니다";
 /** 존재하지 않음·접근 불가 등 */
 export const POST_NOT_FOUND_MESSAGE = "게시글을 찾을 수 없습니다";
@@ -170,4 +172,37 @@ export function getActiveHashtagLabels(post) {
   }
 
   return ordered;
+}
+
+function contentHasHashtagToken(content, label) {
+  if (!label) return false;
+  const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`#${escaped}(?=[\\s#]|$)`, "i");
+  return re.test(typeof content === "string" ? content : "");
+}
+
+/**
+ * 본문 문자열에 이미 `#태그`로 등장하지 않는 해시태그만 (서버 전용 태그 표시·중복 방지)
+ */
+export function getHashtagLabelsNotInContent(content, post) {
+  const labels = getActiveHashtagLabels(post);
+  if (!labels.length) return [];
+  const c = typeof content === "string" ? content : "";
+  return labels.filter((l) => !contentHasHashtagToken(c, l)).slice(0, 5);
+}
+
+/**
+ * 수정 화면 초기값: 서버 `hashtags`에만 있고 본문에 `#`로 없는 태그를 한 줄에 붙여
+ * 추출·전송 로직과 에디터 표시가 일치하도록 한다.
+ */
+export function getEditContentMergedWithServerHashtags(editPost) {
+  let c =
+    typeof editPost?.content === "string" ? editPost.content : "";
+  c = stripPhotoOnlyPlaceholderForDisplay(c);
+  const labels = getActiveHashtagLabels(editPost);
+  const missing = labels.filter((label) => !contentHasHashtagToken(c, label));
+  if (!missing.length) return c;
+  const suffix = missing.map((t) => `#${t}`).join(" ");
+  const trimmed = c.trimEnd();
+  return trimmed ? `${trimmed}\n${suffix}` : suffix;
 }

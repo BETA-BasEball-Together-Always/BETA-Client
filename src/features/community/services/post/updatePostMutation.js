@@ -3,11 +3,37 @@ import { postKeys } from "./postKeys";
 import api from "../../../../shared/libs/api";
 import postDetailKeys from "../postDetail/postDetailKeys";
 import communityKeys from "../communityKeys";
+import { resolveCommunityPostId } from "../../constants/communityReactions";
+import { homeKeys } from "../../../home/services/homeKeys";
+
+function patchPostFromUpdateResponse(prev, data) {
+  if (!prev || data == null || typeof data !== "object") return prev;
+  const next = { ...prev };
+  if (typeof data.content === "string") next.content = data.content;
+  if (Array.isArray(data.hashtags)) next.hashtags = data.hashtags;
+  if (data.channel != null) next.channel = data.channel;
+  if (data.status != null) next.status = data.status;
+  return next;
+}
+
+function patchPostInInfinitePages(prev, postId, data) {
+  if (!prev?.pages) return prev;
+  return {
+    ...prev,
+    pages: prev.pages.map((page) => ({
+      ...page,
+      posts: (page.posts ?? []).map((p) => {
+        const pid = resolveCommunityPostId(p);
+        if (String(pid) !== String(postId)) return p;
+        return patchPostFromUpdateResponse(p, data);
+      }),
+    })),
+  };
+}
 
 // 게시글 수정!
 const updatePostApi = async ({ postId, formData }) => {
-  // api 인스턴스 기본값이 application/json 이라면, FormData 요청에 그대로 섞이면 본문이 서버에 제대로 바인딩되지 않을 수 있음.
-  // RN에서는 boundary 없이 "multipart/form-data"만 지정하는 것도 문제가 되므로, Content-Type은 비우고( false ) 네이티브가 boundary 포함 헤더를 붙이게 둔다.
+
   const res = await api.put(`/api/v1/community/posts/${postId}`, formData, {
     headers: {
       "Content-Type": false,
@@ -28,6 +54,31 @@ export const useUpdatePostMutation = () => {
     onSuccess: (data, variables) => {
       const postId = variables?.postId;
       if (postId != null) {
+        queryClient.setQueryData(postDetailKeys.detail(postId), (prev) =>
+          prev ? patchPostFromUpdateResponse(prev, data) : prev,
+        );
+        queryClient.setQueriesData(
+          { queryKey: communityKeys.posts() },
+          (prev) => patchPostInInfinitePages(prev, postId, data),
+        );
+        queryClient.setQueryData(homeKeys.all, (prev) => {
+          if (!prev?.popularPosts || !Array.isArray(prev.popularPosts))
+            return prev;
+          return {
+            ...prev,
+            popularPosts: prev.popularPosts.map((p) => {
+              const pid = resolveCommunityPostId(p);
+              if (String(pid) !== String(postId)) return p;
+              return patchPostFromUpdateResponse(p, data);
+            }),
+          };
+        });
+        queryClient.setQueriesData({ queryKey: ["mypage"] }, (prev) =>
+          patchPostInInfinitePages(prev, postId, data),
+        );
+        queryClient.setQueriesData({ queryKey: ["userPosts"] }, (prev) =>
+          patchPostInInfinitePages(prev, postId, data),
+        );
         queryClient.invalidateQueries({
           queryKey: postDetailKeys.detail(postId),
         });

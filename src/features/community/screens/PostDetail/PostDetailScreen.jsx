@@ -55,6 +55,7 @@ import { isAllChannelPost } from "../../utils/communityChannel";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getHashtagLabelsNotInContent,
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
@@ -196,6 +197,12 @@ const PostDetailScreen = ({ route, navigation }) => {
 
     return nodes;
   }, [displayContent]);
+
+  // 본문에 #로 없는 서버 전용 해시태그만 (인라인 초록색과 중복되지 않게)
+  const extraHashtagLabels = useMemo(() => {
+    const source = detail ?? initialPostParam ?? post ?? {};
+    return getHashtagLabelsNotInContent(displayContent, source);
+  }, [detail, initialPostParam, post, displayContent]);
 
   const scrollRef = useRef(null);
   const scrollViewHeightRef = useRef(0);
@@ -762,11 +769,25 @@ const PostDetailScreen = ({ route, navigation }) => {
                 })}
               </ScrollView>
             )}
-            {detail?.content && (
+            {typeof displayContent === "string" && displayContent.length > 0 && (
               <View style={styles.textWrapper}>
                 <AppText variant="middle" style={styles.content}>
                   {renderContentWithHighlightedHashtags}
                 </AppText>
+              </View>
+            )}
+
+            {extraHashtagLabels.length > 0 && (
+              <View style={styles.hashtagExtraRow}>
+                {extraHashtagLabels.map((tag, i) => (
+                  <AppText
+                    key={`tag-${tag}`}
+                    variant="caption"
+                    style={styles.hashText}
+                  >
+                    {`${i > 0 ? " " : ""}#${tag}`}
+                  </AppText>
+                ))}
               </View>
             )}
 
@@ -1023,6 +1044,13 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     fontSize: 15,
     lineHeight: 19,
+  },
+  hashtagExtraRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 2,
+    marginTop: -4,
+    marginBottom: 12,
   },
   divider: {
     width: "100%",

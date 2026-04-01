@@ -33,8 +33,10 @@ import { isOfflineError } from "../../../../../shared/utils/networkErrors";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getHashtagLabelsNotInContent,
   getPostListUnavailableBody,
 } from "../../../../community/utils/communityPostVisibility";
+import { stripPhotoOnlyPlaceholderForDisplay } from "../../../../community/utils/photoOnlyPostPlaceholder";
 import { useSoftDeletedPostStore } from "../../../../community/store/softDeletedPostStore";
 import { useNavigation } from "@react-navigation/native";
 
@@ -126,6 +128,16 @@ const PopularPostCard = ({ post }) => {
       },
     }),
     [post, resolvedPostId],
+  );
+
+  const popularDisplayContent = useMemo(
+    () => stripPhotoOnlyPlaceholderForDisplay(post?.content ?? ""),
+    [post?.content],
+  );
+
+  const extraHashtagLabels = useMemo(
+    () => getHashtagLabelsNotInContent(popularDisplayContent, post),
+    [popularDisplayContent, post],
   );
 
   const renderContentWithHighlightedHashtags = (content) => {
@@ -396,8 +408,18 @@ const PopularPostCard = ({ post }) => {
           >
             {showAsUnavailable
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
-              : renderContentWithHighlightedHashtags(post.content)}
+              : renderContentWithHighlightedHashtags(popularDisplayContent)}
           </AppText>
+          {!showAsUnavailable && extraHashtagLabels.length > 0 ? (
+            <AppText
+              variant="spaced"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={styles.extraHashtagLine}
+            >
+              {extraHashtagLabels.map((tag) => `#${tag}`).join(" ")}
+            </AppText>
+          ) : null}
         </View>
       </TouchableOpacity>
 
@@ -621,6 +643,14 @@ const styles = StyleSheet.create({
   inlineHashtagText: {
     color: "#6F9D48",
     fontSize: 13,
+    fontFamily: "NotoSansKR-Medium",
+  },
+  /** 본문에 없는 서버 해시태그 한 줄 (텍스트 색만) */
+  extraHashtagLine: {
+    color: "#6F9D48",
+    fontSize: 12,
+    lineHeight: 15,
+    marginTop: 4,
     fontFamily: "NotoSansKR-Medium",
   },
   unavailableText: {

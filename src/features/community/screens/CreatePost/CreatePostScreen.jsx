@@ -48,6 +48,7 @@ import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoadin
 import ImagePreviewList from "../../component/createPost/ImagePreviewList";
 import { copyFrameToUniqueUploadFile } from "@features/photoBooth/utils/copyFrameToUniqueUploadFile";
 import { randomUploadKey } from "../../../../shared/utils/randomUploadKey";
+import { getEditContentMergedWithServerHashtags } from "../../utils/communityPostVisibility";
 
 const { width } = Dimensions.get("window");
 
@@ -174,7 +175,8 @@ const CreatePostScreen = () => {
       initialEditRef.current = null;
       return;
     }
-    setContent(editPost.content ?? "");
+    const mergedContent = getEditContentMergedWithServerHashtags(editPost);
+    setContent(mergedContent);
     const existing = (editPost.images ?? [])
       .map((img) => ({
         imageId: Number(img.imageId ?? img.id),
@@ -185,9 +187,9 @@ const CreatePostScreen = () => {
     setPendingNewImages([]);
     setDeletedImageIds([]);
     initialEditRef.current = {
-      content: editPost.content ?? "",
+      content: mergedContent,
     };
-  }, [editPost?.postId]);
+  }, [editPost?.postId, editPost?.content, editPost?.hashtags]);
 
   useEffect(() => {
     if (!editPost?.postId) return;
@@ -875,9 +877,7 @@ const CreatePostScreen = () => {
     if (isEditMode) {
       const formData = new FormData();
       formData.append("content", contentForUpload);
-      acceptedHashTags.forEach((tag) => {
-        formData.append("hashtags", tag);
-      });
+     
       deletedImageIds.forEach((id) => {
         formData.append("deletedImageIds", String(id));
       });

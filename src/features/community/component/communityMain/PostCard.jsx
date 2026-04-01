@@ -26,6 +26,7 @@ import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getHashtagLabelsNotInContent,
   getPostListUnavailableBody,
 } from "../../utils/communityPostVisibility";
 import { stripPhotoOnlyPlaceholderForDisplay } from "../../utils/photoOnlyPostPlaceholder";
@@ -128,6 +129,11 @@ const PostCard = ({
           )
         : null,
     [primaryImageUri, resolvedPostId, primaryImageStableKey],
+  );
+
+  const extraHashtagLabels = useMemo(
+    () => getHashtagLabelsNotInContent(displayContent, post),
+    [displayContent, post],
   );
 
   const renderContentWithHighlightedHashtags = useMemo(() => {
@@ -343,6 +349,20 @@ const PostCard = ({
               : renderContentWithHighlightedHashtags}
           </AppText>
 
+          {!showAsUnavailable && extraHashtagLabels.length > 0 ? (
+            <View style={styles.hashtagExtraRow}>
+              {extraHashtagLabels.map((tag, i) => (
+                <AppText
+                  key={`htag-${tag}`}
+                  variant="caption"
+                  style={styles.hashText}
+                >
+                  {`${i > 0 ? " " : ""}#${tag}`}
+                </AppText>
+              ))}
+            </View>
+          ) : null}
+
           {bodyNeedsMore ? (
             <TouchableOpacity
               onPress={handlePressCard}
@@ -479,6 +499,11 @@ const styles = StyleSheet.create({
   },
   hashRow: {
     marginTop: 6,
+  },
+  hashtagExtraRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 4,
   },
   hashText: {
     color: "#6F9D48",
