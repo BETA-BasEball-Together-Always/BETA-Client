@@ -37,10 +37,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   circle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
     borderColor: "rgba(255,255,255,0.35)",
     backgroundColor: "transparent",
     justifyContent: "center",
@@ -51,8 +51,8 @@ const styles = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   number: {
-    fontSize: 12,
-    lineHeight: 14,
+    fontSize: 14,
+    lineHeight: 16,
     color: "rgba(255,255,255,0.6)",
     fontWeight: "700",
   },
@@ -61,8 +61,8 @@ const styles = StyleSheet.create({
   },
   line: {
     height: 2,
-    width: 32,
-    marginHorizontal: 8,
+    width: 24,
+    marginHorizontal: 6,
     backgroundColor: "rgba(255,255,255,0.35)",
   },
 });

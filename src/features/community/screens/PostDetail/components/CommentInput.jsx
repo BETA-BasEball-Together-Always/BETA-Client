@@ -6,6 +6,7 @@ import {
   StyleSheet,
   InteractionManager,
   Platform,
+  Keyboard,
 } from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../../shared/store/userStore";
@@ -31,6 +32,7 @@ export default function CommentInput({
 
   //피그마 기준 입력창 포커스 시 ui 변경 위함!! 구분선 + 등록 버튼 표시
   const [isFocused, setIsFocused] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const favoriteTeamName = useUserStore((s) => s.user?.favoriteTeamName);
   const defaultPlaceholder = useMemo(() => {
@@ -52,6 +54,20 @@ export default function CommentInput({
     setText("");
     setIsFocused(false);
   }, [editTarget?.commentId]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!autoFocusOnMount || editTarget?.commentId) return;
@@ -89,12 +105,15 @@ export default function CommentInput({
   }, [focusRequestKey, editTarget?.commentId]);
 
   const isSubmitEnabled = text.trim().length > 0;
+  const shouldShowSubmitButton = isEditing || isFocused || isKeyboardVisible;
 
   const handleSubmit = () => {
     if (!isSubmitEnabled) return;
     onSubmit(text);
     setText("");
-    setIsFocused(false);
+    // 등록 직후에도 키보드가 떠 있으면 버튼이 사라지지 않도록 포커스를 유지
+    setIsFocused(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   return (
@@ -142,7 +161,7 @@ export default function CommentInput({
           multiline
         />
 
-        {(isFocused || isEditing) && (
+        {shouldShowSubmitButton && (
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isSubmitEnabled}

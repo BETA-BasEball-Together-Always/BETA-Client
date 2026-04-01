@@ -30,22 +30,29 @@ export default function SignupProgressHeader({ currentStep, onBack }) {
 
 const styles = StyleSheet.create({
   headerRow: {
+    position: "relative",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "center",
     height: height * 0.1,
     marginBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1F1F1F",
   },
   backButton: {
     width: 32,
+    position: "absolute",
+    left: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   stepWrapper: {
     alignItems: "center",
-    width: 150,
   },
   rightPlaceholder: {
     width: 32,
+    position: "absolute",
+    right: 20,
   },
 });
