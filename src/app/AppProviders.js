@@ -36,6 +36,11 @@ const queryClient = new QueryClient({
       refetchOnReconnect: true, // 네트워크 복구 시 자동 리패치
       refetchOnWindowFocus: true, // RN에선 focusManager로 동작
     },
+    // 오프라인일 때 기본 'online' 모드는 mutationFn 실행을 멈춰 isPending이 영구히 true가 될 수 있음!
+    // 항상 실행해 axios 인터셉터의 CLIENT_OFFLINE 등으로 실패/알림 처리되게 하기
+    mutations: {
+      networkMode: "always",
+    },
   },
 });
 

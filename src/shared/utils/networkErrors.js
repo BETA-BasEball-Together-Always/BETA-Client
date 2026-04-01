@@ -2,10 +2,10 @@ import { Alert } from "react-native";
 
 export const OFFLINE_ALERT_TITLE = "알림";
 export const OFFLINE_ALERT_MESSAGE =
-  "네트워크가 유실되었습니다.\n연결 상태를 확인한 뒤 다시 시도해 주세요.";
+  "작업을 완료할 수 없습니다.\n네트워크를 확인해 주세요.";
 
 /**
- * Axios 요청 실패·인터셉터 차단 등 오프라인/연결 불가에 가까운 에러 여부
+ * Axios 요청 실패/인터셉터 차단 등 오프라인/연결 불가에 가까운 에러 여부
  */
 export function isOfflineError(error) {
   if (!error) return false;

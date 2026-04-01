@@ -34,7 +34,7 @@ function getNextPopularOffset(lastPage, pageParam) {
 
 /**
  * @param {object} opts
- * @param {number|false} [opts.refetchInterval] — 포커스 중 주기 리패치(ms). false면 비활성.
+ * @param {number|false} [opts.refetchInterval] — 포커스 중 주기 리패치(ms)/ false면 비활성
  */
 export default function useCommunityPosts({
   channel,

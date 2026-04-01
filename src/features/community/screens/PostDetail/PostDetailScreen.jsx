@@ -630,12 +630,16 @@ const PostDetailScreen = ({ route, navigation }) => {
             styles.container,
             {
               paddingBottom:
-                Math.max(0, commentInputHeight) + Math.max(0, keyboardHeight) + 24,
+                Math.max(0, commentInputHeight) +
+                Math.max(0, keyboardHeight) +
+                24,
             },
           ]}
           scrollIndicatorInsets={{
             bottom:
-              Math.max(0, commentInputHeight) + Math.max(0, keyboardHeight) + 24,
+              Math.max(0, commentInputHeight) +
+              Math.max(0, keyboardHeight) +
+              24,
           }}
           onContentSizeChange={() => {
             if (!pendingAutoScrollToBottom) return;
@@ -770,7 +774,7 @@ const PostDetailScreen = ({ route, navigation }) => {
                 requestCommentInputFocus("thread");
                 // 키보드/인풋이 올라오는 걸 고려해서 대상 댓글이 보이도록 스크롤
                 setTimeout(() => scrollToThread(commentId), 0);
-                setTimeout(() => scrollToThread(commentId), 300);
+                setTimeout(() => scrollToThread(commentId), 250);
               }}
               setCommentData={() => {}}
               postAuthorNickname={post?.author?.nickname}
@@ -904,7 +908,7 @@ const styles = StyleSheet.create({
     // flex: 1,
   },
   containerSection: {
-    paddingHorizontal: 15,
+    paddingHorizontal: 18,
     paddingTop: 8,
   },
   header: {

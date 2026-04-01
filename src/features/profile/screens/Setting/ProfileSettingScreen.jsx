@@ -50,7 +50,7 @@ const NOTION_URLS = {
   termsOfService:
     "https://bouncy-bush-b08.notion.site/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
   privacyPolicy:
-    "https://bouncy-bush-b08.notion.site/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
+    "https://bouncy-bush-b08.notion.site/2e1226b7125d80398dece59a2b1f0a6b?source=copy_link",
 };
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";

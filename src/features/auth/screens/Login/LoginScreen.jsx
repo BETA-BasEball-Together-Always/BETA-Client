@@ -39,20 +39,61 @@ function normalizeSocialProviderKey(value) {
   return SOCIAL_PROVIDER_KEYS.includes(u) ? u : null;
 }
 
-function inferRegisteredProviderFromMessage(message) {
+/** 메시지에 등장하는 소셜 키워드 수집 */
+function collectProviderKeysFromMessage(message) {
   const msg = String(message ?? "");
-  if (!msg.trim()) return null;
+  if (!msg.trim()) return [];
   const upper = msg.toUpperCase();
+  const found = new Set();
   for (const p of SOCIAL_PROVIDER_KEYS) {
-    if (upper.includes(p)) return p;
+    if (upper.includes(p)) found.add(p);
   }
-  if (/카카오/.test(msg)) return "KAKAO";
-  if (/네이버/.test(msg)) return "NAVER";
-  if (/애플/.test(msg)) return "APPLE";
-  return null;
+  if (/카카오/.test(msg)) found.add("KAKAO");
+  if (/네이버/.test(msg)) found.add("NAVER");
+  if (/애플/.test(msg)) found.add("APPLE");
+  return [...found];
 }
 
-function getRegisteredProviderForUser006(error) {
+/**
+ * USER006 문구에는 '시도한 소셜'과 '이미 가입된 소셜'이 함께 실리는 경우가 많음
+ * 예전 로직은 KAKAO를 배열/한글 순으로 먼저 매칭해, 카카오 시도 + 네이버 가입 시에도 카카오로 잘못 표시됨!
+ * @param {string|null|undefined} message
+ * @param {string|null|undefined} attemptedProvider 방금 누른 소셜(시도 쪽) — 메시지에 둘 다 있으면 이와 다른 쪽이 실제 가입 프로바이더
+ */
+function inferRegisteredProviderFromMessage(message, attemptedProvider) {
+  const attempted = normalizeSocialProviderKey(attemptedProvider);
+  const candidates = collectProviderKeysFromMessage(message);
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  if (attempted && candidates.includes(attempted)) {
+    const others = candidates.filter((p) => p !== attempted);
+    if (others.length === 1) return others[0];
+  }
+
+  const msg = String(message ?? "");
+  let bestPos = -1;
+  let best = null;
+  const markers = [
+    ["KAKAO", "KAKAO"],
+    ["NAVER", "NAVER"],
+    ["APPLE", "APPLE"],
+    ["카카오", "KAKAO"],
+    ["네이버", "NAVER"],
+    ["애플", "APPLE"],
+  ];
+  for (const [needle, key] of markers) {
+    if (!candidates.includes(key)) continue;
+    const idx = msg.lastIndexOf(needle);
+    if (idx > bestPos) {
+      bestPos = idx;
+      best = key;
+    }
+  }
+  return best;
+}
+
+function getRegisteredProviderForUser006(error, attemptedProvider) {
   const data = error?.response?.data;
 
   // 1순위: API에서 내려주는 user.socialProvider (실제 가입된 소셜)
@@ -62,17 +103,40 @@ function getRegisteredProviderForUser006(error) {
       : null;
   if (fromUser) return fromUser;
 
-  // 2순위: 서버에서 내려주는 socialProvider 필드 (이메일 중복 체크 결과)
+  // 2순위: 본문 또는 별도 필드로 내려주는 가입 프로바이더
   const fromApi =
     data && typeof data === "object"
-      ? normalizeSocialProviderKey(data?.socialProvider)
+      ? normalizeSocialProviderKey(
+          data?.socialProvider ??
+            data?.registeredSocialProvider ??
+            data?.existingSocialProvider,
+        )
       : null;
   if (fromApi) return fromApi;
 
-  // 3순위: 마지막으로 에러 메시지 내 텍스트로 추론
+  const fromUserExtra =
+    data && typeof data === "object"
+      ? normalizeSocialProviderKey(
+          data?.user?.registeredSocialProvider ??
+            data?.user?.existingSocialProvider,
+        )
+      : null;
+  if (fromUserExtra) return fromUserExtra;
+
+  // 3순위: 에러 메시지 텍스트 추론 (시도한 버튼과 구분)
   const msg =
     typeof data === "string" ? data : (data?.message ?? error?.message ?? null);
-  return inferRegisteredProviderFromMessage(msg);
+
+  if (typeof msg === "string") {
+    const koMatch = msg.match(/이미\s*(카카오|네이버|애플)로(?:\s*가입)?/);
+    if (koMatch) {
+      const koToKey = { 카카오: "KAKAO", 네이버: "NAVER", 애플: "APPLE" };
+      const fromKo = normalizeSocialProviderKey(koToKey[koMatch[1]]);
+      if (fromKo) return fromKo;
+    }
+  }
+
+  return inferRegisteredProviderFromMessage(msg, attemptedProvider);
 }
 
 const LoginScreen = ({ navigation, route }) => {
@@ -87,6 +151,10 @@ const LoginScreen = ({ navigation, route }) => {
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
   const clearAuth = useUserStore((state) => state.clearAuth);
+  /** 로그아웃 직전 등 메모리에 유저가 남아 있으면 USER006 시 가입 소셜 판별에 활용 */
+  const persistedUserSocialProvider = useUserStore(
+    (state) => state.user?.socialProvider,
+  );
 
   const authErrorMessage = route?.params?.authErrorMessage ?? null;
 
@@ -122,10 +190,19 @@ const LoginScreen = ({ navigation, route }) => {
     [],
   );
 
-  const handleUser006ProviderConflict = (currentProvider, error) => {
+  const handleUser006ProviderConflict = (attemptedProvider, error) => {
     const registered =
-      getRegisteredProviderForUser006(error) ||
-      normalizeSocialProviderKey(currentProvider);
+      getRegisteredProviderForUser006(error, attemptedProvider) ??
+      normalizeSocialProviderKey(persistedUserSocialProvider);
+    if (!registered) {
+      const fallbackMsg =
+        error?.response?.data?.message ??
+        error?.message ??
+        "이미 가입된 이메일입니다. 소셜 로그인을 확인해 주세요.";
+      Alert.alert("로그인 안내", fallbackMsg);
+      setIsSocialLoading(false);
+      return;
+    }
     setProviderConflict({
       providerKey: registered,
       message: null,
@@ -593,9 +670,6 @@ const LoginScreen = ({ navigation, route }) => {
                               conflictColors[providerConflict.providerKey] ??
                               "#FFF",
                           },
-                          providerConflict.providerKey === "APPLE"
-                            ? { fontWeight: "700" }
-                            : null,
                         ]}
                       >
                         {conflictProviderName[providerConflict.providerKey]}
@@ -612,13 +686,9 @@ const LoginScreen = ({ navigation, route }) => {
                               conflictColors[providerConflict.providerKey] ??
                               "#FFF",
                           },
-                          providerConflict.providerKey === "APPLE"
-                            ? { fontWeight: "700" }
-                            : null,
                         ]}
                       >
-                        {conflictProviderName[providerConflict.providerKey]}{" "}
-                        로그인
+                        {`${conflictProviderName[providerConflict.providerKey]} 로그인`}
                       </AppText>
                       {"을 이용해 주세요."}
                     </AppText>
@@ -628,7 +698,10 @@ const LoginScreen = ({ navigation, route }) => {
                 <TouchableOpacity
                   style={styles.modalButton}
                   activeOpacity={0.85}
-                  onPress={() => setProviderConflict(null)}
+                  onPress={() => {
+                    setProviderConflict(null);
+                    navigation?.navigate?.("Login");
+                  }}
                 >
                   <AppText variant="bodyMedium" style={styles.modalButtonText}>
                     확인
@@ -729,12 +802,15 @@ const styles = StyleSheet.create({
   },
   modalLine: {
     color: "#F9F9F9",
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 23,
     textAlign: "center",
     alignSelf: "stretch",
   },
   modalHighlight: {
     fontWeight: "700",
+    fontSize: 17,
+    lineHeight: 23,
   },
   modalButton: {
     marginTop: 18,

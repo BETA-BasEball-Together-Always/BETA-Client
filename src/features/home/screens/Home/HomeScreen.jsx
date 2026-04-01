@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ImageBackground,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useCallback, useMemo } from "react";
@@ -169,33 +168,29 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <AppText variant="displayTitle" style={styles.header}>
-            {user?.nickname} 님
-          </AppText>
-          <AppText variant="heading" style={styles.subText}>
-            오늘도 BETA와 함께 응원해봐요 🔥
-          </AppText>
-
-          {isHomePending ? (
-            <View style={styles.homeLoading}>
-              <ActivityIndicator color="#F9F9F9" size="large" />
-            </View>
-          ) : null}
-
-          {shouldShowHomeError ? (
+        {isHomePending || shouldShowHomeError ? (
+          <View style={styles.mainFill}>
             <FetchStateView
-              style={styles.homeErrorFetch}
-              isError
+              isLoading={isHomePending && !shouldShowHomeError}
+              isError={shouldShowHomeError}
               onRetry={() => refetchHome()}
             />
-          ) : null}
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <AppText variant="displayTitle" style={styles.header}>
+              {user?.nickname} 님
+            </AppText>
+            <AppText variant="heading" style={styles.subText}>
+              오늘도 BETA와 함께 응원해봐요 🔥
+            </AppText>
 
-          {homeBody}
-        </ScrollView>
+            {homeBody}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -211,7 +206,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
-    justifyContent: "center",
+  },
+  mainFill: {
+    flex: 1,
+    minHeight: 0,
   },
   topBar: {
     flexDirection: "row",

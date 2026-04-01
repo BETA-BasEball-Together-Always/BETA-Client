@@ -1,15 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { TouchableOpacity, View, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import PostList from "../component/communityMain/PostList";
 import useCommunityPosts from "../hooks/useCommunityPosts";
 // import CommunityLoadingSpinner from "../../../shared/components/CommunityLoadingSpinner";
-import {
-  DATA_FETCH_ERROR_MESSAGE_LINE1,
-  DATA_FETCH_ERROR_MESSAGE_LINE2,
-} from "../../../shared/components/FetchStateView";
 import FetchStateView from "../../../shared/components/FetchStateView";
 
 import { useUserStore } from "../../../shared/store/userStore";
@@ -17,8 +13,6 @@ import { TEAM_DATA } from "../../../shared/constants/teams";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
 import communityKeys from "../services/communityKeys";
-import { AppText } from "../../../shared/theme/components/AppText";
-
 const FEED_REFETCH_MS = 10 * 1000;
 
 const TeamCommunityScreen = ({ route }) => {
@@ -132,28 +126,6 @@ const TeamCommunityScreen = ({ route }) => {
             <CommunityLoadingSpinner size={44} />
           </View>
         )} */}
-
-      {isError && (
-        <View style={styles.errorOverlay}>
-          <View style={styles.errorBlock}>
-            <AppText variant="bodyRegular" style={styles.errorLine}>
-              {DATA_FETCH_ERROR_MESSAGE_LINE1}
-            </AppText>
-            <AppText variant="bodyRegular" style={styles.errorLine}>
-              {DATA_FETCH_ERROR_MESSAGE_LINE2}
-            </AppText>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => refetch()}
-            >
-              <AppText variant="middle" style={styles.retryButtonLabel}>
-                다시 시도
-              </AppText>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-      {/* </View> */}
     </SafeAreaView>
   );
 };
@@ -192,38 +164,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(2, 4, 8, 0.35)",
-  },
-  errorOverlay: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    backgroundColor: "rgba(2, 4, 8, 0.65)",
-  },
-  errorBlock: {
-    alignItems: "center",
-    maxWidth: 320,
-  },
-  errorLine: {
-    color: "#F9F9F9",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  retryButton: {
-    marginTop: 20,
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 24,
-    minWidth: 120,
-    alignItems: "center",
-  },
-  retryButtonLabel: {
-    color: "#121212",
-    fontWeight: "600",
   },
 });

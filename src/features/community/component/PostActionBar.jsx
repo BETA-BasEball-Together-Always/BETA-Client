@@ -21,7 +21,7 @@ const PostActionBar = ({
   likeDisabled = false,
   /** 인기 피드 카드에서만 true! false면 Team/All 커뮤니티 게시글 리스트/검색 등 기본 크기 */
   compact = false,
-  /** 마이스타디움 `ProfileScreen` 댓글 탭(프로필 `PostCard` 경유)에서만 true */
+  /** 마이스타디움 `ProfileScreen` 댓글 탭(프로필 `PostCard`)에서만 true */
   profileCommentHighlight = false,
 }) => {
   /* 하트/댓글 아이콘 크기: compact(인기 피드 카드) vs 그 외(Team/All 커뮤니티/프로필 등) */

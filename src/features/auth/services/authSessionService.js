@@ -22,7 +22,6 @@ export const withdrawAccountApi = async () => {
 
 /**
  * POST|PATCH /api/v1/users/me/withdraw/cancel — 탈퇴 취소(30일 이내 재로그인 시)
- * 백엔드 구현에 따라 method가 다를 수 있어 2단계로 시도
  * @returns {Promise<any>}
  */
 export const cancelWithdrawAccountApi = async () => {

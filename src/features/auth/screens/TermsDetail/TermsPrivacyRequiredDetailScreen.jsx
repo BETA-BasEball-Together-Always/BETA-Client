@@ -153,8 +153,7 @@ const TermsPrivacyRequiredDetailScreen = () => {
 
 2항. 권리 행사 방법
 - 앱 내 「마이스타디움 > 설정 > 개인정보 관리」 메뉴 이용
-- 고객센터 이메일: [support@beta-service.com](mailto:support@beta-service.com)
-- 전화 문의: [연락처]
+- 고객센터 이메일: [betaofficial365@gmail.com]
 
 회사는 이용자의 요청을 받은 날로부터 10일 이내에 조치 결과를 알려드립니다.
 정당한 사유가 있는 경우 처리 기간이 연장될 수 있으며, 이 경우 사유와 연장 기간을 함께 안내합니다.

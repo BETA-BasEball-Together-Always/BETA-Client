@@ -8,7 +8,7 @@ const FeedTabContent = ({
   posts = [],
   emptyMessage = "작성된 게시물이 없습니다",
   onEndReached,
-  /** 첫 페이지 로딩 (탭 전환·초기 진입 시 스피너) */
+  /** 첫 페이지 로딩 (탭 전환/초기 진입 시 스피너) */
   isLoading = false,
   /** 다음 페이지 로딩 (목록 하단 스피너) */
   isFetchingNextPage = false,
