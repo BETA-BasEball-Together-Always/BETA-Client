@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   FlatList,
@@ -7,6 +7,7 @@ import {
   StatusBar,
   useWindowDimensions,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import TeamCard from "./components/TeamCard";
 import FrameCard from "./components/FrameCard";
 import photoBoothStore from "@features/photoBooth/store/photoBoothStore";
@@ -58,14 +59,27 @@ const SelectScreen = ({ navigation }) => {
   const [selectedFrame, setSelectedFrame] = useState(null);
   const { width: bgWidth, height: bgHeight } = useWindowDimensions();
 
-  const { setSelectedTeam: setGlobalTeam, setSelectedFrame: setGlobalFrame } =
-    photoBoothStore();
+  const {
+    setSelectedTeam: setGlobalTeam,
+    setSelectedFrame: setGlobalFrame,
+    resetSelection,
+  } = photoBoothStore();
 
   const { prefetch } = usePrefetchEditFonts();
 
   useEffect(() => {
     prefetch(); // 유휴 시간에 미리 로드
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // 다른 화면(Camera/Edit/Share 등)에서 뒤로/닫기 등으로 돌아왔을 때
+      // SelectScreen이 스택에 남아있어도 항상 초기 상태처럼 보이도록 리셋
+      setSelectedTeam(null);
+      setSelectedFrame(null);
+      resetSelection?.();
+    }, [resetSelection]),
+  );
 
   const handleNext = () => {
     if (selectedTeam && selectedFrame) {

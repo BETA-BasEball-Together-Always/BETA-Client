@@ -66,13 +66,15 @@ function InsertGap() {
 function PhotoThumbItem({
   item,
   index,
-  onPressThumb,
+  onPressSlot,
+  onDeleteSlot,
   onReorderEnd,
   onDragStateChange,
   onDragAbsoluteMoveWorklet,
   onDragStartMeasure,
   disableReorder,
   hidden,
+  selected,
 }) {
   const isDragging = useSharedValue(false);
   const thumbWrapRef = useRef(null);
@@ -128,7 +130,7 @@ function PhotoThumbItem({
   const tapGesture = Gesture.Tap()
     .maxDuration(200)
     .onEnd(() => {
-      runOnJS(onPressThumb)(item);
+      runOnJS(onPressSlot)(index);
     });
 
   const composed = disableReorder
@@ -139,7 +141,7 @@ function PhotoThumbItem({
     <View ref={thumbWrapRef} collapsable={false}>
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
-          <View style={editStyles.thumb}>
+          <View style={[editStyles.thumb, selected && styles.thumbSelected]}>
             {item ? (
               <Image
                 source={{ uri: item }}
@@ -152,6 +154,46 @@ function PhotoThumbItem({
           </View>
         </Animated.View>
       </GestureDetector>
+      <TouchableOpacity
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        activeOpacity={0.8}
+        onPress={() => onDeleteSlot?.(index)}
+        style={styles.slotDeleteBtn}
+      >
+        <AppText variant="labelSmall" style={styles.slotDeleteText}>
+          ×
+        </AppText>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function PoolThumbItem({ item, onPress, onDelete }) {
+  return (
+    <View style={styles.poolThumbWrap}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => onPress?.(item)}>
+        <View style={editStyles.thumb}>
+          {item?.uri ? (
+            <Image
+              source={{ uri: item.uri }}
+              style={editStyles.thumbImg}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={editStyles.thumbPlaceholder} />
+          )}
+        </View>
+      </TouchableOpacity>
+      <TouchableOpacity
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        activeOpacity={0.8}
+        onPress={() => onDelete?.(item?.id)}
+        style={styles.poolDeleteBtn}
+      >
+        <AppText variant="labelSmall" style={styles.poolDeleteText}>
+          ×
+        </AppText>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -166,7 +208,11 @@ function insertPosToToIndex(fromIndex, insertPos, n) {
 
 export default function PhotoToolPanel({
   photosLocal,
-  onPressThumb,
+  selectedSlot,
+  imagePool,
+  onPressSlotThumb,
+  onPressPoolItem,
+  onDeletePoolItem,
   onReplaceFromCamera,
   onReplaceFromGallery,
   onReorderPhotos,
@@ -186,7 +232,6 @@ export default function PhotoToolPanel({
   const [insertPos, setInsertPos] = useState(null);
   const [dragOverlayUri, setDragOverlayUri] = useState("");
 
-  // --- Reanimated shared state (smooth drag/scroll without JS layout coupling)
   const nSV = useSharedValue(0);
   const listWindowXSV = useSharedValue(0);
   const listWidthSV = useSharedValue(0);
@@ -426,88 +471,123 @@ export default function PhotoToolPanel({
   const trailGap =
     draggingIndex != null && insertPos != null && n > 1 && gapIndex === n - 1;
 
-  return (
-    <View ref={listWrapRef} style={styles.listWrap} onLayout={onListLayout}>
-      <Animated.ScrollView
-        ref={scrollRef}
-        horizontal
-        scrollEnabled={scrollEnabled}
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={editStyles.photoListContent}
-        decelerationRate="fast"
-      >
-        <View
-          ref={rowInnerRef}
-          style={styles.rowInner}
-          onLayout={onRowContentLayout}
-          collapsable={false}
-        >
-          {photosLocal.map((item, i) => (
-            <React.Fragment key={`slot-${i}`}>
-              {i > 0 && <View style={{ width: THUMB_GAP }} />}
-              {draggingIndex != null &&
-                insertPos != null &&
-                gapIndex != null &&
-                ((i !== draggingIndex &&
-                  reducedPosition(i, draggingIndex) === gapIndex) ||
-                  (i === draggingIndex &&
-                    gapIndex === 0 &&
-                    draggingIndex === 0)) && (
-                  <>
-                    <InsertGap />
-                    <View style={{ width: THUMB_GAP }} />
-                  </>
-                )}
-              <PhotoThumbItem
-                item={item}
-                index={i}
-                onPressThumb={onPressThumb}
-                onReorderEnd={handleReorderEnd}
-                onDragStateChange={onDragStateChange}
-                onDragAbsoluteMoveWorklet={onDragAbsoluteMoveWorklet}
-                onDragStartMeasure={onDragStartMeasure}
-                disableReorder={draggingIndex !== null && draggingIndex !== i}
-                hidden={draggingIndex !== null && draggingIndex === i}
-              />
-            </React.Fragment>
-          ))}
-          {trailGap && (
-            <>
-              <View style={{ width: THUMB_GAP }} />
-              <InsertGap />
-            </>
-          )}
-          <View style={editStyles.photoListFooter}>
-            <View style={{ width: THUMB_GAP }} />
-            {photoFooter}
-          </View>
-        </View>
-      </Animated.ScrollView>
+  const addedItems = Array.isArray(imagePool)
+    ? imagePool.filter((x) => x?.kind === "added")
+    : [];
 
-      {/* Instagram-style: drag overlay detached from list layout */}
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.dragOverlay, dragOverlayAnimatedStyle]}
-      >
-        <View style={editStyles.thumb}>
-          {dragOverlayUri ? (
-            <Image
-              source={{ uri: dragOverlayUri }}
-              style={editStyles.thumbImg}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={editStyles.thumbPlaceholder} />
-          )}
-        </View>
-      </Animated.View>
+  const slotHidden = (i) =>
+    (imagePool ?? []).find((x) => x?.id === `slot-${i}`)?.deleted === true;
+
+  return (
+    <View style={styles.root}>
+      <View ref={listWrapRef} style={styles.listWrap} onLayout={onListLayout}>
+        <Animated.ScrollView
+          ref={scrollRef}
+          horizontal
+          scrollEnabled={scrollEnabled}
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={editStyles.photoListContent}
+          decelerationRate="fast"
+        >
+          <View
+            ref={rowInnerRef}
+            style={styles.rowInner}
+            onLayout={onRowContentLayout}
+            collapsable={false}
+          >
+            {photosLocal.map((item, i) => (
+              slotHidden(i) ? null : (
+              <React.Fragment key={`slot-${i}`}>
+                {i > 0 && <View style={{ width: THUMB_GAP }} />}
+                {draggingIndex != null &&
+                  insertPos != null &&
+                  gapIndex != null &&
+                  ((i !== draggingIndex &&
+                    reducedPosition(i, draggingIndex) === gapIndex) ||
+                    (i === draggingIndex &&
+                      gapIndex === 0 &&
+                      draggingIndex === 0)) && (
+                    <>
+                      <InsertGap />
+                      <View style={{ width: THUMB_GAP }} />
+                    </>
+                  )}
+                <PhotoThumbItem
+                  item={item}
+                  index={i}
+                  onPressSlot={(idx) =>
+                    onPressSlotThumb?.(idx, photosLocal?.[idx] ?? "")
+                  }
+                  onDeleteSlot={(idx) => onDeletePoolItem?.(`slot-${idx}`)}
+                  onReorderEnd={handleReorderEnd}
+                  onDragStateChange={onDragStateChange}
+                  onDragAbsoluteMoveWorklet={onDragAbsoluteMoveWorklet}
+                  onDragStartMeasure={onDragStartMeasure}
+                  disableReorder={draggingIndex !== null && draggingIndex !== i}
+                  hidden={draggingIndex !== null && draggingIndex === i}
+                  selected={selectedSlot === i}
+                />
+              </React.Fragment>
+              )
+            ))}
+            {trailGap && (
+              <>
+                <View style={{ width: THUMB_GAP }} />
+                <InsertGap />
+              </>
+            )}
+
+            {addedItems.length > 0 && (
+              <>
+                <View style={{ width: THUMB_GAP }} />
+                {addedItems.map((x, idx) => (
+                  <React.Fragment key={x?.id ?? `${x?.uri ?? "added"}-${idx}`}>
+                    <PoolThumbItem
+                      item={x}
+                      onPress={onPressPoolItem}
+                      onDelete={onDeletePoolItem}
+                    />
+                    <View style={{ width: THUMB_GAP }} />
+                  </React.Fragment>
+                ))}
+              </>
+            )}
+
+            <View style={editStyles.photoListFooter}>
+              <View style={{ width: THUMB_GAP }} />
+              {photoFooter}
+            </View>
+          </View>
+        </Animated.ScrollView>
+
+        {/* Instagram-style: drag overlay detached from list layout */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.dragOverlay, dragOverlayAnimatedStyle]}
+        >
+          <View style={editStyles.thumb}>
+            {dragOverlayUri ? (
+              <Image
+                source={{ uri: dragOverlayUri }}
+                style={editStyles.thumbImg}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={editStyles.thumbPlaceholder} />
+            )}
+          </View>
+        </Animated.View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    width: "100%",
+  },
   listWrap: {
     position: "relative",
     width: "100%",
@@ -530,5 +610,42 @@ const styles = StyleSheet.create({
     height: THUMB_H,
     borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  thumbSelected: {
+    borderWidth: 2,
+    borderColor: "rgba(249, 249, 249, 0.95)",
+  },
+  slotDeleteBtn: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  slotDeleteText: {
+    color: "#F9F9F9",
+    lineHeight: 18,
+  },
+  poolThumbWrap: {
+    position: "relative",
+  },
+  poolDeleteBtn: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  poolDeleteText: {
+    color: "#F9F9F9",
+    lineHeight: 18,
   },
 });

@@ -13,7 +13,7 @@ export const stickerPaletteCellSize =
 /**
  * 수정 시 참고 사항!!
  * 오버레이 배경 모드 (EditOverlayBackdrop / EditScreen overlayWrap 스타일과 쌍으로 봄)
- * - glass: 사진·프레임 탭
+ * - glass: 사진/프레임 탭
  * - sticker: 스티커 탭
  * - none: 텍스트 탭에서 텍스트 추가만 — 뒤 블러/딤 없음
  * - textStyleGlass: 폰트/색 패널 — 프레임과 동일 글라스(라이트 블러) + 틴트 rgba(18,18,18,0.20)
@@ -58,11 +58,11 @@ export const TEXT_COLORS = [
 export const getOverlayHeight = (tool) =>
   tool === "photo" || tool === "frame"
     ? 185
-    : tool === "text"
-      ? 142
-      : tool === "sticker"
-        ? 280
-        : 154;
+      : tool === "text"
+        ? 142
+        : tool === "sticker"
+          ? 280
+          : 154;
 
 /**
  * 폰트/색 패널일 때 하단 오버레이 세로 높이
