@@ -1,5 +1,5 @@
 // src/features/auth/screens/SignupCredentials/SocialSignupScreen.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -23,13 +23,23 @@ import { useSignupProfileMutation } from "../../services/signupProfileMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 
 const { height } = Dimensions.get("window");
 
 const SocialSignupScreen = ({ navigation, route }) => {
   const signup = route?.params?.signup ?? {};
-  const readonlyEmail = signup.email ?? "";
+  const draftEmail = useSignupDraftStore((s) => s.email);
+  const readonlyEmail = signup.email ?? draftEmail ?? "";
+
+  const draftNickname = useSignupDraftStore((s) => s.nickname);
+  const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
+  const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
+  const setDraftNickname = useSignupDraftStore((s) => s.setNickname);
+  const setDraftNicknameChecked = useSignupDraftStore(
+    (s) => s.setNicknameChecked,
+  );
 
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const signupProfileMutation = useSignupProfileMutation();
@@ -55,12 +65,26 @@ const SocialSignupScreen = ({ navigation, route }) => {
   };
 
   const nicknameField = useCheckedField({
+    initialValue: draftNickname ?? "",
+    initialTouched: !!(draftNickname ?? ""),
+    initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
       const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
-      return !isDuplicate;
+      const available = !isDuplicate;
+      setDraftNicknameChecked(available);
+      return available;
     },
   });
+
+  useEffect(() => {
+    if (readonlyEmail) setDraftEmail(readonlyEmail);
+  }, [readonlyEmail, setDraftEmail]);
+
+  useEffect(() => {
+    // 입력 변경 시 draft에 저장 (중복확인은 setNickname에서 자동으로 false로 리셋)
+    setDraftNickname(nicknameField.value);
+  }, [nicknameField.value, setDraftNickname]);
 
   const isFormValid = useMemo(() => {
     return (
@@ -88,6 +112,8 @@ const SocialSignupScreen = ({ navigation, route }) => {
       {
         onSuccess: (data) => {
           const teamList = data?.teamList ?? [];
+          setDraftNickname(nickname);
+          setDraftNicknameChecked(true);
           navigation.navigate("SignupFavoriteTeam", {
             signup: {
               ...signup,

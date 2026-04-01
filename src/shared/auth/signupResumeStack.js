@@ -1,4 +1,5 @@
 import { CommonActions } from "@react-navigation/native";
+import { useSignupDraftStore } from "@features/auth/stores/useSignupDraftStore";
 
 function buildInnerAuthRoutes(resume) {
   if (!resume?.name) return null;
@@ -15,21 +16,40 @@ function buildInnerAuthRoutes(resume) {
       break;
     case "SocialSignup":
       push("TermsDetail");
-      push("SocialSignup", resume.params);
+      push("SocialSignup", {
+        ...(resume.params ?? {}),
+        signup: {
+          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
+          ...(resume.params?.signup ?? {}),
+        },
+      });
       break;
     case "SignupFavoriteTeam": {
       const email = resume.params?.signup?.email ?? null;
       push("TermsDetail");
-      push("SocialSignup", { signup: { email } });
+      push("SocialSignup", {
+        signup: {
+          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
+          email: email ?? "",
+        },
+      });
       push("SignupFavoriteTeam", resume.params);
       break;
     }
     case "SignupGenderAge": {
       const email = resume.params?.signup?.email ?? null;
       push("TermsDetail");
-      push("SocialSignup", { signup: { email } });
+      push("SocialSignup", {
+        signup: {
+          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
+          email: email ?? "",
+        },
+      });
       push("SignupFavoriteTeam", {
-        signup: resume.params?.signup ?? {},
+        signup: {
+          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
+          ...(resume.params?.signup ?? {}),
+        },
         teamList: resume.params?.teamList ?? [],
       });
       push("SignupGenderAge", resume.params);

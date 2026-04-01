@@ -74,9 +74,7 @@ async function cloneAssetsForUpload(assets, uploadKey = null) {
     try {
       const copied = await copyFrameToUniqueUploadFile(asset.uri, uploadKey);
       if (copied) {
-        const uri = copied.startsWith("file://")
-          ? copied
-          : `file://${copied}`;
+        const uri = copied.startsWith("file://") ? copied : `file://${copied}`;
         out.push({
           ...asset,
           uri,
@@ -233,8 +231,7 @@ const CreatePostScreen = () => {
   const isImagesMax = totalImageCount >= MAX_IMAGES;
   /** 이미지 유무와 관계없이 본문 1글자 이상일 때만 업로드 활성 */
   const isUploadEnabled = content.trim().length > 0;
-  const hasDraftContent =
-    content.trim().length > 0 || totalImageCount > 0;
+  const hasDraftContent = content.trim().length > 0 || totalImageCount > 0;
 
   const isUploading =
     createPostMutation.isPending || updatePostMutation.isPending;
@@ -505,7 +502,6 @@ const CreatePostScreen = () => {
 
   const renderHighlightedContent = useMemo(() => {
     // "#태그" 토큰만 초록색으로 하이라이트 (공백/줄바꿈 기준)
-    // 공백 자체도 그대로 렌더링해야 줄바꿈/간격이 맞습니다.
     const parts = content.split(/(\s+)/);
     return parts.map((part, idx) => {
       const isSpace = /^\s+$/.test(part);
@@ -565,7 +561,7 @@ const CreatePostScreen = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: remaining,
-        // 품질을 낮춰 전송 용량을 줄입니다 (0~1)
+        // 품질을 낮춰 전송 용량을 줄이기 (0~1)
         quality: 0.7,
         exif: false,
         base64: false,
@@ -694,7 +690,6 @@ const CreatePostScreen = () => {
     };
   }, [route.params?.captureNonce]);
 
-
   useEffect(() => {
     const nonce = route.params?.photoBoothAttachNonce;
     const list = route.params?.initialImagesFromPhotoBooth;
@@ -715,17 +710,14 @@ const CreatePostScreen = () => {
           });
         }
 
-        /** Share에서 이미 복사했어도, 동일 경로/캐시 키를 한 번 더 분리 (잔상·덮어쓰기 방지) */
+        /** Share에서 이미 복사했어도, 동일 경로/캐시 키를 한 번 더 분리 (잔상/덮어쓰기 방지) */
         const listUnique = [];
         for (let i = 0; i < list.length; i++) {
           const item = list[i];
           if (!item?.uri) continue;
           const copied = await copyFrameToUniqueUploadFile(item.uri, nonce);
           if (!copied) {
-            console.warn(
-              "[CreatePost] photoBooth copy failed, skip asset",
-              i,
-            );
+            console.warn("[CreatePost] photoBooth copy failed, skip asset", i);
             continue;
           }
           const uri = copied.startsWith("file://")
@@ -762,7 +754,7 @@ const CreatePostScreen = () => {
           key: `photobooth-${nonce}-${randomUploadKey()}`,
         }));
         let mergedOverflow = false;
-        // 다른 게시글로 같은 화면이 재사용될 수 있으므로, PhotoBooth attach 시점에는 기존 이미지를 초기화한다.
+        // 다른 게시글로 같은 화면이 재사용될 수 있으므로, PhotoBooth attach 시점에는 기존 이미지를 초기화
         setImages(() => {
           mergedOverflow = tagged.length > MAX_IMAGES;
           return tagged.slice(0, MAX_IMAGES);
@@ -893,7 +885,10 @@ const CreatePostScreen = () => {
               Alert.alert("알림", msg.trim());
               return;
             }
-            Alert.alert("알림", "게시글 수정에 실패했어요. 잠시 후 다시 시도해 주세요.");
+            Alert.alert(
+              "알림",
+              "게시글 수정에 실패했어요. 잠시 후 다시 시도해 주세요.",
+            );
           },
         },
       );
@@ -1381,15 +1376,9 @@ const CreatePostScreen = () => {
         </Modal>
 
         {uploadBodyToastVisible ? (
-          <View
-            pointerEvents="auto"
-            style={styles.uploadHintToastOverlay}
-          >
+          <View pointerEvents="auto" style={styles.uploadHintToastOverlay}>
             <View pointerEvents="none" style={styles.uploadHintToast}>
-              <AppText
-                variant="caption"
-                style={styles.uploadHintToastText}
-              >
+              <AppText variant="caption" style={styles.uploadHintToastText}>
                 {UPLOAD_REQUIRES_BODY_TOAST}
               </AppText>
             </View>
@@ -1474,7 +1463,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#232323",
     paddingHorizontal: 16,
-    marginTop: 12,
+    marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1675,5 +1664,4 @@ const styles = StyleSheet.create({
   limitModalText: {
     lineHeight: 18,
   },
-
 });

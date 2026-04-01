@@ -52,7 +52,8 @@ export default function EditScreen() {
   const viewShotRef = useRef(null);
   const insets = useSafeAreaInsets();
   const store = photoBoothStore();
-  const { selectedTeam, selectedFrame, capturedPhotos } = store;
+  const { selectedTeam, selectedFrame, capturedPhotos, setCapturedPhotos } =
+    store;
 
   const [activeTool, setActiveTool] = useState("photo");
   const [bottomBarH, setBottomBarH] = useState(86);
@@ -312,6 +313,7 @@ export default function EditScreen() {
     setPhotosLocal((prev) => {
       const next = [...prev];
       next[selectedSlot] = uri;
+      setCapturedPhotos(next);
       return next;
     });
     setSelectedSlot(null);
@@ -323,10 +325,26 @@ export default function EditScreen() {
       setPhotosLocal((prev) => {
         const next = [...prev];
         next[selectedSlot] = uri;
+        setCapturedPhotos(next);
         return next;
       });
     },
-    [selectedSlot],
+    [selectedSlot, setCapturedPhotos],
+  );
+
+  /** 썸네일 리스트 순서 변경! 프레임 슬롯 photosLocal 동일 인덱스에 반영 */
+  const onReorderPhotos = React.useCallback(
+    (fromIndex, toIndex) => {
+      if (fromIndex === toIndex) return;
+      setPhotosLocal((prev) => {
+        const next = [...prev];
+        const [removed] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, removed);
+        setCapturedPhotos(next);
+        return next;
+      });
+    },
+    [setCapturedPhotos],
   );
 
   const handleReplaceFromCamera = React.useCallback(async () => {
@@ -437,6 +455,7 @@ export default function EditScreen() {
           onPressThumb={onPressThumb}
           onReplaceFromCamera={handleReplaceFromCamera}
           onReplaceFromGallery={handleReplaceFromGallery}
+          onReorderPhotos={onReorderPhotos}
         />
       );
     }

@@ -1,5 +1,5 @@
 // src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useCheckedField } from "../../hooks/useCheckedField";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useStepBack } from "../../hooks/useStepBack";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const { height } = Dimensions.get("window");
 
@@ -27,6 +28,13 @@ const SignupNicknameScreen = ({ navigation, route }) => {
   const signup = route?.params?.signup ?? {}; // ? { signupType, email, terms ... }
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const handleBack = useStepBack("Login");
+
+  const draftNickname = useSignupDraftStore((s) => s.nickname);
+  const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
+  const setDraftNickname = useSignupDraftStore((s) => s.setNickname);
+  const setDraftNicknameChecked = useSignupDraftStore(
+    (s) => s.setNicknameChecked,
+  );
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -49,14 +57,21 @@ const SignupNicknameScreen = ({ navigation, route }) => {
   };
 
   const nicknameField = useCheckedField({
+    initialValue: draftNickname ?? "",
+    initialTouched: !!(draftNickname ?? ""),
+    initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
-      // const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
-      // const available = !isDuplicate;
-      // return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
-      return true;
+      const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
+      const available = !isDuplicate;
+      setDraftNicknameChecked(available);
+      return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
     },
   });
+
+  useEffect(() => {
+    setDraftNickname(nicknameField.value);
+  }, [nicknameField.value, setDraftNickname]);
 
   const isNextEnabled = useMemo(() => {
     return (
@@ -68,6 +83,8 @@ const SignupNicknameScreen = ({ navigation, route }) => {
     if (!isNextEnabled) return;
 
     const nickname = nicknameField.value.trim();
+    setDraftNickname(nickname);
+    setDraftNicknameChecked(true);
 
     // 다음 단계로 이동 (즐겨찾는 팀 화면으로 이동 예시)
     navigation.navigate("SignupFavoriteTeam", {

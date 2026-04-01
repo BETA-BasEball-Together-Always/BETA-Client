@@ -1,12 +1,11 @@
 // src/features/auth/screens/LoginScreen.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { login, unlink } from "@react-native-seoul/kakao-login";
@@ -30,131 +29,41 @@ import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
 import KakaoIcon from "../../assets/Login/kakao.svg";
 import NaverIcon from "../../assets/Login/naver.svg";
 import AppleIcon from "../../assets/Login/apple.svg";
-import { AppText } from "../../../../shared/theme/components/AppText";
-
-const SOCIAL_PROVIDER_KEYS = ["KAKAO", "NAVER", "APPLE"];
-
-function normalizeSocialProviderKey(value) {
-  const u = String(value ?? "").toUpperCase();
-  return SOCIAL_PROVIDER_KEYS.includes(u) ? u : null;
-}
-
-/** 메시지에 등장하는 소셜 키워드 수집 */
-function collectProviderKeysFromMessage(message) {
-  const msg = String(message ?? "");
-  if (!msg.trim()) return [];
-  const upper = msg.toUpperCase();
-  const found = new Set();
-  for (const p of SOCIAL_PROVIDER_KEYS) {
-    if (upper.includes(p)) found.add(p);
-  }
-  if (/카카오/.test(msg)) found.add("KAKAO");
-  if (/네이버/.test(msg)) found.add("NAVER");
-  if (/애플/.test(msg)) found.add("APPLE");
-  return [...found];
-}
 
 /**
- * USER006 문구에는 '시도한 소셜'과 '이미 가입된 소셜'이 함께 실리는 경우가 많음
- * 예전 로직은 KAKAO를 배열/한글 순으로 먼저 매칭해, 카카오 시도 + 네이버 가입 시에도 카카오로 잘못 표시됨!
- * @param {string|null|undefined} message
- * @param {string|null|undefined} attemptedProvider 방금 누른 소셜(시도 쪽) — 메시지에 둘 다 있으면 이와 다른 쪽이 실제 가입 프로바이더
+ * 백엔드/프록시에 따라 필드 위치가 달라질 수 있음!
+ * (ErrorResponse: code+message / Spring 기본: message만 / error 중첩 등)
  */
-function inferRegisteredProviderFromMessage(message, attemptedProvider) {
-  const attempted = normalizeSocialProviderKey(attemptedProvider);
-  const candidates = collectProviderKeysFromMessage(message);
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
-
-  if (attempted && candidates.includes(attempted)) {
-    const others = candidates.filter((p) => p !== attempted);
-    if (others.length === 1) return others[0];
+function getSocialLoginErrorPayload(error) {
+  const raw = error?.response?.data;
+  if (raw == null) {
+    return { code: null, message: null, data: null };
   }
-
-  const msg = String(message ?? "");
-  let bestPos = -1;
-  let best = null;
-  const markers = [
-    ["KAKAO", "KAKAO"],
-    ["NAVER", "NAVER"],
-    ["APPLE", "APPLE"],
-    ["카카오", "KAKAO"],
-    ["네이버", "NAVER"],
-    ["애플", "APPLE"],
-  ];
-  for (const [needle, key] of markers) {
-    if (!candidates.includes(key)) continue;
-    const idx = msg.lastIndexOf(needle);
-    if (idx > bestPos) {
-      bestPos = idx;
-      best = key;
-    }
+  if (typeof raw === "string") {
+    return { code: null, message: raw, data: null };
   }
-  return best;
-}
-
-function getRegisteredProviderForUser006(error, attemptedProvider) {
-  const data = error?.response?.data;
-
-  // 1순위: API에서 내려주는 user.socialProvider (실제 가입된 소셜)
-  const fromUser =
-    data && typeof data === "object"
-      ? normalizeSocialProviderKey(data?.user?.socialProvider)
-      : null;
-  if (fromUser) return fromUser;
-
-  // 2순위: 본문 또는 별도 필드로 내려주는 가입 프로바이더
-  const fromApi =
-    data && typeof data === "object"
-      ? normalizeSocialProviderKey(
-          data?.socialProvider ??
-            data?.registeredSocialProvider ??
-            data?.existingSocialProvider,
-        )
-      : null;
-  if (fromApi) return fromApi;
-
-  const fromUserExtra =
-    data && typeof data === "object"
-      ? normalizeSocialProviderKey(
-          data?.user?.registeredSocialProvider ??
-            data?.user?.existingSocialProvider,
-        )
-      : null;
-  if (fromUserExtra) return fromUserExtra;
-
-  // 3순위: 에러 메시지 텍스트 추론 (시도한 버튼과 구분)
-  const msg =
-    typeof data === "string" ? data : (data?.message ?? error?.message ?? null);
-
-  if (typeof msg === "string") {
-    const koMatch = msg.match(/이미\s*(카카오|네이버|애플)로(?:\s*가입)?/);
-    if (koMatch) {
-      const koToKey = { 카카오: "KAKAO", 네이버: "NAVER", 애플: "APPLE" };
-      const fromKo = normalizeSocialProviderKey(koToKey[koMatch[1]]);
-      if (fromKo) return fromKo;
-    }
+  if (typeof raw !== "object") {
+    return { code: null, message: null, data: raw };
   }
-
-  return inferRegisteredProviderFromMessage(msg, attemptedProvider);
+  const code =
+    raw.code ?? raw.errorCode ?? raw.error?.code ?? raw.errCode ?? null;
+  const message =
+    (typeof raw.message === "string" ? raw.message : null) ??
+    (typeof raw.error?.message === "string" ? raw.error.message : null) ??
+    (typeof raw.detail === "string" ? raw.detail : null);
+  return {
+    code: code != null ? String(code) : null,
+    message,
+    data: raw,
+  };
 }
 
 const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
-
-  const [providerConflict, setProviderConflict] = useState(
-    /** @type {null | { providerKey: null | "KAKAO" | "NAVER" | "APPLE", message: string | null }} */ (
-      null
-    ),
-  );
   const setTokens = useUserStore((state) => state.setTokens);
   const setUser = useUserStore((state) => state.setUser);
   const clearAuth = useUserStore((state) => state.clearAuth);
-  /** 로그아웃 직전 등 메모리에 유저가 남아 있으면 USER006 시 가입 소셜 판별에 활용 */
-  const persistedUserSocialProvider = useUserStore(
-    (state) => state.user?.socialProvider,
-  );
 
   const authErrorMessage = route?.params?.authErrorMessage ?? null;
 
@@ -165,48 +74,15 @@ const LoginScreen = ({ navigation, route }) => {
 
   const showApiAuthError = (error, title, fallbackMessage) => {
     const msg =
-      error?.response?.data?.message ??
-      error?.response?.data?.error?.message ??
-      error?.message ??
-      fallbackMessage;
+      getSocialLoginErrorPayload(error).message ?? error?.message ?? fallbackMessage;
     Alert.alert(title, msg);
   };
 
-  const conflictColors = useMemo(
-    () => ({
-      KAKAO: "#FEE500",
-      NAVER: "#03C75A",
-      APPLE: "#F9F9F9",
-    }),
-    [],
-  );
-
-  const conflictProviderName = useMemo(
-    () => ({
-      KAKAO: "카카오",
-      NAVER: "네이버",
-      APPLE: "애플",
-    }),
-    [],
-  );
-
-  const handleUser006ProviderConflict = (attemptedProvider, error) => {
-    const registered =
-      getRegisteredProviderForUser006(error, attemptedProvider) ??
-      normalizeSocialProviderKey(persistedUserSocialProvider);
-    if (!registered) {
-      const fallbackMsg =
-        error?.response?.data?.message ??
-        error?.message ??
-        "이미 가입된 이메일입니다. 소셜 로그인을 확인해 주세요.";
-      Alert.alert("로그인 안내", fallbackMsg);
-      setIsSocialLoading(false);
-      return;
-    }
-    setProviderConflict({
-      providerKey: registered,
-      message: null,
-    });
+  const showDuplicateEmailAlert = (error) => {
+    const payload = getSocialLoginErrorPayload(error);
+    const msg =
+      payload.message ?? "이미 가입된 이메일입니다. 소셜 로그인을 확인해 주세요.";
+    Alert.alert("로그인 안내", msg);
     setIsSocialLoading(false);
   };
 
@@ -389,9 +265,13 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("에러 메시지: ", error?.message);
             console.log("요청 URL:", error.config?.baseURL + error.config?.url);
 
-            const code = error?.response?.data?.code;
-            if (error?.response?.status === 409 && code === "USER006") {
-              handleUser006ProviderConflict("APPLE", error);
+            const payload = getSocialLoginErrorPayload(error);
+            const code = payload.code;
+            if (
+              error?.response?.status === 409 &&
+              (payload.code === "USER006" || !!payload.message)
+            ) {
+              showDuplicateEmailAlert(error);
               return;
             }
 
@@ -459,9 +339,12 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("에러 메시지: ", error?.message);
             console.log("요청 URL:", error.config?.baseURL + error.config?.url);
 
-            const code = error?.response?.data?.code;
-            if (error?.response?.status === 409 && code === "USER006") {
-              handleUser006ProviderConflict("KAKAO", error);
+            const payload = getSocialLoginErrorPayload(error);
+            if (
+              error?.response?.status === 409 &&
+              (payload.code === "USER006" || !!payload.message)
+            ) {
+              showDuplicateEmailAlert(error);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -562,9 +445,13 @@ const LoginScreen = ({ navigation, route }) => {
           },
           onError: (error) => {
             console.log("네이버 소셜 로그인 실패:", error);
-            const code = error?.response?.data?.code;
-            if (error?.response?.status === 409 && code === "USER006") {
-              handleUser006ProviderConflict("NAVER", error);
+            const payload = getSocialLoginErrorPayload(error);
+            const code = payload.code;
+            if (
+              error?.response?.status === 409 &&
+              (code === "USER006" || !!payload.message)
+            ) {
+              showDuplicateEmailAlert(error);
               return;
             }
             if (error?.response?.status === 400 && code === "SOCIAL004") {
@@ -648,68 +535,6 @@ const LoginScreen = ({ navigation, route }) => {
             <Text style={{color: "white"}}>카카오 세션 초기화</Text>
           </TouchableOpacity> */}
           </View>
-
-          {/* 이미 다른 소셜로 가입된 계정 안내 모달 */}
-          <Modal
-            visible={!!providerConflict}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setProviderConflict(null)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                {providerConflict && providerConflict.providerKey && (
-                  <>
-                    <AppText variant="bodyMedium" style={styles.modalLine}>
-                      <AppText
-                        variant="bodyMedium"
-                        style={[
-                          styles.modalHighlight,
-                          {
-                            color:
-                              conflictColors[providerConflict.providerKey] ??
-                              "#FFF",
-                          },
-                        ]}
-                      >
-                        {conflictProviderName[providerConflict.providerKey]}
-                      </AppText>
-                      {"로 가입된 계정입니다."}
-                    </AppText>
-                    <AppText variant="bodyMedium" style={styles.modalLine}>
-                      <AppText
-                        variant="bodyMedium"
-                        style={[
-                          styles.modalHighlight,
-                          {
-                            color:
-                              conflictColors[providerConflict.providerKey] ??
-                              "#FFF",
-                          },
-                        ]}
-                      >
-                        {`${conflictProviderName[providerConflict.providerKey]} 로그인`}
-                      </AppText>
-                      {"을 이용해 주세요."}
-                    </AppText>
-                  </>
-                )}
-
-                <TouchableOpacity
-                  style={styles.modalButton}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    setProviderConflict(null);
-                    navigation?.navigate?.("Login");
-                  }}
-                >
-                  <AppText variant="bodyMedium" style={styles.modalButtonText}>
-                    확인
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
         </View>
       </SafeAreaView>
     </View>
@@ -784,46 +609,5 @@ const styles = StyleSheet.create({
   },
   naverText: {
     color: "#FFFFFF",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  modalCard: {
-    width: "100%",
-    borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  modalLine: {
-    color: "#F9F9F9",
-    fontSize: 17,
-    lineHeight: 23,
-    textAlign: "center",
-    alignSelf: "stretch",
-  },
-  modalHighlight: {
-    fontWeight: "700",
-    fontSize: 17,
-    lineHeight: 23,
-  },
-  modalButton: {
-    marginTop: 18,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "stretch",
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1E1E1E",
   },
 });

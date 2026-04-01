@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -21,9 +21,15 @@ import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_DATA, TEAM_LIST } from "../../../../shared/constants/teams";
 
 import { AppText } from "../../../../shared/theme/components/AppText";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
-  const [selectedTeam, setSelectedTeam] = useState(null);
+  const draftFavoriteTeamCode = useSignupDraftStore((s) => s.favoriteTeamCode);
+  const setDraftFavoriteTeam = useSignupDraftStore((s) => s.setFavoriteTeam);
+
+  const [selectedTeam, setSelectedTeam] = useState(
+    route?.params?.signup?.favoriteTeamCode ?? draftFavoriteTeamCode ?? null,
+  );
 
   // signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
@@ -88,6 +94,8 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
           );
         }
 
+        setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
+
         navigation.navigate("SignupGenderAge", {
           signup: {
             ...signup,
@@ -114,6 +122,8 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
             selectedTeamLabel ?? "",
           );
 
+          setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
+
           navigation.navigate("SignupGenderAge", {
             signup: {
               ...signup,
@@ -125,6 +135,14 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
       },
     );
   };
+
+  useEffect(() => {
+    if (selectedTeam) {
+      const selectedTeamLabel = TEAM_LIST.find((t) => t.key === selectedTeam)
+        ?.label;
+      setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
+    }
+  }, [selectedTeam, setDraftFavoriteTeam]);
 
   return (
     <View style={styles.root}>

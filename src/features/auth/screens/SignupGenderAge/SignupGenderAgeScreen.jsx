@@ -21,10 +21,16 @@ import { useStepBack } from "../../hooks/useStepBack";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../shared/store/userStore";
 import api from "../../../../shared/libs/api";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const SignupGenderAgeScreen = ({ navigation, route }) => {
-  const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
-  const [age, setAge] = useState("");
+  const draftGender = useSignupDraftStore((s) => s.gender);
+  const draftAge = useSignupDraftStore((s) => s.age);
+  const setDraftGender = useSignupDraftStore((s) => s.setGender);
+  const setDraftAge = useSignupDraftStore((s) => s.setAge);
+
+  const [gender, setGender] = useState(draftGender ?? null); // "F" | "M" | null
+  const [age, setAge] = useState(draftAge ?? "");
   const [signupData, setSignupData] = useState({});
 
   const handleBack = useStepBack("SignupFavoriteTeam");
@@ -46,6 +52,14 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
     const routeSignup = route?.params?.signup ?? {};
     setSignupData(routeSignup);
   }, [route]);
+
+  useEffect(() => {
+    setDraftGender(gender);
+  }, [gender, setDraftGender]);
+
+  useEffect(() => {
+    setDraftAge(age);
+  }, [age, setDraftAge]);
 
   // 호출 시 signupData 포함하도록 수정
   const submitSignup = ({ genderValue, ageValue }) => {

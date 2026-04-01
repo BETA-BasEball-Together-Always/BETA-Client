@@ -14,6 +14,7 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 import AuthBackground from "../../components/AuthBackground";
 import CompleteIcon from "../../assets/common/svg/signupComplete.svg";
 import { runSignupPushPermissionFlow } from "../../../../shared/services/pushDeviceService";
+import { clearPersistedSignupDraft } from "../../stores/useSignupDraftStore";
 
 const SignupCompleteScreen = ({ navigation, route }) => {
   const [favoriteTeamLabel, setFavoriteTeamLabel] = useState("팬");
@@ -38,6 +39,7 @@ const SignupCompleteScreen = ({ navigation, route }) => {
   }, []);
 
   const moveToMain = () => {
+    clearPersistedSignupDraft();
     navigation.replace("Main");
   };
 

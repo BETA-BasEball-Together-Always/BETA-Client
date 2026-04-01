@@ -10,9 +10,8 @@
     "newArchEnabled": true,
     "assetBundlePatterns": ["src/shared/assets/fonts/*"],
     "splash": {
-      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#443D4D"
     },
     "ios": {
       "googleServicesFile": "./fcm-ios-com-beta-baseballapp.plist",

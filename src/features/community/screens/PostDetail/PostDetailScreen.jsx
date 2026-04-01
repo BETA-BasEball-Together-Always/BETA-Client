@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -66,6 +66,7 @@ import { useRemoteImageAspectRatio } from "../../utils/useRemoteImageAspectRatio
 const { width, height: SCREEN_H } = Dimensions.get("window");
 const DETAIL_IMAGE_HEIGHT = 450;
 const POST_DETAIL_REFETCH_MS = 3000;
+const SCROLL_CONTENT_BOTTOM_GAP = 16;
 
 function PostDetailImageItem({ uri, maxWidth, imageStyle }) {
   const aspectRatio = useRemoteImageAspectRatio(uri, 1);
@@ -197,6 +198,11 @@ const PostDetailScreen = ({ route, navigation }) => {
   }, [displayContent]);
 
   const scrollRef = useRef(null);
+  const scrollViewHeightRef = useRef(0);
+  const scrollContentHeightRef = useRef(0);
+  const scrollEndDebounceRef = useRef(null);
+  const pendingAutoScrollOffRef = useRef(null);
+  const waitForInitialCommentFocusRef = useRef(false);
   const threadYByIdRef = useRef(new Map());
   const commentInputFocusReasonRef = useRef(null); // 'bottom' | 'thread' | null
 
@@ -228,13 +234,52 @@ const PostDetailScreen = ({ route, navigation }) => {
   const [commentSectionY, setCommentSectionY] = useState(0);
   const [commentListY, setCommentListY] = useState(0);
 
-  const scrollToCommentBottom = () => {
+  const scrollToCommentBottomClamped = useCallback(() => {
     if (!scrollRef.current) return;
-    // 약간의 딜레이 후 리스트 최하단으로 스크롤 (키보드/레이아웃 반영 시간 고려)
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 250);
-  };
+    const viewportH = scrollViewHeightRef.current;
+    const contentH = scrollContentHeightRef.current;
+    const pad = SCROLL_CONTENT_BOTTOM_GAP;
+    if (
+      viewportH <= 0 ||
+      contentH <= 0 ||
+      contentH <= viewportH + 1
+    ) {
+      scrollRef.current.scrollToEnd({ animated: true });
+      return;
+    }
+    const maxY = contentH - viewportH;
+    const y = Math.max(0, maxY - pad);
+    scrollRef.current.scrollTo({ y, animated: true });
+  }, []);
+
+  const scheduleScrollToCommentBottom = useCallback(() => {
+    if (scrollEndDebounceRef.current != null) {
+      clearTimeout(scrollEndDebounceRef.current);
+    }
+    scrollEndDebounceRef.current = setTimeout(() => {
+      scrollEndDebounceRef.current = null;
+      scrollToCommentBottomClamped();
+    }, 150);
+
+    if (pendingAutoScrollOffRef.current != null) {
+      clearTimeout(pendingAutoScrollOffRef.current);
+    }
+    pendingAutoScrollOffRef.current = setTimeout(() => {
+      pendingAutoScrollOffRef.current = null;
+      setPendingAutoScrollToBottom(false);
+    }, 420);
+  }, [scrollToCommentBottomClamped]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollEndDebounceRef.current != null) {
+        clearTimeout(scrollEndDebounceRef.current);
+      }
+      if (pendingAutoScrollOffRef.current != null) {
+        clearTimeout(pendingAutoScrollOffRef.current);
+      }
+    };
+  }, []);
 
   const requestCommentInputFocus = (reason) => {
     commentInputFocusReasonRef.current = reason ?? null;
@@ -354,22 +399,17 @@ const PostDetailScreen = ({ route, navigation }) => {
     ],
   );
 
-  // 목록/인기 피드에서 댓글 아이콘으로 진입 시: 댓글 리스트 최하단까지 스크롤 + 입력창 포커스
+  // 목록/인기 피드에서 댓글 아이콘으로 진입 시: 입력 포커스 + (포커스/레이아웃에서 한 번만) 최하단 스크롤
   useEffect(() => {
     if (!focusCommentInput) return;
-    // 첫 진입 프레임에는 ScrollView content 높이가 아직 확정되지 않아
-    // scrollToEnd가 무시될 수 있어, contentSize 변경 시점에도 한 번 더 트리거한다.
+    // 여기서 schedule을 호출하면 포커스/키보드보다 먼저 scrollToEnd가 한 번 돌아가 이중 스크롤이 남음
     setPendingAutoScrollToBottom(true);
-    scrollToCommentBottom();
+    // 첫 렌더에서 onContentSizeChange가 먼저 스크롤을 걸어버리면,
+    // 이후 autoFocus(onFocusInput)에서 또 스크롤이 걸려 2단으로 끊겨 보인다.
+    // 따라서 "첫 포커스가 잡힌 뒤"에만 contentSize 기반 자동 스크롤을 허용한다.
+    waitForInitialCommentFocusRef.current = true;
     requestCommentInputFocus("bottom");
   }, [focusCommentInput]);
-
-  useEffect(() => {
-    if (!pendingAutoScrollToBottom) return;
-    if (keyboardHeight <= 0) return;
-    // 키보드가 올라온 뒤에도 한 번 더 보정 스크롤
-    scrollToCommentBottom();
-  }, [pendingAutoScrollToBottom, keyboardHeight]);
 
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
   const openThreadActionModal = ({ targetType, targetId }) => {
@@ -626,28 +666,26 @@ const PostDetailScreen = ({ route, navigation }) => {
 
         <ScrollView
           ref={scrollRef}
+          onLayout={(e) => {
+            const h = e?.nativeEvent?.layout?.height;
+            if (typeof h === "number" && Number.isFinite(h) && h > 0) {
+              scrollViewHeightRef.current = h;
+            }
+          }}
           contentContainerStyle={[
             styles.container,
-            {
-              paddingBottom:
-                Math.max(0, commentInputHeight) +
-                Math.max(0, keyboardHeight) +
-                24,
-            },
+            { paddingBottom: SCROLL_CONTENT_BOTTOM_GAP },
           ]}
           scrollIndicatorInsets={{
-            bottom:
-              Math.max(0, commentInputHeight) +
-              Math.max(0, keyboardHeight) +
-              24,
+            bottom: SCROLL_CONTENT_BOTTOM_GAP,
           }}
-          onContentSizeChange={() => {
+          onContentSizeChange={(_w, h) => {
+            if (typeof h === "number" && Number.isFinite(h) && h > 0) {
+              scrollContentHeightRef.current = h;
+            }
             if (!pendingAutoScrollToBottom) return;
-            requestAnimationFrame(() => {
-              scrollToCommentBottom();
-              // 한 번만 수행 (추가 렌더/측정 루프 방지)
-              setTimeout(() => setPendingAutoScrollToBottom(false), 350);
-            });
+            if (waitForInitialCommentFocusRef.current) return;
+            scheduleScrollToCommentBottom();
           }}
           refreshControl={
             <RefreshControl
@@ -747,7 +785,8 @@ const PostDetailScreen = ({ route, navigation }) => {
                 });
               }}
               onCommentPress={() => {
-                scrollToCommentBottom();
+                setPendingAutoScrollToBottom(true);
+                scheduleScrollToCommentBottom();
                 requestCommentInputFocus("bottom");
               }}
             />
@@ -838,10 +877,10 @@ const PostDetailScreen = ({ route, navigation }) => {
             // 답글 버튼 → 해당 댓글로 포커스(scrollToThread)가 우선. 최하단 스크롤 금지.
             if (reason === "thread") return;
 
-            // 댓글 아이콘 / 인풋 직접 탭 → 최하단 보정 스크롤
+            // 인풋 포커스 시 레이아웃/키보드와 겹치는 scrollToEnd는 schedule로 한 번만
             setPendingAutoScrollToBottom(true);
-            scrollToCommentBottom();
-            setTimeout(() => setPendingAutoScrollToBottom(false), 800);
+            waitForInitialCommentFocusRef.current = false;
+            scheduleScrollToCommentBottom();
           }}
         />
 

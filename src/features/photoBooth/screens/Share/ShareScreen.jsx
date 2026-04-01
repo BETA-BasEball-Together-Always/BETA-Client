@@ -324,17 +324,15 @@ export default function ShareScreen({ navigation }) {
           >
             <ShareIcon width={30} height={30} />
           </TouchableOpacity>
-          {showSaveCompleteTitle ? (
-            <TouchableOpacity
-              onPress={onPressClose}
-              style={styles.headerSide}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-            >
-              <CloseIcon width={26} height={26} />
-            </TouchableOpacity>
-          ) : null}
+          <TouchableOpacity
+            onPress={onPressClose}
+            style={styles.headerSide}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="닫기"
+          >
+            <CloseIcon width={26} height={26} />
+          </TouchableOpacity>
         </View>
       </View>
 
