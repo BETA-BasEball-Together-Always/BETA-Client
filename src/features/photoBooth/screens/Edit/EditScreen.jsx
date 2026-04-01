@@ -501,18 +501,46 @@ export default function EditScreen() {
   ]);
 
   const handlePressSlotThumb = React.useCallback(
-    (idx, uri) => {
+    (idx, _uri) => {
       saveAndClearEditing();
       if (selectedSlot === null) {
         setSelectedSlot(idx);
         return;
       }
-      if (typeof uri === "string" && uri) {
-        applyUriToSelectedSlot(uri);
+      if (selectedSlot === idx) {
+        setSelectedSlot(null);
+        return;
       }
+      // 다른 슬롯 탭: 항상 두 칸의 이미지를 교환 (한쪽 URI로 덮어쓰기 금지)
+      const other = idx;
+      setPhotosLocal((prev) => {
+        const next = [...prev];
+        const a = next[selectedSlot];
+        next[selectedSlot] = next[other];
+        next[other] = a;
+        setCapturedPhotos(next);
+        return next;
+      });
+      const cur = Array.isArray(imagePool) ? imagePool : [];
+      const aUri = photosLocal?.[selectedSlot] ?? null;
+      const bUri = photosLocal?.[other] ?? null;
+      setImagePool(
+        cur.map((x) => {
+          if (x?.id === `slot-${selectedSlot}`) return { ...x, uri: bUri };
+          if (x?.id === `slot-${other}`) return { ...x, uri: aUri };
+          return x;
+        }),
+      );
       setSelectedSlot(null);
     },
-    [applyUriToSelectedSlot, saveAndClearEditing, selectedSlot],
+    [
+      saveAndClearEditing,
+      selectedSlot,
+      photosLocal,
+      setCapturedPhotos,
+      setImagePool,
+      imagePool,
+    ],
   );
 
   const handleApplyPoolItemToSlot = React.useCallback(
