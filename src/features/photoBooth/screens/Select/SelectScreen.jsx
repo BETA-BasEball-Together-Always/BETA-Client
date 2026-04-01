@@ -63,6 +63,7 @@ const SelectScreen = ({ navigation }) => {
     setSelectedTeam: setGlobalTeam,
     setSelectedFrame: setGlobalFrame,
     resetSelection,
+    resetCaptured,
   } = photoBoothStore();
 
   const { prefetch } = usePrefetchEditFonts();
@@ -78,6 +79,8 @@ const SelectScreen = ({ navigation }) => {
       setSelectedTeam(null);
       setSelectedFrame(null);
       resetSelection?.();
+      // 이전 촬영/편집 세션의 이미지(추가 이미지 포함)가 다음 세션에 남지 않도록 정리
+      resetCaptured?.();
     }, [resetSelection]),
   );
 
