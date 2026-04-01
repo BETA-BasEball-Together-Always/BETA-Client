@@ -66,7 +66,7 @@ const AppProviders = ({ children }) => {
     NotoSansKR_SemiBold: require("@shared/assets/fonts/NotoSansKR-SemiBold.ttf"),
   });
 
-  // ✅ 0) 네이버 SDK 초기화 (앱 시작 시 한 번)
+  // 0) 네이버 SDK 초기화 (앱 시작 시 한 번)
   useEffect(() => {
     try {
       initializeNaver();

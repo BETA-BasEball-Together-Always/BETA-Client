@@ -27,11 +27,15 @@ export const useSignupDraftStore = create(
       age: "", // string to match input
 
       setEmail: (email) => set({ email: email ?? "" }),
-      setNickname: (nickname) => set({ nickname: nickname ?? "", nicknameChecked: false }),
+      setNickname: (nickname) =>
+        set({ nickname: nickname ?? "", nicknameChecked: false }),
       setNicknameChecked: (checked) => set({ nicknameChecked: !!checked }),
       setTerms: (terms) => set({ terms: terms ?? emptyTerms }),
       setFavoriteTeam: ({ code, label }) =>
-        set({ favoriteTeamCode: code ?? null, favoriteTeamLabel: label ?? null }),
+        set({
+          favoriteTeamCode: code ?? null,
+          favoriteTeamLabel: label ?? null,
+        }),
       setGender: (gender) => set({ gender: gender ?? null }),
       setAge: (age) => set({ age: age ?? "" }),
 
@@ -98,4 +102,3 @@ export async function clearPersistedSignupDraft() {
     /* ignore */
   }
 }
-

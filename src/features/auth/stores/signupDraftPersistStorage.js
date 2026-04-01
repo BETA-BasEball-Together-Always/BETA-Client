@@ -9,8 +9,8 @@ function getUri() {
 }
 
 /**
- * 회원가입 draft persist용 스토리지.
- * documentDirectory는 모듈 로드 직후 null일 수 있어 getItem/setItem마다 URI를 재계산.
+ * 회원가입 draft persist용 스토리지
+ * documentDirectory는 모듈 로드 직후 null일 수 있어 getItem/setItem마다 URI를 재계산
  */
 export const signupDraftJSONStorage = createJSONStorage(() => ({
   getItem: async (_name) => {
@@ -43,4 +43,3 @@ export const signupDraftJSONStorage = createJSONStorage(() => ({
     }
   },
 }));
-
