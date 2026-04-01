@@ -40,6 +40,7 @@ import {
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
 import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import { useUpdatePostMutation } from "../../services/post/updatePostMutation";
+import postDetailKeys from "../../services/postDetail/postDetailKeys";
 import { useQueryClient } from "@tanstack/react-query";
 
 import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoading.svg";
@@ -887,9 +888,20 @@ const CreatePostScreen = () => {
       updatePostMutation.mutate(
         { postId: editPost.postId, formData },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
             pendingCameraDraftForCreatePost = null;
             invalidateCommunityPostLists(queryClient);
+            // 수정 직후 바로 상세 화면으로 돌아가면, 기존 캐시가 잠깐/계속 보일 수 있어
+            // 상세 쿼리를 즉시 refetch 완료한 뒤 돌아가도록 보장한다.
+            const pid = editPost?.postId;
+            if (pid != null) {
+              await queryClient.invalidateQueries({
+                queryKey: postDetailKeys.detail(pid),
+              });
+              await queryClient.refetchQueries({
+                queryKey: postDetailKeys.detail(pid),
+              });
+            }
             navigation.goBack();
           },
           onError: (e) => {

@@ -6,9 +6,11 @@ import communityKeys from "../communityKeys";
 
 // 게시글 수정!
 const updatePostApi = async ({ postId, formData }) => {
+  // api 인스턴스 기본값이 application/json 이라면, FormData 요청에 그대로 섞이면 본문이 서버에 제대로 바인딩되지 않을 수 있음.
+  // RN에서는 boundary 없이 "multipart/form-data"만 지정하는 것도 문제가 되므로, Content-Type은 비우고( false ) 네이티브가 boundary 포함 헤더를 붙이게 둔다.
   const res = await api.put(`/api/v1/community/posts/${postId}`, formData, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": false,
     },
     timeout: 20000,
   });

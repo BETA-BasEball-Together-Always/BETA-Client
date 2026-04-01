@@ -5,10 +5,10 @@ import communityKeys from "../communityKeys";
 
 // 게시글 작성!
 const createPostApi = async (formData) => {
-  // Content-Type은 지정하지 말고 axios가 boundary 포함해 자동 설정하도록 둔다.
+  // 기본 axios 인스턴스는 application/json 이므로, FormData 전송 시 Content-Type을 비워( false ) boundary가 포함된 multipart로 보내지게 한다.
   const res = await api.post("/api/v1/community/posts", formData, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": false,
     },
     timeout: 20000,
   });
