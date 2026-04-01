@@ -470,15 +470,17 @@ const CreatePostScreen = () => {
 
   const extractedHashTags = useMemo(() => {
     // 본문에서 "#해시태그" 형태를 추출
-    // - 공백/줄바꿈으로 구분된 토큰만 인식
+    // - 공백/문장부호 등 어떤 위치에서도 인식 (상세 화면의 렌더링 규칙과 일치)
     // - 각 20자 이하, 중복 제거
     const set = new Set();
-    const regex = new RegExp(`(?:^|\\s)#([^\\s#]{1,${MAX_HASHTAG_LEN}})`, "g");
+    const regex = /#[^\s#]+/g;
     let match;
-    // eslint-disable-next-line no-cond-assign
     while ((match = regex.exec(content)) !== null) {
-      const tag = (match[1] ?? "").trim();
+      const token = match[0] ?? "";
+      if (!token || token === "#" || token.startsWith("##")) continue;
+      const tag = token.slice(1).trim();
       if (!tag) continue;
+      if (tag.length > MAX_HASHTAG_LEN) continue;
       set.add(tag);
     }
     return Array.from(set);
@@ -501,29 +503,57 @@ const CreatePostScreen = () => {
   }, [hasHashTagOverflow]);
 
   const renderHighlightedContent = useMemo(() => {
-    // "#태그" 토큰만 초록색으로 하이라이트 (공백/줄바꿈 기준)
-    const parts = content.split(/(\s+)/);
-    return parts.map((part, idx) => {
-      const isSpace = /^\s+$/.test(part);
-      const isHash =
-        !isSpace &&
-        part.startsWith("#") &&
-        part.length > 1 &&
-        !part.startsWith("##");
-      return (
+    if (typeof content !== "string" || content.length === 0) return null;
+
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(content)) != null) {
+      const start = match.index;
+      const token = match[0] ?? "";
+      if (!token || token === "#" || token.startsWith("##")) continue;
+
+      if (start > lastIndex) {
+        nodes.push(
+          <AppText
+            variant="other"
+            key={`t-${segIdx++}-${lastIndex}`}
+            style={[styles.richTextBase, styles.richTextNormal]}
+          >
+            {content.slice(lastIndex, start)}
+          </AppText>,
+        );
+      }
+
+      nodes.push(
         <AppText
-          // eslint-disable-next-line react/no-array-index-key
-          key={`${idx}-${part}`}
           variant="other"
-          style={[
-            styles.richTextBase,
-            isHash ? styles.richTextHash : styles.richTextNormal,
-          ]}
+          key={`h-${segIdx++}-${start}`}
+          style={[styles.richTextBase, styles.richTextHash]}
         >
-          {part}
-        </AppText>
+          {token}
+        </AppText>,
       );
-    });
+
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < content.length) {
+      nodes.push(
+        <AppText
+          variant="other"
+          key={`t-${segIdx++}-${lastIndex}`}
+          style={[styles.richTextBase, styles.richTextNormal]}
+        >
+          {content.slice(lastIndex)}
+        </AppText>,
+      );
+    }
+
+    return nodes;
   }, [content]);
 
   const handleAddImages = (newAssets) => {
