@@ -76,26 +76,29 @@ const styles = StyleSheet.create({
   title: {
     color: "#FFFFFF",
     fontSize: 29,
+    lineHeight: 35,
     fontFamily: "NotoSansKR_SemiBold",
     marginBottom: 20,
   },
   row: {
-    minHeight: 48,
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
   },
   keywordButton: {
     flex: 1,
-    paddingVertical: 13,
+    height: "100%",
+    justifyContent: "center",
   },
   keywordText: {
     color: "#D5D5D8",
     fontSize: 16,
+    lineHeight: 20,
     fontFamily: "NotoSansKR_Regular",
   },
   deleteButton: {
     width: 28,
-    height: 28,
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -103,6 +106,7 @@ const styles = StyleSheet.create({
     color: "#7A7A80",
     fontSize: 20,
     lineHeight: 20,
+    marginTop: 2,
   },
   feedbackContainer: {
     paddingTop: 56,

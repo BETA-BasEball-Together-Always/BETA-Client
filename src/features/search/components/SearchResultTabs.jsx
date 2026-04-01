@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   activeTabIndicator: {
-    backgroundColor: "#EE4F4F",
+    backgroundColor: "#F9F9F9",
   },
   postsFilterSection: {
     paddingHorizontal: 20,
@@ -196,31 +196,31 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   channelButton: {
-    minWidth: 74,
-    minHeight: 38,
+    minWidth: 72,
+    height: 42,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
   },
   activeChannelButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F9F9F9",
   },
   channelLabel: {
-    color: "#8B90A1",
+    color: "rgba(228, 228, 228, 0.5)",
     fontSize: 14,
     fontFamily: "NotoSansKR_Medium",
   },
   activeChannelLabel: {
-    color: "#11141C",
+    color: "#1E1E1E",
   },
   channelRow: {
     flexDirection: "row",
-    gap: 6,
     borderRadius: 999,
-    backgroundColor: "#161C2E",
-    padding: 4,
+    backgroundColor: "#252823",
+    height: 42,
+    overflow: "hidden",
   },
   sortBoxWrap: {
     position: "relative",
@@ -228,21 +228,17 @@ const styles = StyleSheet.create({
     zIndex: 30,
   },
   sortSelectButton: {
-    minHeight: 38,
+    minHeight: 40,
     borderRadius: 12,
-    backgroundColor: "#161C2E",
-    borderWidth: 1,
-    borderColor: "#242B43",
+    backgroundColor: "#252823",
     paddingHorizontal: 11,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  sortSelectButtonOpen: {
-    borderColor: "#39425F",
-  },
+  sortSelectButtonOpen: {},
   sortSelectLabel: {
-    color: "#F5F6FA",
+    color: "#F9F9F9",
     fontSize: 12,
     fontFamily: "NotoSansKR_Medium",
   },
@@ -258,9 +254,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     borderRadius: 12,
-    backgroundColor: "#161C2E",
-    borderWidth: 1,
-    borderColor: "#242B43",
+    backgroundColor: "#252823",
     overflow: "hidden",
   },
   sortMenuItem: {
@@ -268,15 +262,15 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   sortMenuDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#242B43",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(249, 249, 249, 0.12)",
   },
   sortMenuLabel: {
-    color: "#B1B7C8",
+    color: "rgba(228, 228, 228, 0.5)",
     fontSize: 13,
     fontFamily: "NotoSansKR_Medium",
   },
   activeSortMenuLabel: {
-    color: "#FFFFFF",
+    color: "#F9F9F9",
   },
 });
