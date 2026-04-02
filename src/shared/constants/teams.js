@@ -68,7 +68,7 @@ export const TEAM_DATA = {
     },
     labelStyle: {
       color: "rgba(255, 53, 53, 0.80)",
-      backgroundColor: "rgba(201, 31, 34, 0.24)",
+      backgroundColor: "rgba(18, 18, 18, 0.80)",
     },
   },
   DOOSAN: {
