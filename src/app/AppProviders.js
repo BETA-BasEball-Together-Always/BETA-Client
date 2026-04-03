@@ -15,6 +15,9 @@ import * as SplashScreen from "expo-splash-screen";
 import { initializeNaver } from "../features/auth/libs/Login/naverInit";
 import { hydrateUserEmotionSelectionsFromStorage } from "../features/community/store/userEmotionSelectionStore";
 import PushDeviceBootstrap from "../shared/components/PushDeviceBootstrap";
+import PushOpenBootstrap from "../shared/components/PushOpenBootstrap";
+import { flushPendingPushNavigation } from "../shared/services/pushOpenService";
+import { rootNavigationRef } from "./navigation/rootNavigation";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +87,14 @@ const AppProviders = ({ children }) => {
     }
   }, [fontsLoaded]);
 
+  const handleNavigationReady = () => {
+    flushPendingPushNavigation();
+  };
+
+  const handleNavigationStateChange = () => {
+    flushPendingPushNavigation();
+  };
+
   if (!fontsLoaded || !emotionHydrated) {
     return null;
   }
@@ -91,7 +102,14 @@ const AppProviders = ({ children }) => {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>{children}</NavigationContainer>
+        <NavigationContainer
+          ref={rootNavigationRef}
+          onReady={handleNavigationReady}
+          onStateChange={handleNavigationStateChange}
+        >
+          {children}
+        </NavigationContainer>
+        <PushOpenBootstrap />
         <PushDeviceBootstrap />
       </QueryClientProvider>
     </SafeAreaProvider>
