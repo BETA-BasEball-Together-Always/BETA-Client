@@ -1,7 +1,7 @@
 // src/features/auth/services/signupStatusMutation.js
 import { useMutation } from "@tanstack/react-query";
 import api from "../../../shared/libs/api";
-import * as SecureStore from "expo-secure-store";
+import { getAccessTokenFromStoreOrMemory } from "../../../shared/libs/getAccessToken";
 
 /**
  * GET /api/v1/auth/signup/status — 이탈 후 재진입 시 단계별 데이터(email, teamList 등) 조회용
@@ -25,7 +25,7 @@ export const fetchSignupStatusWithToken = async (accessToken) => {
 
 // 현재 회원가입 단계 + 필요 데이터 조회
 const fetchSignupStatus = async () => {
-  const accessToken = await SecureStore.getItemAsync("accessToken");
+  const accessToken = await getAccessTokenFromStoreOrMemory();
 
   if (!accessToken) {
     throw new Error("NO_ACCESS_TOKEN");

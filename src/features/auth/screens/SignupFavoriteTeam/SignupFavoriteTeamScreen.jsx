@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,10 +20,17 @@ import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
-import { TEAM_DATA, TEAM_LIST } from "../../../../shared/constants/teams";
+import { TEAM_LIST } from "../../../../shared/constants/teams";
 
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+
+function normalizeTeamCode(code) {
+  return String(code ?? "")
+    .trim()
+    .toUpperCase();
+}
 
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const draftFavoriteTeamCode = useSignupDraftStore((s) => s.favoriteTeamCode);
@@ -33,49 +42,103 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   // signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
-  const externalTeamList = route?.params?.teamList ?? null;
+  const [serverTeamList, setServerTeamList] = useState(null);
+  const externalTeamList =
+    route?.params?.teamList ?? serverTeamList ?? null;
 
   const signupTeamMutation = useSignupTeamMutation();
   const signupStatusMutation = useSignupStatusMutation();
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const status = await signupStatusMutation.mutateAsync();
+          if (cancelled) return;
+          applySignupStatusToDraft(status);
+          if (Array.isArray(status?.teamList) && status.teamList.length > 0) {
+            setServerTeamList(status.teamList);
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [signupStatusMutation]),
+  );
 
   const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
 
   const handleBack = useStepBack("SocialSignup");
 
-  // const teams = useMemo(() => {
-  //   if (externalTeamList && externalTeamList.length > 0) {
-  //     // return externalTeamList.map((t) => ({
-  //     //   key: t.teamCode,
-  //     //   label: t.teamNameKr,
-  //     //   Icon: TEAMS.find((base) => base.key === t.teamCode)?.Icon ?? LG,
-  //     // }));
-
-  //     // TEAMS 배열 순서대로 정렬
-  //     return TEAMS.filter((base) =>
-  //       externalTeamList.some((t) => t.teamCode === base.key),
-  //     ).map((base) => {
-  //       const externalTeam = externalTeamList.find(
-  //         (t) => t.teamCode === base.key,
-  //       );
-  //       return {
-  //         key: base.key,
-  //         label: externalTeam?.teamNameKr ?? base.label,
-  //         Icon: base.Icon,
-  //       };
-  //     });
-  //   }
-  //   return TEAMS;
-  // }, [externalTeamList]);
-
+  /**
+   * 화면 행 + POST /api/v1/auth/signup/team(processTeamSelection)에 보낼 teamCode.
+   * 서버 teamList(TeamDto[])가 있으면 teamCode는 **응답 문자열 그대로** 써야 TEAM001(구단 없음)을 피할 수 있음.
+   * 아이콘/라벨만 로컬 TEAM_LIST와 normalize 매칭.
+   */
   const teams = useMemo(() => {
-    // teamList 있으면 필터링, 없으면 team_list 전체 사용
-    const baseList = externalTeamList
-      ? TEAM_LIST.filter((t) =>
-          externalTeamList.some((ext) => ext.teamCode === t.key),
-        )
-      : TEAM_LIST;
-    return baseList;
+    const raw = Array.isArray(externalTeamList) ? externalTeamList : [];
+
+    const fromLocalList = () =>
+      TEAM_LIST.map((t) => ({
+        rowKey: t.key,
+        label: t.label,
+        MainIcon: t.MainIcon,
+        apiTeamCode: t.key,
+      }));
+
+    if (raw.length === 0) {
+      return fromLocalList();
+    }
+
+    const rows = [];
+    for (const ext of raw) {
+      const codeRaw = ext?.teamCode ?? ext?.code;
+      if (codeRaw == null || String(codeRaw).trim() === "") continue;
+
+      const apiTeamCode = String(codeRaw).trim();
+      const match = TEAM_LIST.find(
+        (t) => normalizeTeamCode(t.key) === normalizeTeamCode(apiTeamCode),
+      );
+
+      rows.push({
+        rowKey: apiTeamCode,
+        label: ext.teamNameKr ?? match?.label ?? apiTeamCode,
+        MainIcon: match?.MainIcon ?? null,
+        apiTeamCode,
+      });
+    }
+
+    return rows.length > 0 ? rows : fromLocalList();
   }, [externalTeamList]);
+
+  const goToGenderAge = async (teamCode) => {
+    const selectedTeamLabel =
+      teams.find((t) => t.apiTeamCode === teamCode)?.label ??
+      TEAM_LIST.find((t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode))
+        ?.label;
+
+    await SecureStore.setItemAsync(
+      "favoriteTeamLabel",
+      selectedTeamLabel ?? "",
+    );
+
+    setDraftFavoriteTeam({
+      code: teamCode,
+      label: selectedTeamLabel,
+    });
+
+    navigation.navigate("SignupGenderAge", {
+      signup: {
+        ...signup,
+        favoriteTeamCode: teamCode,
+      },
+      favoriteTeamLabel: selectedTeamLabel,
+    });
+  };
 
   const handleNext = async () => {
     if (!isNextEnabled) return;
@@ -83,70 +146,59 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     try {
       const status = await signupStatusMutation.mutateAsync();
       if (status?.signupStep === "TEAM_SELECTED") {
-        const selectedTeamLabel = TEAM_LIST.find(
-          (t) => t.key === selectedTeam,
-        )?.label;
-
-        if (selectedTeamLabel) {
-          await SecureStore.setItemAsync(
-            "favoriteTeamLabel",
-            selectedTeamLabel,
-          );
-        }
-
-        setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
-
-        navigation.navigate("SignupGenderAge", {
-          signup: {
-            ...signup,
-            favoriteTeamCode: selectedTeam,
-          },
-          favoriteTeamLabel: selectedTeamLabel,
-        });
+        await goToGenderAge(selectedTeam);
         return;
       }
     } catch (e) {
       console.warn("[signup/status]", e);
     }
 
-    signupTeamMutation.mutate(
-      { teamCode: selectedTeam },
-      {
-        onSuccess: async () => {
-          const selectedTeamLabel = TEAM_LIST.find(
-            (t) => t.key === selectedTeam,
-          )?.label;
-
-          await SecureStore.setItemAsync(
-            "favoriteTeamLabel",
-            selectedTeamLabel ?? "",
-          );
-
-          setDraftFavoriteTeam({
-            code: selectedTeam,
-            label: selectedTeamLabel,
-          });
-
-          navigation.navigate("SignupGenderAge", {
-            signup: {
-              ...signup,
-              favoriteTeamCode: selectedTeam,
-            },
-            favoriteTeamLabel: selectedTeamLabel,
-          });
-        },
-      },
-    );
+    try {
+      await signupTeamMutation.mutateAsync({ teamCode: selectedTeam });
+      await goToGenderAge(selectedTeam);
+    } catch (e) {
+      console.warn("[signup/team]", e);
+      const raw = e?.response?.data;
+      let msg =
+        typeof raw === "string"
+          ? raw
+          : typeof raw?.message === "string"
+            ? raw.message
+            : null;
+      if (!msg && e?.message === "NO_ACCESS_TOKEN") {
+        msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+      }
+      if (!msg) {
+        msg = "구단 선택을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      }
+      Alert.alert("안내", msg);
+    }
   };
 
+  /** 이전 단계에서 온 코드가 로컬 키만 맞는 경우 → 현재 rows의 apiTeamCode로 맞춤 */
   useEffect(() => {
-    if (selectedTeam) {
-      const selectedTeamLabel = TEAM_LIST.find(
-        (t) => t.key === selectedTeam,
+    if (!selectedTeam || teams.length === 0) return;
+    if (teams.some((t) => t.apiTeamCode === selectedTeam)) return;
+    const row = teams.find(
+      (t) =>
+        normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(selectedTeam),
+    );
+    if (row) setSelectedTeam(row.apiTeamCode);
+  }, [teams, selectedTeam]);
+
+  useEffect(() => {
+    if (!selectedTeam) return;
+    const selectedTeamLabel =
+      teams.find((t) => t.apiTeamCode === selectedTeam)?.label ??
+      TEAM_LIST.find((t) => t.key === selectedTeam)?.label ??
+      TEAM_LIST.find(
+        (t) => normalizeTeamCode(t.key) === normalizeTeamCode(selectedTeam),
       )?.label;
-      setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
-    }
-  }, [selectedTeam, setDraftFavoriteTeam]);
+    setDraftFavoriteTeam({
+      code: selectedTeam,
+      label: selectedTeamLabel,
+    });
+  }, [selectedTeam, teams, setDraftFavoriteTeam]);
 
   return (
     <View style={styles.root}>
@@ -171,15 +223,18 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
                 {/* 팀 선택 */}
                 <View style={styles.grid}>
-                  {teams.map(({ key, label, MainIcon }) => {
-                    const selected = selectedTeam === key;
+                  {teams.map(({ rowKey, label, MainIcon, apiTeamCode }) => {
+                    const selected =
+                      selectedTeam != null &&
+                      normalizeTeamCode(selectedTeam) ===
+                        normalizeTeamCode(apiTeamCode);
 
                     return (
                       <TouchableOpacity
-                        key={key}
+                        key={rowKey}
                         style={styles.item}
                         activeOpacity={0.85}
-                        onPress={() => setSelectedTeam(key)}
+                        onPress={() => setSelectedTeam(apiTeamCode)}
                       >
                         <View
                           style={[
@@ -187,7 +242,20 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
                             selected && styles.iconBoxSelected,
                           ]}
                         >
-                          <MainIcon width={100} height={100} />
+                          {MainIcon ? (
+                            <MainIcon width={100} height={100} />
+                          ) : (
+                            <AppText
+                              variant="heading"
+                              style={[
+                                styles.fallbackTeamInitials,
+                                selected && styles.fallbackTeamInitialsOnLight,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {label.slice(0, 2)}
+                            </AppText>
+                          )}
                         </View>
 
                         <AppText
@@ -306,6 +374,14 @@ const styles = StyleSheet.create({
 
     // Android 그림자
     elevation: 8,
+  },
+
+  fallbackTeamInitials: {
+    fontSize: 28,
+    color: "#FFFFFF",
+  },
+  fallbackTeamInitialsOnLight: {
+    color: "#111111",
   },
 
   teamLabel: {

@@ -1,12 +1,7 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
 import React, { useCallback, useMemo, useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { View, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import AuthBackground from "../../components/AuthBackground";
 import TermsAgreementCard from "../../components/TermsAgreementCard";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -14,6 +9,7 @@ import { useSignupConsentMutation } from "../../services/signupConsentMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const TermsDetailScreen = ({ navigation }) => {
@@ -35,6 +31,30 @@ const TermsDetailScreen = ({ navigation }) => {
     }
   }, [draftTerms]);
 
+  const signupConsentMutation = useSignupConsentMutation();
+  const signupStatusMutation = useSignupStatusMutation();
+
+  /** 뒤로가기/재진입 시 서버 단계 기준으로 약관 체크 + 이메일 draft 복원 */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const status = await signupStatusMutation.mutateAsync();
+          if (cancelled) return;
+          applySignupStatusToDraft(status);
+          const next = useSignupDraftStore.getState().terms;
+          if (next) setTerms(next);
+        } catch {
+          /* 오프라인 등 — 로컬 draft만 유지 */
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [signupStatusMutation]),
+  );
+
   const handleChangeTerms = useCallback(
     (next) => {
       setTerms(next);
@@ -47,9 +67,6 @@ const TermsDetailScreen = ({ navigation }) => {
     () => terms.over14 && terms.tos && terms.privacyRequired,
     [terms],
   );
-
-  const signupConsentMutation = useSignupConsentMutation();
-  const signupStatusMutation = useSignupStatusMutation();
 
   const handlePressDetail = useCallback(
     (key) => {

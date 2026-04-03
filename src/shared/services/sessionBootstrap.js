@@ -7,6 +7,7 @@ import {
   setPendingAuthErrorMessage,
   setPendingAuthResume,
 } from "../auth/pendingAuthResume";
+import { applySignupStatusToDraft } from "../auth/applySignupStatusToDraft";
 
 //api.js와 sessionBootstrap.js에서 중복된 base url 환경변수 정의!!
 //api.js에서 baseURL 가져오는 것으로 수정
@@ -44,14 +45,20 @@ export function getSignupResumeRoute(signupStep, data) {
       return {
         name: "SignupFavoriteTeam",
         params: {
-          signup: {},
+          signup: {
+            email: data?.email ?? "",
+          },
           teamList: data?.teamList ?? [],
         },
       };
     case "TEAM_SELECTED":
       return {
         name: "SignupGenderAge",
-        params: { signup: {} },
+        params: {
+          signup: {
+            email: data?.email ?? "",
+          },
+        },
       };
     default:
       return { name: "TermsDetail", params: {} };
@@ -175,6 +182,7 @@ export async function bootstrapSession() {
   const step = statusData?.signupStep;
 
   if (step && INCOMPLETE_SIGNUP_STEPS.has(step)) {
+    applySignupStatusToDraft(statusData);
     const resume = getSignupResumeRoute(step, statusData);
     setPendingAuthResume(resume);
     setPendingAuthErrorMessage(null);

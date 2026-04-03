@@ -2,15 +2,14 @@
 import { useMutation } from "@tanstack/react-query";
 import { authKeys } from "./authKeys";
 import api from "../../../shared/libs/api";
-import * as SecureStore from "expo-secure-store";
+import { getAccessTokenFromStoreOrMemory } from "../../../shared/libs/getAccessToken";
 
 /**
  * 닉네임 중복 확인 API
  * @param {string} nickname
  */
 const nicknameCheckApi = async (nickname) => {
-  // 닉네임 중복 체크는 인증 필요 → SecureStore에 저장된 accessToken을 사용
-  const accessToken = await SecureStore.getItemAsync("accessToken");
+  const accessToken = await getAccessTokenFromStoreOrMemory();
 
   if (!accessToken) {
     throw new Error("NO_ACCESS_TOKEN");

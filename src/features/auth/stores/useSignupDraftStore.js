@@ -29,6 +29,12 @@ export const useSignupDraftStore = create(
       setEmail: (email) => set({ email: email ?? "" }),
       setNickname: (nickname) =>
         set({ nickname: nickname ?? "", nicknameChecked: false }),
+      /** 서버 상태/재진입 복원용 — 중복확인 플래그를 함께 설정 */
+      hydrateNickname: (nickname, nicknameChecked = true) =>
+        set({
+          nickname: nickname ?? "",
+          nicknameChecked: !!nicknameChecked,
+        }),
       setNicknameChecked: (checked) => set({ nicknameChecked: !!checked }),
       setTerms: (terms) => set({ terms: terms ?? emptyTerms }),
       setFavoriteTeam: ({ code, label }) =>

@@ -79,6 +79,7 @@ export const useCheckedField = ({
     isAvailable,
     isChecking,
     status,
+    /** 서버/draft 복원 시 값 동기화용 */
     setValue,
     setError,
     setTouched,

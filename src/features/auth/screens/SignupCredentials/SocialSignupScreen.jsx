@@ -1,5 +1,6 @@
 // src/features/auth/screens/SignupCredentials/SocialSignupScreen.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   StyleSheet,
@@ -23,6 +24,7 @@ import { useSignupProfileMutation } from "../../services/signupProfileMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const { height } = Dimensions.get("window");
@@ -75,6 +77,33 @@ const SocialSignupScreen = ({ navigation, route }) => {
       return available;
     },
   });
+
+  const nicknameFieldRef = useRef(nicknameField);
+  nicknameFieldRef.current = nicknameField;
+
+  /** 뒤로가기/재진입: 이메일/닉네임 draft + 서버 signup/status 동기화 */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const status = await signupStatusMutation.mutateAsync();
+          if (cancelled) return;
+          applySignupStatusToDraft(status);
+          const d = useSignupDraftStore.getState();
+          const f = nicknameFieldRef.current;
+          f.setValue(d.nickname ?? "");
+          f.setTouched(!!(d.nickname ?? "").trim());
+          f.setIsAvailable(!!d.nicknameChecked);
+        } catch {
+          /* 오프라인 등 */
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [signupStatusMutation]),
+  );
 
   useEffect(() => {
     if (readonlyEmail) setDraftEmail(readonlyEmail);

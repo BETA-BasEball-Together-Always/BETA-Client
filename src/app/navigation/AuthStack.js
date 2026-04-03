@@ -31,10 +31,18 @@ const AuthStack = () => {
 
   useLayoutEffect(() => {
     if (didApplyResumeStack.current || !resume) return;
-    const action = buildRootResetForAuthNestedResume(resume);
-    if (!action) return;
-    didApplyResumeStack.current = true;
-    navigation.dispatch(action);
+    let cancelled = false;
+    (async () => {
+      await hydrateSignupDraftFromStorage();
+      if (cancelled) return;
+      const action = buildRootResetForAuthNestedResume(resume);
+      if (!action) return;
+      didApplyResumeStack.current = true;
+      navigation.dispatch(action);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [resume, navigation]);
 
   const initialRouteName = resume?.name ?? "Login";
