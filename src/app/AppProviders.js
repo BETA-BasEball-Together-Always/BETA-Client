@@ -5,41 +5,28 @@ import { NavigationContainer } from "@react-navigation/native";
 
 import NetInfo from "@react-native-community/netinfo";
 import {
-  MutationCache,
   QueryClient,
   QueryClientProvider,
   onlineManager,
   focusManager,
 } from "@tanstack/react-query";
-import { notifyOfflineIfNeeded } from "../shared/utils/networkErrors";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { initializeNaver } from "../features/auth/libs/Login/naverInit";
 import { hydrateUserEmotionSelectionsFromStorage } from "../features/community/store/userEmotionSelectionStore";
-import PushDeviceBootstrap from "../shared/components/PushDeviceBootstrap";
-import CommunityDataSync from "../shared/components/CommunityDataSync";
-
-const mutationCache = new MutationCache({
-  onError: (error) => {
-    notifyOfflineIfNeeded(error);
-  },
-});
+import PushDeviceBootstrap from "../shared/component/PushDeviceBootstrap";
+import PushOpenBootstrap from "../shared/components/PushOpenBootstrap";
+import { flushPendingPushNavigation } from "../shared/services/pushOpenService";
+import { rootNavigationRef } from "./navigation/rootNavigation";
 
 const queryClient = new QueryClient({
-  mutationCache,
   defaultOptions: {
     queries: {
-      // 데이터 신선도/수명 관련 기본값
-      staleTime: 30 * 1000, // 30초 동안은 fresh
-      gcTime: 10 * 60 * 1000, // 5분 지나면 캐시 가비지 컬렉션
-      retry: 1, // 실패 시 1회 재시도
-      refetchOnReconnect: true, // 네트워크 복구 시 자동 리패치
-      refetchOnWindowFocus: true, // RN에선 focusManager로 동작
-    },
-    // 오프라인일 때 기본 'online' 모드는 mutationFn 실행을 멈춰 isPending이 영구히 true가 될 수 있음!
-    // 항상 실행해 axios 인터셉터의 CLIENT_OFFLINE 등으로 실패/알림 처리되게 하기
-    mutations: {
-      networkMode: "always",
+      staleTime: 30 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnReconnect: true,
+      refetchOnWindowFocus: true,
     },
   },
 });
@@ -58,7 +45,6 @@ const AppProviders = ({ children }) => {
     };
   }, []);
 
-  // 1) 전역 폰트 로드 (NotoSansKR 3종)
   const [fontsLoaded] = useFonts({
     NotoSansKR_Light: require("@shared/assets/fonts/NotoSansKR-Light.ttf"),
     NotoSansKR_Regular: require("@shared/assets/fonts/NotoSansKR-Regular.ttf"),
@@ -66,7 +52,6 @@ const AppProviders = ({ children }) => {
     NotoSansKR_SemiBold: require("@shared/assets/fonts/NotoSansKR-SemiBold.ttf"),
   });
 
-  // 0) 네이버 SDK 초기화 (앱 시작 시 한 번)
   useEffect(() => {
     try {
       initializeNaver();
@@ -76,7 +61,6 @@ const AppProviders = ({ children }) => {
     }
   }, []);
 
-  // 2) 네트워크 연결 상태를 TanStack Query에 알려줌(동기화용) */
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
       const online = !!state.isConnected && !!state.isInternetReachable;
@@ -85,7 +69,6 @@ const AppProviders = ({ children }) => {
     return () => unsub();
   }, []);
 
-  /* 앱 전후면(포커스) 상태를 TanStack Query에 알려줌(동기화용) */
   useEffect(() => {
     const sub = AppState.addEventListener("change", (status) => {
       focusManager.setFocused(status === "active");
@@ -99,6 +82,14 @@ const AppProviders = ({ children }) => {
     }
   }, [fontsLoaded]);
 
+  const handleNavigationReady = () => {
+    flushPendingPushNavigation();
+  };
+
+  const handleNavigationStateChange = () => {
+    flushPendingPushNavigation();
+  };
+
   if (!fontsLoaded || !emotionHydrated) {
     return null;
   }
@@ -106,9 +97,15 @@ const AppProviders = ({ children }) => {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>{children}</NavigationContainer>
+        <NavigationContainer
+          ref={rootNavigationRef}
+          onReady={handleNavigationReady}
+          onStateChange={handleNavigationStateChange}
+        >
+          {children}
+        </NavigationContainer>
+        <PushOpenBootstrap />
         <PushDeviceBootstrap />
-        <CommunityDataSync />
       </QueryClientProvider>
     </SafeAreaProvider>
   );
