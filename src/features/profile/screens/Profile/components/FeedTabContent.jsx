@@ -10,6 +10,8 @@ const FeedTabContent = ({
   onEndReached,
   /** 첫 페이지 로딩 (탭 전환/초기 진입 시 스피너) */
   isLoading = false,
+  /** 에러 후 refetch 중 (다시 시도 스피너) */
+  isFetching = false,
   /** 다음 페이지 로딩 (목록 하단 스피너) */
   isFetchingNextPage = false,
   hasNext = false,
@@ -25,6 +27,7 @@ const FeedTabContent = ({
       style={styles.fetchWrap}
       isLoading={!isError && isLoading && !hasPosts}
       isError={isError}
+      isFetching={isFetching}
       onRetry={onRetry}
     >
       <View style={styles.container}>

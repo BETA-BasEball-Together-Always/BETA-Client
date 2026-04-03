@@ -2,6 +2,9 @@
 import axios from "axios";
 import Constants from "expo-constants";
 import NetInfo from "@react-native-community/netinfo";
+import * as SecureStore from "expo-secure-store";
+import { useUserStore } from "../store/userStore";
+import { refreshTokensApi } from "./authTokenRefresh";
 // import * as SecureStore from "expo-secure-store";
 // import {useAuthStore} from "../store/authStore"; // 경로는 프로젝트에 맞게 수정해줘
 
@@ -78,6 +81,124 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error),
+);
+
+api.interceptors.request.use(
+  (config) => {
+    const { accessToken } = useUserStore.getState();
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      delete config.headers.Authorization;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+let isRefreshing = false;
+let failedQueue = [];
+
+function processAuthQueue(error, token = null) {
+  failedQueue.forEach((p) => {
+    if (error) p.reject(error);
+    else p.resolve(token);
+  });
+  failedQueue = [];
+}
+
+function isAuthRefreshExemptUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  return (
+    url.includes("/api/v1/auth/refresh") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/api/v1/auth/login") ||
+    url.includes("/auth/login")
+  );
+}
+
+async function getStoredRefreshToken() {
+  let refreshToken = useUserStore.getState().refreshToken;
+  if (refreshToken) return refreshToken;
+  try {
+    refreshToken = await SecureStore.getItemAsync("refreshToken");
+  } catch {
+    /* ignore */
+  }
+  return refreshToken;
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+
+    if (
+      !originalRequest ||
+      !error.response ||
+      (status !== 401 && status !== 403) ||
+      originalRequest._retry ||
+      isAuthRefreshExemptUrl(originalRequest.url)
+    ) {
+      return Promise.reject(error);
+    }
+
+    const refreshToken = await getStoredRefreshToken();
+    if (!refreshToken) {
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          if (token) {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+          }
+          originalRequest._retry = true;
+          return api(originalRequest);
+        })
+        .catch((err) => Promise.reject(err));
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const data = await refreshTokensApi(refreshToken);
+      const newAccess = data?.accessToken;
+      if (!newAccess) {
+        throw new Error("NO_NEW_ACCESS_TOKEN");
+      }
+      const newRefresh = data?.refreshToken ?? refreshToken;
+      await useUserStore.getState().setTokens({
+        accessToken: newAccess,
+        refreshToken: newRefresh,
+      });
+      api.defaults.headers.Authorization = `Bearer ${newAccess}`;
+      processAuthQueue(null, newAccess);
+      originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+      return api(originalRequest);
+    } catch (refreshErr) {
+      processAuthQueue(refreshErr, null);
+      const status = refreshErr.response?.status;
+      const fatalRefresh =
+        refreshErr.message === "NO_NEW_ACCESS_TOKEN" ||
+        status === 401 ||
+        status === 403;
+      if (fatalRefresh) {
+        const { forceLogoutToLogin } = await import(
+          "../services/authSessionActions"
+        );
+        await forceLogoutToLogin();
+      }
+      return Promise.reject(refreshErr);
+    } finally {
+      isRefreshing = false;
+    }
+  },
 );
 
 // // ✅ 요청 인터셉터: Zustand에서 accessToken 읽어서 Authorization 헤더에 세팅

@@ -111,6 +111,7 @@ const PostDetailScreen = ({ route, navigation }) => {
     data: detail,
     isFetched: isPostDetailFetched,
     isError: isPostDetailError,
+    isFetching: isPostDetailFetching,
     refetch: refetchPostDetail,
   } = usePostDetailQuery(postId, {
     refetchInterval: isFocused ? POST_DETAIL_REFETCH_MS : false,
@@ -644,6 +645,7 @@ const PostDetailScreen = ({ route, navigation }) => {
         <FetchStateView
           style={{ flex: 1 }}
           isError
+          isFetching={isPostDetailFetching}
           onRetry={() => refetchPostDetail()}
         />
       </SafeAreaView>

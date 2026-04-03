@@ -71,6 +71,7 @@ const AllCommunityScreen = ({ route }) => {
           style={styles.fetchArea}
           isLoading={blockingLoad}
           isError={isError}
+          isFetching={isFetching}
           onRetry={() => refetch()}
         >
           <PostList

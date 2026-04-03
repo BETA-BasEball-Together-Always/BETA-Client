@@ -1,7 +1,7 @@
-import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 import api from "../libs/api";
+import { refreshTokensApi } from "../libs/authTokenRefresh";
 import { useUserStore } from "../store/userStore";
 import {
   setPendingAuthErrorMessage,
@@ -56,20 +56,6 @@ export function getSignupResumeRoute(signupStep, data) {
     default:
       return { name: "TermsDetail", params: {} };
   }
-}
-
-async function refreshTokensApi(refreshToken) {
-  console.log("[REFRESH] BASE_URL:", BASE_URL);
-
-  if (!BASE_URL) {
-    throw new Error("BACKEND_BASE_URL_MISSING");
-  }
-  const { data } = await axios.post(
-    `${BASE_URL}/api/v1/auth/refresh`,
-    { refreshToken },
-    { timeout: 15000 },
-  );
-  return data;
 }
 
 async function fetchSignupStatus() {
@@ -154,7 +140,7 @@ export async function bootstrapSession() {
     statusData = await fetchSignupStatus();
   } catch (e) {
     const status = e?.response?.status;
-    if (status === 401 && refreshToken) {
+    if ((status === 401 || status === 403) && refreshToken) {
       try {
         const data = await refreshTokensApi(refreshToken);
         accessToken = data?.accessToken;

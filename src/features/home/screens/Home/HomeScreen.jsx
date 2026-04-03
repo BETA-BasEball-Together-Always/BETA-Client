@@ -55,6 +55,7 @@ const HomeScreen = () => {
     data: homeData,
     isPending: isHomePending,
     isError: isHomeError,
+    isFetching: isHomeFetching,
     refetch: refetchHome,
   } = useHomeQuery({
     enabled: !!user && !isOffline,
@@ -173,6 +174,7 @@ const HomeScreen = () => {
             <FetchStateView
               isLoading={isHomePending && !shouldShowHomeError}
               isError={shouldShowHomeError}
+              isFetching={isHomeFetching}
               onRetry={() => refetchHome()}
             />
           </View>
@@ -250,12 +252,12 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     lineHeight: 24.5,
     marginTop: 13,
-    marginBottom: 16,
+    marginBottom: 9,
   },
 
   //배너
   bannerWrapper: {
-    marginTop: 31,
+    marginTop: 18,
     alignItems: "center",
   },
   bannerImage: {
@@ -288,7 +290,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 45,
+    marginTop: 30,
     marginBlock: 10,
   },
   popularHeading: {

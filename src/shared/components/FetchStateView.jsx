@@ -11,16 +11,28 @@ export const DATA_FETCH_ERROR_MESSAGE_LINE2 = "잠시 후 다시 시도해 주�
  * 데이터 영역만 로딩/에러 처리
  * @param {boolean} isLoading
  * @param {boolean} isError
+ * @param {boolean} [isFetching] — 에러 상태에서 refetch 중일 때 스피너 (React Query isFetching)
  * @param {() => void} onRetry — refetch
  */
 export default function FetchStateView({
   isLoading = false,
   isError = false,
+  isFetching = false,
   onRetry,
   children,
   style,
   contentStyle,
 }) {
+  const showSpinner = isLoading || (isError && isFetching);
+
+  if (showSpinner) {
+    return (
+      <View style={[styles.center, style]}>
+        <CommunityLoadingSpinner size={44} />
+      </View>
+    );
+  }
+
   if (isError) {
     return (
       <View style={[styles.center, style]}>
@@ -43,14 +55,6 @@ export default function FetchStateView({
             </AppText>
           </TouchableOpacity>
         </View>
-      </View>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <View style={[styles.center, style]}>
-        <CommunityLoadingSpinner size={44} />
       </View>
     );
   }

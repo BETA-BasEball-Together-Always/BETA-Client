@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
+import { navigationRef } from "./navigation/navigationRef";
 
 import NetInfo from "@react-native-community/netinfo";
 import {

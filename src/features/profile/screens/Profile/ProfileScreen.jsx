@@ -147,6 +147,9 @@ const ProfileScreen = ({ navigation, route }) => {
             isLoading={
               isSelf ? myPostsQuery.isLoading : userPostsQuery.isLoading
             }
+            isFetching={
+              isSelf ? myPostsQuery.isFetching : userPostsQuery.isFetching
+            }
             isFetchingNextPage={
               isSelf
                 ? myPostsQuery.isFetchingNextPage
@@ -169,6 +172,7 @@ const ProfileScreen = ({ navigation, route }) => {
             emptyMessage="좋아요를 남긴 게시물이 없습니다"
             onEndReached={myLikedQuery.fetchNextPage}
             isLoading={myLikedQuery.isLoading}
+            isFetching={myLikedQuery.isFetching}
             isFetchingNextPage={myLikedQuery.isFetchingNextPage}
             hasNext={!!myLikedQuery.hasNextPage}
             isError={myLikedQuery.isError}
@@ -185,6 +189,7 @@ const ProfileScreen = ({ navigation, route }) => {
             emptyMessage="댓글을 남긴 게시물이 없습니다"
             onEndReached={myCommentedQuery.fetchNextPage}
             isLoading={myCommentedQuery.isLoading}
+            isFetching={myCommentedQuery.isFetching}
             isFetchingNextPage={myCommentedQuery.isFetchingNextPage}
             hasNext={!!myCommentedQuery.hasNextPage}
             isError={myCommentedQuery.isError}
@@ -375,7 +380,7 @@ const styles = StyleSheet.create({
   },
   userNameContainer: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     alignItems: "center",
   },
   bioTouchable: {

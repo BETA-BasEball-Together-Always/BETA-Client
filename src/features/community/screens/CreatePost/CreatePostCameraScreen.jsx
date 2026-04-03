@@ -13,23 +13,26 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute } from "@react-navigation/native";
 import {
   Camera,
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
+import SwitchBtnIcon from "../../../photoBooth/screens/Camera/assets/SwitchBtn.svg";
 
 const LIMIT_MESSAGE = "사진은 최대 5장까지\n추가 가능합니다.";
 
 export default function CreatePostCameraScreen({ navigation }) {
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const maxImages = route.params?.maxImages ?? 5;
   const currentImageCount = route.params?.currentImageCount ?? 0;
 
   const cameraRef = useRef(null);
-  const device = useCameraDevice("back");
+  const [cameraPosition, setCameraPosition] = useState("back");
+  const device = useCameraDevice(cameraPosition);
   const { hasPermission, requestPermission } = useCameraPermission();
 
   const [isCapturing, setIsCapturing] = useState(false);
@@ -46,6 +49,10 @@ export default function CreatePostCameraScreen({ navigation }) {
   const handleClose = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  const handleToggleCamera = useCallback(() => {
+    setCameraPosition((pos) => (pos === "back" ? "front" : "back"));
+  }, []);
 
   const handleCapture = useCallback(async () => {
     if (!cameraRef.current || isCapturing) return;
@@ -88,7 +95,15 @@ export default function CreatePostCameraScreen({ navigation }) {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <View
+        style={[
+          styles.headerOuter,
+          {
+            paddingTop: insets.top,
+            backgroundColor: "rgba(0,0,0,0.35)",
+          },
+        ]}
+      >
         <View style={styles.header}>
           <Pressable
             onPress={handleClose}
@@ -100,7 +115,7 @@ export default function CreatePostCameraScreen({ navigation }) {
           <Text style={styles.title}>사진 촬영</Text>
           <View style={styles.headerRightSpacer} />
         </View>
-      </SafeAreaView>
+      </View>
 
       {!isReady ? (
         <View style={styles.center}>
@@ -118,16 +133,32 @@ export default function CreatePostCameraScreen({ navigation }) {
       )}
 
       <View style={styles.bottomBar}>
-        <Pressable
-          onPress={handleCapture}
-          disabled={!isReady || isCapturing}
-          style={[
-            styles.shutter,
-            (!isReady || isCapturing) && { opacity: 0.5 },
-          ]}
-        >
-          <View style={styles.shutterInner} />
-        </Pressable>
+        <View style={styles.bottomBarRow}>
+          <View style={styles.bottomBarSideSpacer} />
+          <Pressable
+            onPress={handleCapture}
+            disabled={!isReady || isCapturing}
+            style={[
+              styles.shutter,
+              (!isReady || isCapturing) && { opacity: 0.5 },
+            ]}
+          >
+            <View style={styles.shutterInner} />
+          </Pressable>
+          <Pressable
+            onPress={handleToggleCamera}
+            disabled={!isReady}
+            hitSlop={8}
+            style={[
+              styles.flipBtn,
+              !isReady && styles.flipBtnDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="전면·후면 카메라 전환"
+          >
+            <SwitchBtnIcon width={40} height={40} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -138,7 +169,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
-  safeArea: {
+  headerOuter: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -151,7 +182,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(0,0,0,0.35)",
   },
   headerBtn: {
     height: 36,
@@ -190,8 +220,25 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingBottom: 34,
     paddingTop: 16,
-    alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  bottomBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 28,
+  },
+  bottomBarSideSpacer: {
+    width: 72,
+  },
+  flipBtn: {
+    width: 72,
+    height: 72,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flipBtnDisabled: {
+    opacity: 0.5,
   },
   shutter: {
     width: 80,
