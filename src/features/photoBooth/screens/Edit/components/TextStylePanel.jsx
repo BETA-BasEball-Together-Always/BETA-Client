@@ -1,3 +1,11 @@
+/** *
+ * 수정 시 참고사항!!
+ *
+ * 뒷배경(블러/틴트): EditOverlayBackdrop.jsx -> mode "textStyleGlass"
+ * 패널 전체 높이: editConstants.TEXT_STYLE_PANEL_HEIGHT (EditScreen overlayHeight)
+ * 레이아웃/간격: 아래 인라인 margin + ../editStyles 의 textPanel*, font*, colorRow, swatchBase
+ * 폰트 목록/색 팔레트 값: ../editConstants FONT_FAMILY_OPTIONS, TEXT_COLORS
+ */
 import React from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { FONT_FAMILY_OPTIONS, TEXT_COLORS } from "../editConstants";

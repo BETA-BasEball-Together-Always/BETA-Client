@@ -1,5 +1,13 @@
-import React from "react";
-import { StyleSheet, FlatList, View, TouchableOpacity } from "react-native";
+import React, { useRef, useCallback, useMemo, useState } from "react";
+import {
+  StyleSheet,
+  FlatList,
+  View,
+  TouchableOpacity,
+  Platform,
+  Animated,
+  Easing,
+} from "react-native";
 import CommunityLoadingSpinner from "../../../../shared/components/CommunityLoadingSpinner";
 import PostCard from "./PostCard";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -8,11 +16,16 @@ import PlusIcon from "../../assets/svg/plusIcon.svg";
 import SortTabs from "./SortTabs";
 import QuestionCard from "./QuestionCard";
 
+/** 이 이상 스크롤 내려갔을 때(탭이 화면 밖) 멈추면 플로팅 탭 노출 */
+const SCROLL_Y_SHOW_FLOATING_TABS = 44;
+
 const PostList = ({
   posts,
   onEndReached,
   isLoading,
   isFeedBusy = false,
+  onRefresh,
+  refreshing = false,
   showTeam = false,
   createPostBoardId,
   removeClippedSubviews,
@@ -23,32 +36,144 @@ const PostList = ({
 }) => {
   const navigation = useNavigation();
 
-  // const handleEndReached = () => {
-  //   // sort 탭 변경/리렌더 직후 FlatList가 바로 endReached를 트리거하는 경우가 있어
-  //   // 그때 불필요한 fetchNextPage가 연쇄로 발생하며 스피너가 깜빡일 수 있습니다.
-  //   if (typeof onEndReached !== "function") return;
-  //   if (isFeedBusy || isLoading) return;
-  //   if (!posts || posts.length === 0) return;
-  //   onEndReached();
-  // };
+  const scrollYRef = useRef(0);
+  const scrollIdleTimer = useRef(null);
+  const floatAnim = useRef(new Animated.Value(0)).current;
 
+  const [floatingTabsMounted, setFloatingTabsMounted] = useState(false);
+  const [sortNavCompact, setSortNavCompact] = useState(false);
+
+  const hideFloatingTabs = useCallback(() => {
+    clearTimeout(scrollIdleTimer.current);
+    if (!floatingTabsMounted) return;
+    floatAnim.stopAnimation();
+    Animated.timing(floatAnim, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setFloatingTabsMounted(false);
+    });
+  }, [floatingTabsMounted, floatAnim]);
+
+  const showFloatingTabs = useCallback(() => {
+    const y = scrollYRef.current;
+    if (y < SCROLL_Y_SHOW_FLOATING_TABS) {
+      hideFloatingTabs();
+      return;
+    }
+    if (floatingTabsMounted) return;
+    floatAnim.stopAnimation();
+    floatAnim.setValue(0);
+    setFloatingTabsMounted(true);
+    requestAnimationFrame(() => {
+      Animated.timing(floatAnim, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [floatingTabsMounted, hideFloatingTabs, floatAnim]);
+
+  const scheduleShowFloatingOnScrollIdle = useCallback(() => {
+    clearTimeout(scrollIdleTimer.current);
+    scrollIdleTimer.current = setTimeout(() => {
+      setSortNavCompact(false);
+      showFloatingTabs();
+    }, 110);
+  }, [showFloatingTabs]);
+
+  const handleScrollBegin = useCallback(() => {
+    clearTimeout(scrollIdleTimer.current);
+    setSortNavCompact(true);
+    hideFloatingTabs();
+  }, [hideFloatingTabs]);
+
+  const onScroll = useCallback(
+    (e) => {
+      const y = e.nativeEvent.contentOffset.y;
+      scrollYRef.current = y;
+      if (y < SCROLL_Y_SHOW_FLOATING_TABS) {
+        setSortNavCompact(false);
+        if (floatingTabsMounted) {
+          hideFloatingTabs();
+        }
+      }
+    },
+    [floatingTabsMounted, hideFloatingTabs],
+  );
+
+  const postCount = (posts ?? []).length;
   const showPopularEmpty =
-    sort === "popular" && posts.length === 0 && !isFeedBusy && !isLoading;
+    sort === "popular" && postCount === 0 && !isFeedBusy && !isLoading;
+
+  const clipSubviews =
+    removeClippedSubviews === undefined ? false : removeClippedSubviews;
+
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.header}>
+        <SortTabs
+          sort={sort}
+          onChange={onSortChange}
+          compact={sortNavCompact}
+        />
+        <QuestionCard
+          user={user}
+          onPress={() =>
+            navigation.navigate("Community", {
+              screen: "CreatePost",
+              params:
+                createPostBoardId != null
+                  ? { initialBoardId: createPostBoardId }
+                  : undefined,
+            })
+          }
+        />
+      </View>
+    ),
+    [sort, onSortChange, user, sortNavCompact, createPostBoardId, navigation],
+  );
 
   return (
     <View style={styles.container}>
+      {floatingTabsMounted ? (
+        <Animated.View
+          style={[
+            styles.floatingSortWrap,
+            {
+              opacity: floatAnim,
+              transform: [
+                {
+                  translateY: floatAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [10, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.floatingSortInner} pointerEvents="auto">
+            <SortTabs
+              sort={sort}
+              onChange={onSortChange}
+              compact={sortNavCompact}
+            />
+          </View>
+        </Animated.View>
+      ) : null}
+
       <FlatList
-        data={posts}
-        removeClippedSubviews={removeClippedSubviews}
+        data={posts ?? []}
+        removeClippedSubviews={clipSubviews}
         keyExtractor={(item, index) =>
           item?.postId != null ? `${item.postId}-${index}` : `post-${index}`
         }
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <SortTabs sort={sort} onChange={onSortChange} />
-            <QuestionCard user={user} />
-          </View>
-        }
+        ListHeaderComponent={listHeader}
         renderItem={({ item }) => (
           <View style={styles.postListCard}>
             <PostCard
@@ -58,8 +183,16 @@ const PostList = ({
             />
           </View>
         )}
+        refreshing={Boolean(refreshing)}
+        onRefresh={typeof onRefresh === "function" ? onRefresh : undefined}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={handleScrollBegin}
+        onMomentumScrollBegin={handleScrollBegin}
+        onMomentumScrollEnd={scheduleShowFloatingOnScrollIdle}
+        onScrollEndDrag={scheduleShowFloatingOnScrollIdle}
         contentContainerStyle={[styles.listContent]}
         ListEmptyComponent={
           showPopularEmpty ? (
@@ -100,6 +233,31 @@ export default PostList;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    marginBottom: 0,
+  },
+  /** 리스트 헤더에 있는 탭과 동일 UI — 스크롤 멈춤 후에만 위에서 슬라이드 인 */
+  floatingSortWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 20,
+    backgroundColor: "#020408",
+    paddingBottom: 6,
+    ...Platform.select({
+      android: { elevation: 6 },
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3,
+      },
+    }),
+  },
+  floatingSortInner: {
+    paddingHorizontal: 17,
   },
   listContent: {
     paddingHorizontal: 17,

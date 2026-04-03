@@ -5,8 +5,13 @@ import {
   Modal,
   Pressable,
   Platform,
+  // Alert,
 } from "react-native";
-import { AppText } from "../../../shared/theme/components/AppText";
+// 다음 버전 링크 클립보드 복사
+// import * as Clipboard from "expo-clipboard";
+// import api from "../../../shared/libs/api";
+// 다음 버전 링크 복사 모달에서 사용
+// import { AppText } from "../../../shared/theme/components/AppText";
 import {
   COMMUNITY_REACTIONS,
   normalizeCommunityEmotionType,
@@ -47,6 +52,15 @@ const PostReactions = ({
   onToggleEmotion,
   onCommentPress,
   isEmotionPending = false,
+  compact = false,
+  /** 인기 피드 등: 좋아요(LIKE)만 토글 */
+  likeOnlyInteraction = false,
+  /** 인기 피드 등: 롱프레스 감정 피커 비활성화 */
+  disableLongPressPicker = false,
+  /** 마이스타디움 댓글 탭 전용 댓글 버튼 스타일 */
+  profileCommentHighlight = false,
+  /** true면 댓글 버튼이 로컬 commentMode 토글을 하지 않음 */
+  suppressCommentModeToggle = false,
 }) => {
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [pickerAnchor, setPickerAnchor] = useState(null);
@@ -72,13 +86,13 @@ const PostReactions = ({
     [reactionCounts],
   );
   const currentEmotionUiId = useMemo(() => {
-    const fromPost = pickEmotionTypeFromPostCoalesced(post);
-    if (fromPost && COMMUNITY_REACTIONS.some((r) => r.id === fromPost)) {
-      return fromPost;
-    }
     const fromProp = normalizeCommunityEmotionType(selectedEmotionType);
     if (fromProp && COMMUNITY_REACTIONS.some((r) => r.id === fromProp)) {
       return fromProp;
+    }
+    const fromPost = pickEmotionTypeFromPostCoalesced(post);
+    if (fromPost && COMMUNITY_REACTIONS.some((r) => r.id === fromPost)) {
+      return fromPost;
     }
     if (selectedEmotionType === null) return null;
     return null;
@@ -89,23 +103,26 @@ const PostReactions = ({
     [currentEmotionUiId],
   );
 
-  const [commentMode, setCommentMode] = useState(false);
-  const [linkPressed, setLinkPressed] = useState(false);
-  const [copyModalVisible, setCopyModalVisible] = useState(false);
+  // 다음 버전 링크 클립보드 복사
+  // const [linkPressed, setLinkPressed] = useState(false);
+  // const [copyModalVisible, setCopyModalVisible] = useState(false);
 
-  const heartSelected = Boolean(currentEmotionUiId);
+  const heartSelected = likeOnlyInteraction
+    ? currentEmotionUiId === "LIKE"
+    : Boolean(currentEmotionUiId);
 
   const handleLikePress = () => {
     if (isEmotionPending) return;
     // long-press 직후 RN이 onPress를 함께 호출하는 케이스를 방어
     if (longPressJustTriggeredRef.current) return;
 
-    const uiEmotionToToggle =
-      currentEmotionUiId ??
-      (selectedEmotionType === null
-        ? COMMUNITY_REACTIONS[0]?.id
-        : pickEmotionTypeFromPostCoalesced(post) ??
-          COMMUNITY_REACTIONS[0]?.id);
+    const uiEmotionToToggle = likeOnlyInteraction
+      ? COMMUNITY_REACTIONS[0]?.id
+      : (currentEmotionUiId ??
+        (selectedEmotionType === null
+          ? COMMUNITY_REACTIONS[0]?.id
+          : (pickEmotionTypeFromPostCoalesced(post) ??
+            COMMUNITY_REACTIONS[0]?.id)));
     setShowReactionPicker(false);
     setPickerAnchor(null);
     longPressJustTriggeredRef.current = false;
@@ -115,7 +132,7 @@ const PostReactions = ({
   };
 
   const handleLongLikePress = () => {
-    if (isEmotionPending) return;
+    if (disableLongPressPicker || isEmotionPending) return;
     longPressJustTriggeredRef.current = true;
     setPickerAnchor(null);
     requestAnimationFrame(() => {
@@ -149,19 +166,37 @@ const PostReactions = ({
   };
 
   const handleCommentPress = () => {
-    setCommentMode((prev) => !prev);
     onCommentPress?.();
   };
 
-  const handleCopyLink = async () => {
-    setLinkPressed(true);
-    setCopyModalVisible(true);
-
-    setTimeout(() => {
-      setLinkPressed(false);
-      setCopyModalVisible(false);
-    }, 1500);
-  };
+  // 다음 버전: 게시글 링크 클립보드 복사 (PostActionBar LinkIcon + 모달)
+  // const handleCopyLink = async () => {
+  //   const postId = resolveCommunityPostId(post);
+  //   if (postId == null) {
+  //     Alert.alert("알림", "복사할 게시글 정보를 찾지 못했어요.");
+  //     return;
+  //   }
+  //
+  //   const baseRaw = api.defaults.baseURL ?? "https://beta-app.kr";
+  //   const base = String(baseRaw).replace(/\/+$/, "");
+  //   const shareUrl = `${base}/community/posts/${postId}`;
+  //
+  //   try {
+  //     await Clipboard.setStringAsync(shareUrl);
+  //     setLinkPressed(true);
+  //     setCopyModalVisible(true);
+  //     setTimeout(() => {
+  //       setLinkPressed(false);
+  //       setCopyModalVisible(false);
+  //     }, 1500);
+  //   } catch (e) {
+  //     console.warn("[PostReactions] copy link", e);
+  //     Alert.alert(
+  //       "오류",
+  //       "클립보드에 복사하지 못했어요. 다시 시도해 주세요.",
+  //     );
+  //   }
+  // };
 
   const commentCount = post.commentCount ?? post.comments?.length ?? 0;
 
@@ -178,8 +213,12 @@ const PostReactions = ({
             reactionCounts={reactionCounts}
             totalReactions={totalReactions}
             commentCount={commentCount}
-            style={styles.summaryTightTop}
+            style={[
+              styles.summaryTightTop,
+              compact && styles.summaryTightTopCompact,
+            ]}
             hideReactionStrip={totalReactions === 0}
+            compact={compact}
           />
         </View>
 
@@ -190,13 +229,17 @@ const PostReactions = ({
         >
           <PostActionBar
             selected={heartSelected}
-            commentMode={commentMode}
-            linkPressed={linkPressed}
+            commentMode={false}
+            // linkPressed={linkPressed}
             onLikePress={handleLikePress}
-            onLongLikePress={handleLongLikePress}
+            onLongLikePress={
+              disableLongPressPicker ? undefined : handleLongLikePress
+            }
             onCommentPress={handleCommentPress}
-            onCopyPress={handleCopyLink}
+            // onCopyPress={handleCopyLink}
             likeDisabled={isEmotionPending}
+            compact={compact}
+            profileCommentHighlight={profileCommentHighlight}
           />
         </View>
       </View>
@@ -225,9 +268,7 @@ const PostReactions = ({
               {
                 left: Math.max(
                   8,
-                  pickerAnchor.x +
-                    pickerAnchor.width / 2 -
-                    260 / 1.5,
+                  pickerAnchor.x + pickerAnchor.width / 2 - 260 / 1.5,
                 ),
                 top: pickerAnchor.y - PICKER_BAR_APPROX_H - 8,
               },
@@ -243,6 +284,7 @@ const PostReactions = ({
         ) : null}
       </Modal>
 
+      {/* 다음 버전: 링크 복사 완료 토스트 모달
       <Modal transparent visible={copyModalVisible} animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalBox}>
@@ -252,6 +294,7 @@ const PostReactions = ({
           </View>
         </View>
       </Modal>
+      */}
     </>
   );
 };
@@ -269,6 +312,10 @@ const styles = StyleSheet.create({
   summaryTightTop: {
     marginTop: 19,
     marginHorizontal: 4,
+  },
+  summaryTightTopCompact: {
+    marginTop: 6,
+    marginHorizontal: 2,
   },
   pickerModalBackdrop: {
     backgroundColor: "rgba(0,0,0,0.25)",

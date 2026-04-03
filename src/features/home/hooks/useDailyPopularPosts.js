@@ -29,8 +29,5 @@ export const useDailyPopularPosts = (posts) => {
     return () => clearTimeout(t);
   }, [dayRoll]);
 
-  return useMemo(
-    () => pickDailyPopularPosts(posts, 5),
-    [posts, dayRoll],
-  );
+  return useMemo(() => pickDailyPopularPosts(posts, 5), [posts, dayRoll]);
 };

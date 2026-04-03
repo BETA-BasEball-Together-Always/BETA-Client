@@ -13,7 +13,7 @@ export const stickerPaletteCellSize =
 /**
  * 수정 시 참고 사항!!
  * 오버레이 배경 모드 (EditOverlayBackdrop / EditScreen overlayWrap 스타일과 쌍으로 봄)
- * - glass: 사진·프레임 탭
+ * - glass: 사진/프레임 탭
  * - sticker: 스티커 탭
  * - none: 텍스트 탭에서 텍스트 추가만 — 뒤 블러/딤 없음
  * - textStyleGlass: 폰트/색 패널 — 프레임과 동일 글라스(라이트 블러) + 틴트 rgba(18,18,18,0.20)
@@ -55,18 +55,19 @@ export const TEXT_COLORS = [
   "#FFC8D8",
 ];
 
-/** 탭별 하단 패널 높이 */
 export const getOverlayHeight = (tool) =>
   tool === "photo" || tool === "frame"
-    ? 154
-    : tool === "text"
-      ? 142
-      : tool === "sticker"
-        ? 280
-        : 154;
+    ? 185
+      : tool === "text"
+        ? 142
+        : tool === "sticker"
+          ? 280
+          : 154;
 
-/** 텍스트 탭 / 텍스트 스타일 패널 공통 */
-export const TEXT_STYLE_PANEL_HEIGHT = 142;
+/**
+ * 폰트/색 패널일 때 하단 오버레이 세로 높이
+ */
+export const TEXT_STYLE_PANEL_HEIGHT = 158;
 
 /**
  * EDIT_TOP_BAR_HEIGHT_ESTIMATE: 실제 EditTopBar 높이와 다르면 피그마와 세로 정렬이 틀어짐!!!

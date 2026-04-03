@@ -1,6 +1,6 @@
 // src/features/auth/screens/libs/naverSignIn.js
 import NaverLogin from "@react-native-seoul/naver-login";
-import { isNaverLoginConfigured } from "./naverInit";
+import { initializeNaver, isNaverLoginConfigured } from "./naverInit";
 
 const NAVER_LOGIN_TIMEOUT_MS = 15000;
 
@@ -22,11 +22,15 @@ const withTimeout = (promise, timeoutMs) =>
   });
 
 export const naverSignIn = async () => {
-  if (!isNaverLoginConfigured()) {
-    return { cancelled: true, missingConfig: true };
-  }
-
   try {
+    // 앱 시작 시 초기화가 스킵되었더라도 로그인 시점에 재시도
+    initializeNaver();
+
+    // initializeNaver() 이후에도 설정이 없으면 missingConfig로 분기
+    if (!isNaverLoginConfigured()) {
+      return { cancelled: true, missingConfig: true };
+    }
+
     console.log("[NAVER] login() 호출 시작");
     const result = await withTimeout(
       NaverLogin.login(),

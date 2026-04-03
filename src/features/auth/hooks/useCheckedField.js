@@ -1,21 +1,25 @@
 // src/features/auth/hooks/useCheckedField.js
-import {useMemo, useState} from "react";
+import { useMemo, useState } from "react";
 
 export const useCheckedField = ({
   initialValue = "",
+  initialTouched = false,
+  initialError = "",
+  initialIsAvailable = false,
   validate,
   checkAvailability,
 }) => {
   const [value, setValue] = useState(initialValue);
-  const [error, setError] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [isAvailable, setIsAvailable] = useState(false);
+  const [error, setError] = useState(initialError);
+  const [touched, setTouched] = useState(initialTouched);
+  const [isAvailable, setIsAvailable] = useState(initialIsAvailable);
   const [isChecking, setIsChecking] = useState(false);
 
   const handleChange = (text) => {
     const next = text.trimStart();
     setValue(next);
     setIsAvailable(false);
+    setError("");
 
     if (touched) {
       setError(validate(next));
@@ -76,6 +80,9 @@ export const useCheckedField = ({
     isChecking,
     status,
     setValue,
+    setError,
+    setTouched,
+    setIsAvailable,
     handleChange,
     handleBlur,
     handleCheck,

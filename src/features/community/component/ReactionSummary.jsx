@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text, Platform } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
 
 /**
@@ -12,6 +12,7 @@ const ReactionSummary = ({
   commentCount,
   style,
   hideReactionStrip = false,
+  compact = false,
 }) => {
   const showStrip = !hideReactionStrip && totalReactions > 0;
 
@@ -26,15 +27,21 @@ const ReactionSummary = ({
                   key={reaction.id}
                   style={[
                     styles.summaryCircle,
+                    compact && styles.summaryCircleCompact,
                     {
                       backgroundColor: reaction.bgColor,
                       zIndex: reactions.length - index,
                     },
                   ]}
                 >
-                  <AppText variant="semi13" style={{ lineHeight: 20 }}>
+                  <Text
+                    style={[
+                      styles.emojiInCircle,
+                      compact && styles.emojiInCircleCompact,
+                    ]}
+                  >
                     {reaction.emoji}
-                  </AppText>
+                  </Text>
                 </View>
               ) : null,
             )}
@@ -42,7 +49,11 @@ const ReactionSummary = ({
           <AppText
             variant="numMediumRegular"
             className="text-gray-400"
-            style={styles.totalText}
+            style={[
+              styles.totalText,
+              compact && styles.totalTextCompact,
+              styles.summaryMetricText,
+            ]}
           >
             {totalReactions}
           </AppText>
@@ -53,8 +64,12 @@ const ReactionSummary = ({
 
       <AppText
         variant="numMediumRegular"
-        className="text-gray-400"
-        style={!showStrip ? styles.commentOnly : undefined}
+        style={[
+          styles.commentCountText,
+          compact && styles.commentCountTextCompact,
+          styles.summaryMetricText,
+          !showStrip ? styles.commentOnly : undefined,
+        ]}
       >
         댓글 {commentCount}
       </AppText>
@@ -93,8 +108,48 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: -3,
+    overflow: "hidden",
+  },
+  summaryCircleCompact: {
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    marginRight: -2,
   },
   totalText: {
     marginLeft: 12,
+  },
+  totalTextCompact: {
+    marginLeft: 8,
+  },
+  summaryMetricText: {
+    lineHeight: 15,
+  },
+  emojiInCircle: {
+    width: 22,
+    height: 22,
+    fontSize: 13,
+    lineHeight: 22,
+    textAlign: "center",
+    ...Platform.select({
+      ios: { paddingTop: 0 },
+      android: {
+        includeFontPadding: false,
+        textAlignVertical: "center",
+      },
+    }),
+  },
+  emojiInCircleCompact: {
+    width: 17,
+    height: 17,
+    fontSize: 10,
+    lineHeight: 17,
+  },
+  commentCountText: {
+    color: "#D4D4D4",
+    fontSize: 11,
+  },
+  commentCountTextCompact: {
+    fontSize: 10,
   },
 });

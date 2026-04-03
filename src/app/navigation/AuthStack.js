@@ -12,6 +12,7 @@ import TermsPrivacyRequiredDetailScreen from "../../features/auth/screens/TermsD
 import SignupCompleteScreen from "../../features/auth/screens/SignupComplete/SignupCompleteScreen";
 import { consumePendingAuthResume } from "../../shared/auth/pendingAuthResume";
 import { buildRootResetForAuthNestedResume } from "../../shared/auth/signupResumeStack";
+import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSignupDraftStore";
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +26,7 @@ const AuthStack = () => {
 
   useEffect(() => {
     consumePendingAuthResume();
+    hydrateSignupDraftFromStorage();
   }, []);
 
   useLayoutEffect(() => {

@@ -18,6 +18,7 @@ import {
 } from "@features/photoBooth/utils/copyFrameToUniqueUploadFile";
 import DownloadSVG from "./assets/download.svg";
 import ShareIcon from "./assets/share.svg";
+import CloseIcon from "./assets/close.svg";
 import RNShare from "react-native-share";
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import PhotoBoothBack from "../assets/svg/photoBoothBack.svg";
@@ -34,7 +35,12 @@ function getRootNavigation(navigation) {
   return nav;
 }
 
-function measureImageSizeWithTimeout(uri, fallbackW, fallbackH, timeoutMs = 4000) {
+function measureImageSizeWithTimeout(
+  uri,
+  fallbackW,
+  fallbackH,
+  timeoutMs = 4000,
+) {
   return new Promise((resolve) => {
     const done = (w, h) => resolve({ width: w, height: h });
     const t = setTimeout(() => done(fallbackW, fallbackH), timeoutMs);
@@ -52,7 +58,6 @@ function measureImageSizeWithTimeout(uri, fallbackW, fallbackH, timeoutMs = 4000
   });
 }
 
-/** Figma Share 미리보기 가로 상한 (프레임별) */
 const PREVIEW_MAX_WIDTH_1x4 = 140.313;
 const PREVIEW_MAX_WIDTH_2x2 = 285.6;
 
@@ -70,8 +75,7 @@ export default function ShareScreen({ navigation }) {
   }, [selectedFrameId]);
 
   /**
-   * 화면 가로에 맞춘 미리보기 너비 — aspectRatio와 함께 높이 결정.
-   * 1x4(세로 4컷): 285.6px / 2x2: 140.313px (Figma 기준 상한, 좁은 화면에서는 축소)
+   * 화면 가로에 맞춘 미리보기 너비 — aspectRatio와 함께 높이 결정
    */
   const previewWidth = useMemo(() => {
     const horizontalPad = 48;
@@ -81,8 +85,7 @@ export default function ShareScreen({ navigation }) {
   }, [SCREEN_W, selectedFrameId]);
 
   /**
-   * Edit에서 저장한 file:// 는 이미 캡처마다 고유 경로이므로 복사 없이 그대로 사용.
-   * (Expo 54에서 copyAsync/Base64 복사가 실패하는 환경 대비)
+   * Edit에서 저장한 file:// 는 이미 캡처마다 고유 경로이므로 복사 없이 그대로 사용
    */
   const ensureFileUri = useCallback(async () => {
     if (!exportedFrameUri) return null;
@@ -106,7 +109,13 @@ export default function ShareScreen({ navigation }) {
     return exportedFrameUri;
   }, [exportedFrameUri]);
 
-  const onPressBack = () => navigation.goBack();
+  const onPressBack = () => {
+    navigation.goBack();
+  };
+
+  const onPressClose = () => {
+    navigation.popToTop();
+  };
 
   const onDownload = useCallback(async () => {
     try {
@@ -185,9 +194,9 @@ export default function ShareScreen({ navigation }) {
 
       /**
        * exportedFrameUri / ViewShot tmpfile와 분리된 고유 파일로 복사
-       * 동일 경로를 포토부스·게시글 파이프라인이 공유하면 이후 캡처/정규화 시 덮어쓰기로
-       * 이전 게시글 썸네일이 최신 이미지로 바뀌는 현상이 날 수 있음.
-       * 복사 실패 시 동일 file:// 를 넘기지 않음 (폴백 금지).
+       * 동일 경로를 포토부스/게시글 파이프라인이 공유하면 이후 캡처/정규화 시 덮어쓰기로
+       * 이전 게시글 썸네일이 최신 이미지로 바뀌는 현상이 날 수 있음
+       * 복사 실패 시 동일 file:// 를 넘기지 않음 (폴백 금지)
        */
       const uniqueCopyUri = await copyFrameToUniqueUploadFile(fileUri, nonce);
       if (!uniqueCopyUri) {
@@ -305,15 +314,26 @@ export default function ShareScreen({ navigation }) {
             </AppText>
           ) : null}
         </View>
-        <TouchableOpacity
-          onPress={onPressShare}
-          style={styles.headerSide}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="공유"
-        >
-          <ShareIcon width={30} height={30} />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            onPress={onPressShare}
+            style={styles.headerSide}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="공유"
+          >
+            <ShareIcon width={30} height={30} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onPressClose}
+            style={styles.headerSide}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="닫기"
+          >
+            <CloseIcon width={26} height={26} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.body}>
@@ -375,6 +395,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     minHeight: 48,
     zIndex: 2,
+    position: "relative",
   },
   headerSide: {
     width: 44,
@@ -383,9 +404,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerCenter: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerSaveComplete: {
     color: "#F9F9F9",
@@ -476,5 +505,6 @@ const styles = StyleSheet.create({
   },
   postBtnText: {
     color: "#1E1E1E",
+    lineHeight: 24.5,
   },
 });

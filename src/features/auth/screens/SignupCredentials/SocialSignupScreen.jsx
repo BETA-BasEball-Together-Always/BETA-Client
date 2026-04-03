@@ -1,5 +1,5 @@
 // src/features/auth/screens/SignupCredentials/SocialSignupScreen.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -16,21 +16,29 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
-
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const { height } = Dimensions.get("window");
 
 const SocialSignupScreen = ({ navigation, route }) => {
   const signup = route?.params?.signup ?? {};
-  const readonlyEmail = signup.email ?? "";
+  const draftEmail = useSignupDraftStore((s) => s.email);
+  const readonlyEmail = signup.email ?? draftEmail ?? "";
+
+  const draftNickname = useSignupDraftStore((s) => s.nickname);
+  const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
+  const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
+  const setDraftNickname = useSignupDraftStore((s) => s.setNickname);
+  const setDraftNicknameChecked = useSignupDraftStore(
+    (s) => s.setNicknameChecked,
+  );
 
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const signupProfileMutation = useSignupProfileMutation();
@@ -56,12 +64,26 @@ const SocialSignupScreen = ({ navigation, route }) => {
   };
 
   const nicknameField = useCheckedField({
+    initialValue: draftNickname ?? "",
+    initialTouched: !!(draftNickname ?? ""),
+    initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
       const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
-      return !isDuplicate;
+      const available = !isDuplicate;
+      setDraftNicknameChecked(available);
+      return available;
     },
   });
+
+  useEffect(() => {
+    if (readonlyEmail) setDraftEmail(readonlyEmail);
+  }, [readonlyEmail, setDraftEmail]);
+
+  useEffect(() => {
+    // 입력 변경 시 draft에 저장 (중복확인은 setNickname에서 자동으로 false로 리셋)
+    setDraftNickname(nicknameField.value);
+  }, [nicknameField.value, setDraftNickname]);
 
   const isFormValid = useMemo(() => {
     return (
@@ -89,6 +111,8 @@ const SocialSignupScreen = ({ navigation, route }) => {
       {
         onSuccess: (data) => {
           const teamList = data?.teamList ?? [];
+          setDraftNickname(nickname);
+          setDraftNicknameChecked(true);
           navigation.navigate("SignupFavoriteTeam", {
             signup: {
               ...signup,
@@ -116,22 +140,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.inner}>
-                {/* 헤더 (뒤로가기 + 스텝 인디케이터) */}
-                <View style={styles.headerRow}>
-                  <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={handleBack}
-                    activeOpacity={0.8}
-                  >
-                    <BackIcon />
-                  </TouchableOpacity>
-
-                  <View style={styles.stepWrapper}>
-                    <SignupStepIndicator currentStep={1} />
-                  </View>
-
-                  <View style={styles.rightPlaceholder} />
-                </View>
+                <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
                 {/* 이메일 (읽기 전용) */}
                 <View style={styles.section}>
@@ -163,6 +172,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
                     <SignupCheckedInput
                       label={null}
                       placeholder="닉네임을 입력해주세요."
+                      placeholderTextColor="#E4E4E4"
                       maxLength={13}
                       field={nicknameField}
                       buttonLabel="중복확인"
@@ -215,29 +225,13 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     alignSelf: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    marginBottom: 20,
-  },
-  backButton: {
-    width: 32,
-    alignItems: "center",
-  },
-  stepWrapper: {
-    alignItems: "center",
-    width: 180,
-  },
-  rightPlaceholder: {
-    width: 32,
-  },
+  // header styles moved to SignupProgressHeader
   section: {
     marginBottom: 16,
   },
   sectionTitle: {
     color: "#FFFFFF",
+    lineHeight: 32.7,
     marginBottom: 8,
   },
   sectionDescription: {

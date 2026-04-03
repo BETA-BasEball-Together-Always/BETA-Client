@@ -21,7 +21,12 @@ export function totalEmotionCountFromPost(post) {
  * - sort=latest(기본): 최신순, cursor
  * - sort=popular: 인기순, offset
  */
-export const fetchPostsApi = async ({ channel, sort = "latest", cursor, offset }) => {
+export const fetchPostsApi = async ({
+  channel,
+  sort = "latest",
+  cursor,
+  offset,
+}) => {
   const isPopular = sort === "popular";
   const params = {
     sort: isPopular ? "popular" : "latest",

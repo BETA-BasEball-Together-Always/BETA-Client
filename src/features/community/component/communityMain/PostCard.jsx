@@ -22,16 +22,23 @@ import CommunityUserProfile from "../CommunityUserProfile";
 import { useUserStore } from "../../../../shared/store/userStore";
 import { useDeletePostMutation } from "../../services/post/deletePostMutation";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getHashtagLabelsNotInContent,
   getPostListUnavailableBody,
 } from "../../utils/communityPostVisibility";
 import { stripPhotoOnlyPlaceholderForDisplay } from "../../utils/photoOnlyPostPlaceholder";
 import { useSoftDeletedPostStore } from "../../store/softDeletedPostStore";
 import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 
-const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
+const PostCard = ({
+  post,
+  showTeam = false,
+  stabilizeBodyMeasure = false,
+  profileCommentHighlight = false,
+}) => {
   const navigation = useNavigation();
   const { user: currentUser } = useUserStore();
   const deletePostMutation = useDeletePostMutation();
@@ -73,7 +80,9 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
                 onPress: () => {
                   deletePostMutation.mutate(resolvedPostId, {
                     onError: (e) => {
+                      if (isOfflineError(e)) return;
                       const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+                      if (msg == null) return;
                       setTimeout(() => {
                         Alert.alert("오류", msg);
                       }, 0);
@@ -105,6 +114,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
 
   const activeImages = useMemo(() => getActivePostImages(post), [post]);
   const primaryImageRow = activeImages[0];
+  const extraImageCount = Math.max((activeImages?.length ?? 0) - 1, 0);
   const primaryImageUri =
     primaryImageRow?.imageUrl || primaryImageRow?.url || null;
   const primaryImageStableKey =
@@ -119,6 +129,11 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
           )
         : null,
     [primaryImageUri, resolvedPostId, primaryImageStableKey],
+  );
+
+  const extraHashtagLabels = useMemo(
+    () => getHashtagLabelsNotInContent(displayContent, post),
+    [displayContent, post],
   );
 
   const renderContentWithHighlightedHashtags = useMemo(() => {
@@ -136,35 +151,58 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
       const token = match[0];
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`}>
+          <AppText
+            key={`t-${segIdx++}-${lastIndex}`}
+            variant="caption"
+            style={styles.contentInline}
+          >
             {displayContent.slice(lastIndex, start)}
-          </Text>,
+          </AppText>,
         );
       }
       nodes.push(
-        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+        <AppText
+          key={`h-${segIdx++}-${start}`}
+          variant="caption"
+          style={styles.hashText}
+        >
           {token}
-        </Text>,
+        </AppText>,
       );
       lastIndex = start + token.length;
     }
 
     if (lastIndex < displayContent.length) {
       nodes.push(
-        <Text key={`t-${segIdx++}-${lastIndex}`}>
+        <AppText
+          key={`t-${segIdx++}-${lastIndex}`}
+          variant="caption"
+          style={styles.contentInline}
+        >
           {displayContent.slice(lastIndex)}
-        </Text>,
+        </AppText>,
       );
     }
 
     return nodes;
   }, [displayContent]);
 
-  /** numberOfLines={3}만 쓰면 onTextLayout에서 실제 줄 수를 알 수 없어 1회 측정 */
+  const logicalLineCount = useMemo(() => {
+    if (typeof displayContent !== "string" || displayContent.length === 0) {
+      return 0;
+    }
+    return displayContent.split("\n").length;
+  }, [displayContent]);
+
   const [bodyLineCount, setBodyLineCount] = useState(null);
   const bodySectionWidthRef = useRef(null);
   const bodyNeedsMore =
-    bodyLineCount != null && bodyLineCount > 3 && !showAsUnavailable;
+    !showAsUnavailable &&
+    (logicalLineCount > 3 || (bodyLineCount != null && bodyLineCount > 3));
+
+  const shouldClampToThreeLines =
+    !showAsUnavailable &&
+    (logicalLineCount > 3 || (bodyLineCount != null && bodyLineCount > 3));
 
   useEffect(() => {
     bodySectionWidthRef.current = null;
@@ -186,7 +224,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     [reactionCounts],
   );
 
-  const handlePressCard = () => {
+  const openPostDetail = (focusCommentInput = false) => {
     if (showAsUnavailable) {
       setTimeout(() => {
         Alert.alert("알림", listUnavailableBody ?? DELETED_POST_MESSAGE);
@@ -195,9 +233,17 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
     }
     navigation.navigate("Community", {
       screen: "PostDetail",
-      params: { post, initialSelectedEmotionType: selectedEmotionType },
+      params: {
+        post,
+        initialSelectedEmotionType: selectedEmotionType,
+        ...(focusCommentInput ? { focusCommentInput: true } : {}),
+      },
     });
   };
+
+  const handlePressCard = () => openPostDetail(false);
+
+  const handleCommentPress = () => openPostDetail(true);
 
   const handlePressProfile = () => {
     if (!authorUserId) return;
@@ -259,6 +305,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
           showTeam={showTeam}
           onPress={handlePressProfile}
           postMenu={postMenu}
+          feedList
         />
       </View>
 
@@ -274,8 +321,10 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
               ? (e) => {
                   const w = Math.round(e.nativeEvent.layout.width);
                   if (w <= 0) return;
-                  if (bodySectionWidthRef.current !== w) {
-                    bodySectionWidthRef.current = w;
+                  const prev = bodySectionWidthRef.current;
+                  bodySectionWidthRef.current = w;
+                  /* 첫 너비 확정 시에는 줄 수를 지우지 않음 — onTextLayout이 먼저 오면 더보기가 영구히 사라짐 */
+                  if (prev != null && prev !== w) {
                     setBodyLineCount(null);
                   }
                 }
@@ -284,9 +333,7 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
         >
           <AppText
             variant="caption"
-            numberOfLines={
-              bodyLineCount != null && bodyLineCount > 3 ? 3 : undefined
-            }
+            numberOfLines={shouldClampToThreeLines ? 3 : undefined}
             ellipsizeMode="tail"
             onTextLayout={(e) => {
               if (bodyLineCount !== null) return;
@@ -301,6 +348,20 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
               : renderContentWithHighlightedHashtags}
           </AppText>
+
+          {!showAsUnavailable && extraHashtagLabels.length > 0 ? (
+            <View style={styles.hashtagExtraRow}>
+              {extraHashtagLabels.map((tag, i) => (
+                <AppText
+                  key={`htag-${tag}`}
+                  variant="caption"
+                  style={styles.hashText}
+                >
+                  {`${i > 0 ? " " : ""}#${tag}`}
+                </AppText>
+              ))}
+            </View>
+          ) : null}
 
           {bodyNeedsMore ? (
             <TouchableOpacity
@@ -324,6 +385,16 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
                 style={styles.image}
                 resizeMode="cover"
               />
+              {extraImageCount > 0 ? (
+                <View style={styles.imageCountBadge} pointerEvents="none">
+                  <AppText
+                    variant="numMediumRegular"
+                    style={styles.imageCountBadgeText}
+                  >
+                    +{extraImageCount}
+                  </AppText>
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -338,7 +409,9 @@ const PostCard = ({ post, showTeam = false, stabilizeBodyMeasure = false }) => {
               toggleEmotionMutation.mutate({ emotionType });
             }}
             onSelectReaction={handleSelectReaction}
-            onCommentPress={handlePressCard}
+            onCommentPress={handleCommentPress}
+            profileCommentHighlight={profileCommentHighlight}
+            suppressCommentModeToggle
           />
         ) : null}
       </TouchableOpacity>
@@ -352,6 +425,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "column",
     position: "relative",
+    padding: 2,
   },
   deletingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -380,10 +454,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 10,
     overflow: "hidden",
+    position: "relative",
   },
   image: {
     width: "100%",
     height: "100%",
+  },
+  imageCountBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 6,
+    paddingVertical: 1.8,
+    borderRadius: 20,
+    minWidth: 27,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageCountBadgeText: {
+    color: "#EAEAEA",
+    lineHeight: 16,
   },
   contentSection: {
     paddingVertical: 2,
@@ -393,15 +484,26 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     lineHeight: 19,
   },
+  contentInline: {
+    fontSize: 15,
+    lineHeight: 19,
+    color: "#F9F9F9",
+  },
   moreLink: {
     color: "rgba(228, 228, 228, 0.5)",
     marginTop: 4,
+    lineHeight: 16.3,
   },
   unavailableText: {
     color: "rgba(228, 228, 228, 0.55)",
   },
   hashRow: {
     marginTop: 6,
+  },
+  hashtagExtraRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 4,
   },
   hashText: {
     color: "#6F9D48",

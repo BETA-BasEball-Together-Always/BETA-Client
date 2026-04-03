@@ -1,27 +1,26 @@
-﻿// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
-import React, { useMemo } from "react";
+// src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
+import React, { useMemo, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   Keyboard,
   Platform,
   ScrollView,
-  TouchableOpacity,
   Dimensions,
 } from "react-native";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useStepBack } from "../../hooks/useStepBack";
-
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const { height } = Dimensions.get("window");
 
@@ -29,6 +28,13 @@ const SignupNicknameScreen = ({ navigation, route }) => {
   const signup = route?.params?.signup ?? {}; // ? { signupType, email, terms ... }
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const handleBack = useStepBack("Login");
+
+  const draftNickname = useSignupDraftStore((s) => s.nickname);
+  const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
+  const setDraftNickname = useSignupDraftStore((s) => s.setNickname);
+  const setDraftNicknameChecked = useSignupDraftStore(
+    (s) => s.setNicknameChecked,
+  );
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -51,14 +57,21 @@ const SignupNicknameScreen = ({ navigation, route }) => {
   };
 
   const nicknameField = useCheckedField({
+    initialValue: draftNickname ?? "",
+    initialTouched: !!(draftNickname ?? ""),
+    initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
-      // const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
-      // const available = !isDuplicate;
-      // return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
-      return true;
+      const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
+      const available = !isDuplicate;
+      setDraftNicknameChecked(available);
+      return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
     },
   });
+
+  useEffect(() => {
+    setDraftNickname(nicknameField.value);
+  }, [nicknameField.value, setDraftNickname]);
 
   const isNextEnabled = useMemo(() => {
     return (
@@ -70,6 +83,8 @@ const SignupNicknameScreen = ({ navigation, route }) => {
     if (!isNextEnabled) return;
 
     const nickname = nicknameField.value.trim();
+    setDraftNickname(nickname);
+    setDraftNicknameChecked(true);
 
     // 다음 단계로 이동 (즐겨찾는 팀 화면으로 이동 예시)
     navigation.navigate("SignupFavoriteTeam", {
@@ -94,23 +109,7 @@ const SignupNicknameScreen = ({ navigation, route }) => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.inner}>
-              {/* 헤더 (뒤로가기 + 스텝 인디케이터) */}
-              <View style={styles.headerRow}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={handleBack}
-                  activeOpacity={0.8}
-                >
-                  <BackIcon />
-                </TouchableOpacity>
-
-                <View style={styles.stepWrapper}>
-                  <SignupStepIndicator currentStep={1} />
-                </View>
-
-                {/* 오른쪽 정렬용 더미 뷰 */}
-                <View style={styles.rightPlaceholder} />
-              </View>
+              <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
               {/* 타이틀 */}
               <Text style={styles.title}>닉네임을 입력해주세요</Text>
@@ -182,40 +181,12 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     alignSelf: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    marginBottom: 20,
-    // borderWidth: 1,
-  },
-  backButton: {
-    width: 32,
-    // height: 32,
-    alignItems: "center",
-    // borderWidth: 1,
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-    fontSize: 30,
-    lineHeight: 15,
-    // borderWidth: 1,
-  },
-  stepWrapper: {
-    // flex: 1,
-    alignItems: "center",
-    width: 150,
-    // borderWidth: 1,
-  },
-  rightPlaceholder: {
-    width: 32,
-    // borderWidth: 1,
-  },
+  // header styles moved to SignupProgressHeader
   title: {
     fontSize: 22,
     fontWeight: "700",
     color: "#FFFFFF",
+    lineHeight: 32.7,
     marginBottom: 24,
   },
   formWrapper: {

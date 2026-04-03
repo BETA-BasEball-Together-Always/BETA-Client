@@ -29,11 +29,14 @@ import {
 } from "../../../../community/constants/communityReactions";
 import { isAllChannelPost } from "../../../../community/utils/communityChannel";
 import { getApiErrorMessage } from "../../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../../shared/utils/networkErrors";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getHashtagLabelsNotInContent,
   getPostListUnavailableBody,
 } from "../../../../community/utils/communityPostVisibility";
+import { stripPhotoOnlyPlaceholderForDisplay } from "../../../../community/utils/photoOnlyPostPlaceholder";
 import { useSoftDeletedPostStore } from "../../../../community/store/softDeletedPostStore";
 import { useNavigation } from "@react-navigation/native";
 
@@ -86,7 +89,9 @@ const PopularPostCard = ({ post }) => {
                 onPress: () => {
                   deletePostMutation.mutate(resolvedPostId, {
                     onError: (e) => {
+                      if (isOfflineError(e)) return;
                       const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+                      if (msg == null) return;
                       setTimeout(() => Alert.alert("오류", msg), 0);
                     },
                   });
@@ -96,8 +101,6 @@ const PopularPostCard = ({ post }) => {
           },
         }
       : undefined;
-
-  const [showMore, setShowMore] = useState(false);
 
   const storeEmotion = useUserEmotionSelection(resolvedPostId);
   const selectedEmotionType = useMemo(
@@ -125,6 +128,16 @@ const PopularPostCard = ({ post }) => {
       },
     }),
     [post, resolvedPostId],
+  );
+
+  const popularDisplayContent = useMemo(
+    () => stripPhotoOnlyPlaceholderForDisplay(post?.content ?? ""),
+    [post?.content],
+  );
+
+  const extraHashtagLabels = useMemo(
+    () => getHashtagLabelsNotInContent(popularDisplayContent, post),
+    [popularDisplayContent, post],
   );
 
   const renderContentWithHighlightedHashtags = (content) => {
@@ -173,6 +186,10 @@ const PopularPostCard = ({ post }) => {
   }, [post]);
 
   const showCardImage = !showAsUnavailable && !!primaryImageUri;
+  const extraImageCount = useMemo(() => {
+    const n = getActivePostImages(post)?.length ?? 0;
+    return Math.max(n - 1, 0);
+  }, [post]);
 
   const teamCode = post?.author?.teamCode;
   const team = TEAM_DATA[teamCode];
@@ -359,7 +376,19 @@ const PopularPostCard = ({ post }) => {
         activeOpacity={0.8}
       >
         {showCardImage ? (
-          <Image source={{ uri: primaryImageUri }} style={styles.image} />
+          <View style={styles.imageFrame}>
+            <Image source={{ uri: primaryImageUri }} style={styles.image} />
+            {extraImageCount > 0 ? (
+              <View style={styles.imageCountBadge} pointerEvents="none">
+                <AppText
+                  variant="numMediumRegular"
+                  style={styles.imageCountBadgeText}
+                >
+                  +{extraImageCount}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
         ) : null}
 
         <View
@@ -370,50 +399,63 @@ const PopularPostCard = ({ post }) => {
         >
           <AppText
             variant="spaced"
-            numberOfLines={3}
+            numberOfLines={2}
             ellipsizeMode="tail"
             style={[
               styles.content,
               showAsUnavailable && styles.unavailableText,
             ]}
-            onTextLayout={(e) => {
-              if (e.nativeEvent.lines.length > 3) setShowMore(true);
-            }}
           >
             {showAsUnavailable
               ? (listUnavailableBody ?? DELETED_POST_MESSAGE)
-              : renderContentWithHighlightedHashtags(post.content)}
+              : renderContentWithHighlightedHashtags(popularDisplayContent)}
           </AppText>
-
-          {!showAsUnavailable && showMore ? (
-            <TouchableOpacity onPress={handlePressPost}>
-              <AppText variant="spaced" style={styles.moreText}>
-                ...더보기
-              </AppText>
-            </TouchableOpacity>
+          {!showAsUnavailable && extraHashtagLabels.length > 0 ? (
+            <AppText
+              variant="spaced"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={styles.extraHashtagLine}
+            >
+              {extraHashtagLabels.map((tag) => `#${tag}`).join(" ")}
+            </AppText>
           ) : null}
         </View>
-
-        {!showAsUnavailable ? (
-          <View style={styles.reactionsSlot}>
-            <PostReactions
-              post={reactionPost}
-              selectedEmotionType={selectedEmotionType}
-              isEmotionPending={toggleEmotionMutation.isPending}
-              onToggleEmotion={(_postId, emotionType) => {
-                if (!emotionType) return;
-                toggleEmotionMutation.mutate({ emotionType });
-              }}
-              onSelectReaction={(_, reaction) => {
-                if (!reaction) return;
-                toggleEmotionMutation.mutate({
-                  emotionType: reaction.id,
-                });
-              }}
-            />
-          </View>
-        ) : null}
       </TouchableOpacity>
+
+      {!showAsUnavailable ? (
+        <View style={styles.reactionsSlot}>
+          <PostReactions
+            post={reactionPost}
+            selectedEmotionType={selectedEmotionType}
+            isEmotionPending={toggleEmotionMutation.isPending}
+            onToggleEmotion={(_postId, emotionType) => {
+              if (!emotionType) return;
+              toggleEmotionMutation.mutate({ emotionType });
+            }}
+            onSelectReaction={(_, reaction) => {
+              if (!reaction) return;
+              toggleEmotionMutation.mutate({
+                emotionType: reaction.id,
+              });
+            }}
+            onCommentPress={() => {
+              navigation.navigate("Community", {
+                screen: "PostDetail",
+                params: {
+                  post,
+                  initialSelectedEmotionType: selectedEmotionType,
+                  focusCommentInput: true,
+                },
+              });
+            }}
+            compact
+            likeOnlyInteraction
+            disableLongPressPicker
+            suppressCommentModeToggle
+          />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -427,8 +469,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(63, 63, 63, 0.30)",
     borderRadius: 20,
     marginRight: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 11,
+    paddingVertical: 16,
+    paddingHorizontal: 13,
     marginBottom: 25,
     position: "relative",
     overflow: "hidden",
@@ -438,7 +480,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
   },
   profileMain: {
     flexDirection: "row",
@@ -489,7 +531,7 @@ const styles = StyleSheet.create({
   },
   compactTeamText: {
     fontSize: 11,
-    lineHeight: 13.5,
+    lineHeight: 16.2,
   },
   teamBadgeShadowIOS: {
     shadowColor: "#000",
@@ -564,11 +606,29 @@ const styles = StyleSheet.create({
     marginTop: 6,
     flexShrink: 0,
   },
-  /** 본문만 좌우 12 — marginBottom 대신 이미지·블록 간격으로 간격 조절 */
+  imageFrame: {
+    position: "relative",
+  },
+  imageCountBadge: {
+    position: "absolute",
+    top: 13,
+    right: 12,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 5,
+    paddingVertical: 1.2,
+    borderRadius: 20,
+    minWidth: 27,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageCountBadgeText: {
+    color: "#EAEAEA",
+    lineHeight: 16,
+  },
+  /** 본문만 좌우 12 — marginBottom 대신 이미지/블록 간격으로 간격 조절 */
   contentBlock: {
     flex: 1,
     minHeight: 0,
-    paddingHorizontal: 10,
     paddingTop: 5,
     justifyContent: "flex-start",
   },
@@ -577,7 +637,7 @@ const styles = StyleSheet.create({
   },
   content: {
     color: "#F9F9F9",
-    lineHeight: 13.6,
+    lineHeight: 15,
   },
   // Inline "#태그" 강조용 (Home 인기 카드)
   inlineHashtagText: {
@@ -585,9 +645,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "NotoSansKR-Medium",
   },
-  moreText: {
-    color: "rgba(228, 228, 228, 0.50)",
-    marginTop: 2,
+  /** 본문에 없는 서버 해시태그 한 줄 (텍스트 색만) */
+  extraHashtagLine: {
+    color: "#6F9D48",
+    fontSize: 12,
+    lineHeight: 15,
+    marginTop: 4,
+    fontFamily: "NotoSansKR-Medium",
   },
   unavailableText: {
     color: "rgba(228, 228, 228, 0.55)",

@@ -5,10 +5,9 @@ import communityKeys from "../communityKeys";
 
 // 게시글 작성!
 const createPostApi = async (formData) => {
-  // Content-Type은 지정하지 말고 axios가 boundary 포함해 자동 설정하도록 둔다.
   const res = await api.post("/api/v1/community/posts", formData, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": false,
     },
     timeout: 20000,
   });
@@ -40,9 +39,11 @@ export const useCreatePostMutation = () => {
       invalidateCommunityPostLists(queryClient);
     },
     onError: (error) => {
-      console.log("게시글 작성 실패: ", error);
-      console.log("게시글 작성 실패 response: ", error.response);
-      console.log("게시글 작성 실패 data: ", error.data);
+      if (__DEV__) {
+        console.log("게시글 작성 실패: ", error?.message);
+        console.log("게시글 작성 실패 response: ", error?.response);
+        console.log("게시글 작성 실패 data: ", error?.response?.data);
+      }
     },
   });
 };

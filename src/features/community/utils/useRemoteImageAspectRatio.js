@@ -48,7 +48,11 @@ export function useRemoteImageAspectRatio(uri, fallback = 1) {
 
     promise.then((res) => {
       if (cancelled) return;
-      if (!res || typeof res.aspectRatio !== "number" || !Number.isFinite(res.aspectRatio)) {
+      if (
+        !res ||
+        typeof res.aspectRatio !== "number" ||
+        !Number.isFinite(res.aspectRatio)
+      ) {
         setAspectRatio(fallback);
         return;
       }
@@ -63,4 +67,3 @@ export function useRemoteImageAspectRatio(uri, fallback = 1) {
 
   return aspectRatio;
 }
-

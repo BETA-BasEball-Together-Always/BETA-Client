@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import useCommunityPosts from "../hooks/useCommunityPosts";
 import PostList from "../component/communityMain/PostList";
 import { useUserStore } from "../../../shared/store/userStore";
@@ -9,6 +11,9 @@ import FetchStateView from "../../../shared/components/FetchStateView";
 import AllCommunityBackgroundLayer from "../component/AllCommunityBackgroundLayer";
 import CommunityTopBar from "../component/communityMain/CommunityTapBar";
 import { useMyLikedPostsInfiniteQuery } from "../../profile/hooks/useMypagePosts";
+import communityKeys from "../services/communityKeys";
+
+const FEED_REFETCH_MS = 10 * 1000;
 
 const AllCommunityScreen = ({ route }) => {
   const paramSort = route?.params?.initialSort;
@@ -16,10 +21,19 @@ const AllCommunityScreen = ({ route }) => {
     paramSort === "popular" || paramSort === "latest" ? paramSort : "latest",
   );
   const user = useUserStore((state) => state.user);
+  const queryClient = useQueryClient();
+  const isFocused = useIsFocused();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (paramSort === "popular" || paramSort === "latest") setSort(paramSort);
   }, [paramSort]);
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: communityKeys.all });
+    }, [queryClient]),
+  );
 
   // heart fill 복원을 위해, 유저가 감정을 남긴(=liked) 게시물 목록을 서버에서 hydrate
   useMyLikedPostsInfiniteQuery({
@@ -38,6 +52,7 @@ const AllCommunityScreen = ({ route }) => {
   } = useCommunityPosts({
     channel: "ALL",
     sort,
+    refetchInterval: isFocused ? FEED_REFETCH_MS : false,
   });
 
   const blockingLoad =
@@ -63,6 +78,15 @@ const AllCommunityScreen = ({ route }) => {
             onEndReached={loadMore}
             isLoading={isFetchingNextPage}
             isFeedBusy={isLoading || isFetching}
+            refreshing={isRefreshing}
+            onRefresh={async () => {
+              try {
+                setIsRefreshing(true);
+                await refetch();
+              } finally {
+                setIsRefreshing(false);
+              }
+            }}
             createPostBoardId="ALL"
             showTeam={true}
             sort={sort}

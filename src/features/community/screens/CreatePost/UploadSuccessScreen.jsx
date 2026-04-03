@@ -22,7 +22,7 @@ const UploadSuccessScreen = ({ route }) => {
     <View style={styles.container}>
       <View style={styles.section}>
         <BaseballCharacterIcon />
-        <AppText variant="heading" style={styles.text}>
+        <AppText variant="heading" style={styles.successTitle}>
           응원글이 등록되었어요 🔥
         </AppText>
       </View>
@@ -31,7 +31,11 @@ const UploadSuccessScreen = ({ route }) => {
         style={styles.buttonContainer}
         onPress={handleCompletePost}
       >
-        <AppText variant="semi18" className="text-[#1E1E1E]">
+        <AppText
+          variant="semi18"
+          className="text-[#1E1E1E]"
+          style={styles.successCta}
+        >
           게시글 보러 가기
         </AppText>
       </TouchableOpacity>
@@ -52,9 +56,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  text: {
+  successTitle: {
     color: "#F9F9F9",
     marginTop: 30,
+    lineHeight: 25,
+  },
+  successCta: {
+    lineHeight: 25,
   },
   buttonContainer: {
     backgroundColor: "#F9F9F9",

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -8,26 +8,28 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as SecureStore from "expo-secure-store";
 
 import SelectTeamBackground from "../../components/SelectTeamBackground";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_DATA, TEAM_LIST } from "../../../../shared/constants/teams";
 
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
-
-const { height } = Dimensions.get("window");
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
-  const [selectedTeam, setSelectedTeam] = useState(null);
+  const draftFavoriteTeamCode = useSignupDraftStore((s) => s.favoriteTeamCode);
+  const setDraftFavoriteTeam = useSignupDraftStore((s) => s.setFavoriteTeam);
+
+  const [selectedTeam, setSelectedTeam] = useState(
+    route?.params?.signup?.favoriteTeamCode ?? draftFavoriteTeamCode ?? null,
+  );
 
   // signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
@@ -92,6 +94,8 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
           );
         }
 
+        setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
+
         navigation.navigate("SignupGenderAge", {
           signup: {
             ...signup,
@@ -118,6 +122,11 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
             selectedTeamLabel ?? "",
           );
 
+          setDraftFavoriteTeam({
+            code: selectedTeam,
+            label: selectedTeamLabel,
+          });
+
           navigation.navigate("SignupGenderAge", {
             signup: {
               ...signup,
@@ -130,38 +139,31 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     );
   };
 
+  useEffect(() => {
+    if (selectedTeam) {
+      const selectedTeamLabel = TEAM_LIST.find(
+        (t) => t.key === selectedTeam,
+      )?.label;
+      setDraftFavoriteTeam({ code: selectedTeam, label: selectedTeamLabel });
+    }
+  }, [selectedTeam, setDraftFavoriteTeam]);
+
   return (
     <View style={styles.root}>
+      <SelectTeamBackground />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            {/* 헤더 */}
-            <View style={styles.header}>
-              <View style={styles.headerRow}>
-                <TouchableOpacity
-                  onPress={handleBack}
-                  style={styles.backButton}
-                >
-                  <BackIcon />
-                </TouchableOpacity>
-                <View style={styles.stepWrapper}>
-                  <SignupStepIndicator currentStep={2} />
-                </View>
-
-                <View style={styles.rightPlaceholder} />
-              </View>
-            </View>
-
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
             >
-              <SelectTeamBackground />
-
               <View style={styles.inner}>
+                <SignupProgressHeader currentStep={2} onBack={handleBack} />
+
                 {/* 타이틀 */}
                 <AppText variant="displayTitle" style={styles.title}>
                   회원님의 팬심을 보여줄 구단을 선택해주세요!
@@ -250,7 +252,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingHorizontal: 20,
     paddingBottom: 100, //선택 완료 버튼 때문에 마지막 구단 선택 카드 가려짐
     position: "relative",
   },
@@ -259,35 +260,12 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  header: {
-    maxWidth: 390,
-    width: "100%",
-    alignSelf: "center",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    paddingHorizontal: 20,
-  },
-  backButton: {
-    width: 32,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepWrapper: {
-    alignItems: "center",
-    width: 150,
-  },
-  rightPlaceholder: {
-    width: 32,
-  },
+  // header styles moved to SignupProgressHeader
 
   title: {
     paddingHorizontal: 30,
     color: "#FFFFFF",
+    lineHeight: 32.7,
     marginBottom: 24,
   },
 
@@ -333,6 +311,7 @@ const styles = StyleSheet.create({
   teamLabel: {
     marginTop: 10,
     color: "rgba(255,255,255,0.75)",
+    lineHeight: 24.5,
     textAlign: "center",
   },
 

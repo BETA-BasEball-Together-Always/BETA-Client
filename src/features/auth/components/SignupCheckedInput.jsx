@@ -78,7 +78,7 @@ const SignupCheckedInput = ({
       )}
       {touched && !error && status === "success" && (
         <AppText variant="semi13" style={styles.successText}>
-          사용 가능한 값이에요.
+          사용 가능한 닉네임입니다.
         </AppText>
       )}
     </View>

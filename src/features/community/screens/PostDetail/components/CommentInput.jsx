@@ -1,6 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  InteractionManager,
+  Platform,
+  Keyboard,
+} from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
+import { useUserStore } from "../../../../../shared/store/userStore";
 
 const BORDER_DISABLED = "rgba(106, 106, 106, 0.34)";
 
@@ -10,11 +19,28 @@ export default function CommentInput({
   cancelReply,
   editTarget,
   cancelEdit,
+  /** 목록/인기 카드에서 댓글 아이콘으로 진입 시 키보드와 함께 포커스 */
+  autoFocusOnMount = false,
+  /** 상세 화면 등에서 외부에서 포커스를 다시 요청할 때 사용하는 키 */
+  focusRequestKey,
+  onHeightChange,
+  /** 인풋 포커스 시 부모가 스크롤 보정할 수 있도록 */
+  onFocusInput,
 }) {
+  const inputRef = useRef(null);
   const [text, setText] = useState("");
 
   //피그마 기준 입력창 포커스 시 ui 변경 위함!! 구분선 + 등록 버튼 표시
   const [isFocused, setIsFocused] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  const favoriteTeamName = useUserStore((s) => s.user?.favoriteTeamName);
+  const defaultPlaceholder = useMemo(() => {
+    const name = favoriteTeamName?.trim();
+    return name
+      ? `${name} 팬으로서 한 마디 남겨보세요 :)`
+      : "팬으로서 한 마디 남겨보세요 :)";
+  }, [favoriteTeamName]);
 
   const isEditing = !!editTarget?.commentId;
   const submitLabel = isEditing ? "수정" : "등록";
@@ -29,17 +55,76 @@ export default function CommentInput({
     setIsFocused(false);
   }, [editTarget?.commentId]);
 
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!autoFocusOnMount || editTarget?.commentId) return;
+
+    let cancelled = false;
+    InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      const delay = Platform.OS === "ios" ? 400 : 450;
+      setTimeout(() => {
+        if (!cancelled) inputRef.current?.focus();
+      }, delay);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoFocusOnMount, editTarget?.commentId]);
+
+  // 상세 화면 내에서 댓글 아이콘/답글 버튼 등을 눌렀을 때 다시 포커스를 요청
+  useEffect(() => {
+    if (!focusRequestKey || editTarget?.commentId) return;
+
+    let cancelled = false;
+    InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      const delay = Platform.OS === "ios" ? 200 : 220;
+      setTimeout(() => {
+        if (!cancelled) inputRef.current?.focus();
+      }, delay);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [focusRequestKey, editTarget?.commentId]);
+
   const isSubmitEnabled = text.trim().length > 0;
+  const shouldShowSubmitButton = isEditing || isFocused || isKeyboardVisible;
 
   const handleSubmit = () => {
     if (!isSubmitEnabled) return;
     onSubmit(text);
     setText("");
-    setIsFocused(false);
+    // 등록 직후에도 키보드가 떠 있으면 버튼이 사라지지 않도록 포커스를 유지
+    setIsFocused(true);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   return (
-    <View style={[styles.wrapper, isFocused && styles.wrapperWithBorder]}>
+    <View
+      style={[styles.wrapper, isFocused && styles.wrapperWithBorder]}
+      onLayout={(e) => {
+        if (typeof onHeightChange !== "function") return;
+        const h = e?.nativeEvent?.layout?.height;
+        if (typeof h === "number" && Number.isFinite(h)) onHeightChange(h);
+      }}
+    >
       {isEditing ? (
         <TouchableOpacity onPress={cancelEdit}>
           <View>
@@ -60,21 +145,23 @@ export default function CommentInput({
 
       <View style={styles.inputContainer}>
         <TextInput
+          ref={inputRef}
           value={text}
           onChangeText={setText}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            setIsFocused(true);
+            if (typeof onFocusInput === "function") onFocusInput();
+          }}
           onBlur={() => setIsFocused(false)}
           placeholder={
-            isEditing
-              ? "수정할 댓글을 입력하세요"
-              : "트윈스 팬으로서 한 마디 남겨보세요 :)"
+            isEditing ? "수정할 댓글을 입력하세요" : defaultPlaceholder
           }
           placeholderTextColor="#666"
           style={[styles.input, isFocused && styles.inputWithButton]}
           multiline
         />
 
-        {(isFocused || isEditing) && (
+        {shouldShowSubmitButton && (
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isSubmitEnabled}
@@ -91,11 +178,12 @@ export default function CommentInput({
             >
               <AppText
                 variant="middle"
-                style={
+                style={[
+                  styles.submitLabel,
                   isSubmitEnabled
                     ? styles.submitTextEnabled
-                    : styles.submitTextDisabled
-                }
+                    : styles.submitTextDisabled,
+                ]}
               >
                 {submitLabel}
               </AppText>
@@ -122,6 +210,7 @@ const styles = StyleSheet.create({
     color: "#888",
     marginBottom: 6,
     fontSize: 12,
+    lineHeight: 19,
   },
   inputContainer: {
     flexDirection: "row",
@@ -139,6 +228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 8,
     fontSize: 14,
+    lineHeight: 19,
     maxHeight: 80,
   },
   inputWithButton: {
@@ -163,6 +253,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER_DISABLED,
     backgroundColor: "#F9F9F9",
+  },
+  submitLabel: {
+    lineHeight: 19,
   },
   submitTextDisabled: {
     color: "#6A6A6A",

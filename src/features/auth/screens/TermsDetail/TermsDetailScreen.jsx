@@ -1,5 +1,5 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,8 +14,13 @@ import { useSignupConsentMutation } from "../../services/signupConsentMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const TermsDetailScreen = ({ navigation }) => {
+  const draftTerms = useSignupDraftStore((s) => s.terms);
+  const setDraftTerms = useSignupDraftStore((s) => s.setTerms);
+  const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
+
   const [terms, setTerms] = useState({
     all: false,
     over14: false,
@@ -23,6 +28,20 @@ const TermsDetailScreen = ({ navigation }) => {
     privacyRequired: false,
     privacyMarketing: false,
   });
+
+  useEffect(() => {
+    if (draftTerms) {
+      setTerms(draftTerms);
+    }
+  }, [draftTerms]);
+
+  const handleChangeTerms = useCallback(
+    (next) => {
+      setTerms(next);
+      setDraftTerms(next);
+    },
+    [setDraftTerms],
+  );
 
   const isRequiredAgreed = useMemo(
     () => terms.over14 && terms.tos && terms.privacyRequired,
@@ -71,7 +90,7 @@ const TermsDetailScreen = ({ navigation }) => {
 
         <TermsAgreementCard
           value={terms}
-          onChange={setTerms}
+          onChange={handleChangeTerms}
           onPressDetail={handlePressDetail}
         />
       </ScrollView>
@@ -107,6 +126,7 @@ const TermsDetailScreen = ({ navigation }) => {
               },
               {
                 onSuccess: (data) => {
+                  setDraftEmail(data?.email ?? "");
                   navigation.navigate("SocialSignup", {
                     signup: { email: data?.email ?? "" },
                   });

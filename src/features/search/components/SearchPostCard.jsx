@@ -61,16 +61,23 @@ const SearchPostCard = ({ post }) => {
     setLocalEmotions(post?.emotions ?? {});
   }, [post?.postId, post?.emotions]);
 
-  const handlePressPost = () => {
+  const openPostDetail = (focusCommentInput = false) => {
     if (!post?.postId) {
       return;
     }
 
     navigation.navigate("Community", {
       screen: "PostDetail",
-      params: { postId: post.postId },
+      params: {
+        postId: post.postId,
+        ...(focusCommentInput ? { focusCommentInput: true } : {}),
+      },
     });
   };
+
+  const handlePressPost = () => openPostDetail(false);
+
+  const handleCommentPress = () => openPostDetail(true);
 
   const handlePressProfile = () => {
     if (!post?.author?.userId) {
@@ -109,6 +116,7 @@ const SearchPostCard = ({ post }) => {
             onPress={handlePressProfile}
             showTeam
             teamCode={post.author?.teamCode}
+            feedList
           />
         </View>
 
@@ -164,7 +172,8 @@ const SearchPostCard = ({ post }) => {
 
         <PostReactions
           isEmotionPending={toggleEmotionMutation.isPending}
-          onCommentPress={handlePressPost}
+          onCommentPress={handleCommentPress}
+          suppressCommentModeToggle
           onSelectReaction={(_postId, reaction) => {
             if (!reaction?.id) {
               return;
@@ -218,19 +227,19 @@ const styles = StyleSheet.create({
   },
   snippetWrapper: {
     color: "#F9F9F9",
-    lineHeight: 20,
+    lineHeight: 19,
   },
   snippetText: {
     color: "#F9F9F9",
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 19,
     fontFamily: "NotoSansKR_Regular",
   },
   highlightText: {
     color: "#FFFFFF",
     backgroundColor: "#6E1833",
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 19,
     fontFamily: "NotoSansKR_SemiBold",
   },
   hashText: {

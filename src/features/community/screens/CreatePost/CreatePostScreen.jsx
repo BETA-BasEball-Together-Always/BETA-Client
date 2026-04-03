@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -37,7 +38,9 @@ import {
   useCreatePostMutation,
 } from "../../services/post/createPostMutation";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import { useUpdatePostMutation } from "../../services/post/updatePostMutation";
+import postDetailKeys from "../../services/postDetail/postDetailKeys";
 import { useQueryClient } from "@tanstack/react-query";
 
 import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoading.svg";
@@ -45,6 +48,7 @@ import CommunityLoadingIcon from "../../assets/svg/CommunityPost/communityLoadin
 import ImagePreviewList from "../../component/createPost/ImagePreviewList";
 import { copyFrameToUniqueUploadFile } from "@features/photoBooth/utils/copyFrameToUniqueUploadFile";
 import { randomUploadKey } from "../../../../shared/utils/randomUploadKey";
+import { getEditContentMergedWithServerHashtags } from "../../utils/communityPostVisibility";
 
 const { width } = Dimensions.get("window");
 
@@ -72,9 +76,7 @@ async function cloneAssetsForUpload(assets, uploadKey = null) {
     try {
       const copied = await copyFrameToUniqueUploadFile(asset.uri, uploadKey);
       if (copied) {
-        const uri = copied.startsWith("file://")
-          ? copied
-          : `file://${copied}`;
+        const uri = copied.startsWith("file://") ? copied : `file://${copied}`;
         out.push({
           ...asset,
           uri,
@@ -173,7 +175,8 @@ const CreatePostScreen = () => {
       initialEditRef.current = null;
       return;
     }
-    setContent(editPost.content ?? "");
+    const mergedContent = getEditContentMergedWithServerHashtags(editPost);
+    setContent(mergedContent);
     const existing = (editPost.images ?? [])
       .map((img) => ({
         imageId: Number(img.imageId ?? img.id),
@@ -184,9 +187,9 @@ const CreatePostScreen = () => {
     setPendingNewImages([]);
     setDeletedImageIds([]);
     initialEditRef.current = {
-      content: editPost.content ?? "",
+      content: mergedContent,
     };
-  }, [editPost?.postId]);
+  }, [editPost?.postId, editPost?.content, editPost?.hashtags]);
 
   useEffect(() => {
     if (!editPost?.postId) return;
@@ -231,8 +234,7 @@ const CreatePostScreen = () => {
   const isImagesMax = totalImageCount >= MAX_IMAGES;
   /** 이미지 유무와 관계없이 본문 1글자 이상일 때만 업로드 활성 */
   const isUploadEnabled = content.trim().length > 0;
-  const hasDraftContent =
-    content.trim().length > 0 || totalImageCount > 0;
+  const hasDraftContent = content.trim().length > 0 || totalImageCount > 0;
 
   const isUploading =
     createPostMutation.isPending || updatePostMutation.isPending;
@@ -278,8 +280,16 @@ const CreatePostScreen = () => {
 
   const team = useMemo(() => {
     const code = author?.favoriteTeamCode;
-    return code ? TEAM_DATA[code] : null;
-  }, [author?.favoriteTeamCode]);
+    if (code && TEAM_DATA[code]) {
+      return TEAM_DATA[code];
+    }
+
+    // 코드가 없거나 매칭 안 될 경우, 서버에서 내려준 favoriteTeamName으로 보조 매핑
+    const name = author?.favoriteTeamName;
+    if (!name) return null;
+    const entry = Object.values(TEAM_DATA).find((t) => t.label === name);
+    return entry || null;
+  }, [author?.favoriteTeamCode, author?.favoriteTeamName]);
   const ProfileIcon = team?.ProfileIcon;
 
   const boards = useMemo(
@@ -463,15 +473,17 @@ const CreatePostScreen = () => {
 
   const extractedHashTags = useMemo(() => {
     // 본문에서 "#해시태그" 형태를 추출
-    // - 공백/줄바꿈으로 구분된 토큰만 인식
+    // - 공백/문장부호 등 어떤 위치에서도 인식 (상세 화면의 렌더링 규칙과 일치)
     // - 각 20자 이하, 중복 제거
     const set = new Set();
-    const regex = new RegExp(`(?:^|\\s)#([^\\s#]{1,${MAX_HASHTAG_LEN}})`, "g");
+    const regex = /#[^\s#]+/g;
     let match;
-    // eslint-disable-next-line no-cond-assign
     while ((match = regex.exec(content)) !== null) {
-      const tag = (match[1] ?? "").trim();
+      const token = match[0] ?? "";
+      if (!token || token === "#" || token.startsWith("##")) continue;
+      const tag = token.slice(1).trim();
       if (!tag) continue;
+      if (tag.length > MAX_HASHTAG_LEN) continue;
       set.add(tag);
     }
     return Array.from(set);
@@ -494,30 +506,57 @@ const CreatePostScreen = () => {
   }, [hasHashTagOverflow]);
 
   const renderHighlightedContent = useMemo(() => {
-    // "#태그" 토큰만 초록색으로 하이라이트 (공백/줄바꿈 기준)
-    // 공백 자체도 그대로 렌더링해야 줄바꿈/간격이 맞습니다.
-    const parts = content.split(/(\s+)/);
-    return parts.map((part, idx) => {
-      const isSpace = /^\s+$/.test(part);
-      const isHash =
-        !isSpace &&
-        part.startsWith("#") &&
-        part.length > 1 &&
-        !part.startsWith("##");
-      return (
+    if (typeof content !== "string" || content.length === 0) return null;
+
+    const regex = /#[^\s#]+/g;
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let segIdx = 0;
+
+    while ((match = regex.exec(content)) != null) {
+      const start = match.index;
+      const token = match[0] ?? "";
+      if (!token || token === "#" || token.startsWith("##")) continue;
+
+      if (start > lastIndex) {
+        nodes.push(
+          <AppText
+            variant="other"
+            key={`t-${segIdx++}-${lastIndex}`}
+            style={[styles.richTextBase, styles.richTextNormal]}
+          >
+            {content.slice(lastIndex, start)}
+          </AppText>,
+        );
+      }
+
+      nodes.push(
         <AppText
-          // eslint-disable-next-line react/no-array-index-key
-          key={`${idx}-${part}`}
           variant="other"
-          style={[
-            styles.richTextBase,
-            isHash ? styles.richTextHash : styles.richTextNormal,
-          ]}
+          key={`h-${segIdx++}-${start}`}
+          style={[styles.richTextBase, styles.richTextHash]}
         >
-          {part}
-        </AppText>
+          {token}
+        </AppText>,
       );
-    });
+
+      lastIndex = start + token.length;
+    }
+
+    if (lastIndex < content.length) {
+      nodes.push(
+        <AppText
+          variant="other"
+          key={`t-${segIdx++}-${lastIndex}`}
+          style={[styles.richTextBase, styles.richTextNormal]}
+        >
+          {content.slice(lastIndex)}
+        </AppText>,
+      );
+    }
+
+    return nodes;
   }, [content]);
 
   const handleAddImages = (newAssets) => {
@@ -555,7 +594,7 @@ const CreatePostScreen = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: remaining,
-        // 품질을 낮춰 전송 용량을 줄입니다 (0~1)
+        // 품질을 낮춰 전송 용량을 줄이기 (0~1)
         quality: 0.7,
         exif: false,
         base64: false,
@@ -684,7 +723,6 @@ const CreatePostScreen = () => {
     };
   }, [route.params?.captureNonce]);
 
-
   useEffect(() => {
     const nonce = route.params?.photoBoothAttachNonce;
     const list = route.params?.initialImagesFromPhotoBooth;
@@ -705,17 +743,14 @@ const CreatePostScreen = () => {
           });
         }
 
-        /** Share에서 이미 복사했어도, 동일 경로/캐시 키를 한 번 더 분리 (잔상·덮어쓰기 방지) */
+        /** Share에서 이미 복사했어도, 동일 경로/캐시 키를 한 번 더 분리 (잔상/덮어쓰기 방지) */
         const listUnique = [];
         for (let i = 0; i < list.length; i++) {
           const item = list[i];
           if (!item?.uri) continue;
           const copied = await copyFrameToUniqueUploadFile(item.uri, nonce);
           if (!copied) {
-            console.warn(
-              "[CreatePost] photoBooth copy failed, skip asset",
-              i,
-            );
+            console.warn("[CreatePost] photoBooth copy failed, skip asset", i);
             continue;
           }
           const uri = copied.startsWith("file://")
@@ -752,7 +787,7 @@ const CreatePostScreen = () => {
           key: `photobooth-${nonce}-${randomUploadKey()}`,
         }));
         let mergedOverflow = false;
-        // 다른 게시글로 같은 화면이 재사용될 수 있으므로, PhotoBooth attach 시점에는 기존 이미지를 초기화한다.
+        // 다른 게시글로 같은 화면이 재사용될 수 있으므로, PhotoBooth attach 시점에는 기존 이미지를 초기화
         setImages(() => {
           mergedOverflow = tagged.length > MAX_IMAGES;
           return tagged.slice(0, MAX_IMAGES);
@@ -842,9 +877,7 @@ const CreatePostScreen = () => {
     if (isEditMode) {
       const formData = new FormData();
       formData.append("content", contentForUpload);
-      acceptedHashTags.forEach((tag) => {
-        formData.append("hashtags", tag);
-      });
+     
       deletedImageIds.forEach((id) => {
         formData.append("deletedImageIds", String(id));
       });
@@ -855,19 +888,49 @@ const CreatePostScreen = () => {
       updatePostMutation.mutate(
         { postId: editPost.postId, formData },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
             pendingCameraDraftForCreatePost = null;
             invalidateCommunityPostLists(queryClient);
+            // 수정 직후 바로 상세 화면으로 돌아가면, 기존 캐시가 잠깐/계속 보일 수 있어
+            // 상세 쿼리를 즉시 refetch 완료한 뒤 돌아가도록 보장한다.
+            const pid = editPost?.postId;
+            if (pid != null) {
+              await queryClient.invalidateQueries({
+                queryKey: postDetailKeys.detail(pid),
+              });
+              await queryClient.refetchQueries({
+                queryKey: postDetailKeys.detail(pid),
+              });
+            }
             navigation.goBack();
           },
           onError: (e) => {
+            if (isOfflineError(e)) return;
             const status = e?.response?.status;
+            const data = e?.response?.data;
             if (status === 413) {
               openLimitModal(
                 "게시글 용량이 너무 큽니다.\n이미지 크기나 개수를 줄여 다시 시도해 주세요.",
               );
+              return;
             }
-            console.log("게시글 수정 실패:", e?.response?.data ?? e);
+            if (
+              status === 400 &&
+              Array.isArray(data?.errors) &&
+              data.errors[0]?.message
+            ) {
+              openLimitModal(data.errors[0].message);
+              return;
+            }
+            const msg = getApiErrorMessage(e, "");
+            if (typeof msg === "string" && msg.trim()) {
+              Alert.alert("알림", msg.trim());
+              return;
+            }
+            Alert.alert(
+              "알림",
+              "게시글 수정에 실패했어요. 잠시 후 다시 시도해 주세요.",
+            );
           },
         },
       );
@@ -940,6 +1003,7 @@ const CreatePostScreen = () => {
         });
       },
       onError: (e) => {
+        if (isOfflineError(e)) return;
         const status = e?.response?.status;
         const data = e?.response?.data;
         if (status === 413) {
@@ -956,11 +1020,19 @@ const CreatePostScreen = () => {
           openLimitModal(data.errors[0].message);
           return;
         }
-        if (status === 400) {
-          openLimitModal(getApiErrorMessage(e, "입력값을 확인해 주세요."));
+        const msg = getApiErrorMessage(e, "");
+        if (typeof msg === "string" && msg.trim()) {
+          Alert.alert("알림", msg.trim());
           return;
         }
-        console.log("게시글 업로드 실패:", e?.response?.data ?? e);
+        if (status === 400) {
+          openLimitModal("입력값을 확인해 주세요.");
+          return;
+        }
+        Alert.alert(
+          "알림",
+          "게시글을 등록하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        );
       },
     });
   };
@@ -1010,7 +1082,11 @@ const CreatePostScreen = () => {
             </TouchableOpacity>
           }
           center={
-            <AppText variant="displayTitle2" className="text-[#E5E5E5]">
+            <AppText
+              variant="displayTitle2"
+              className="text-[#E5E5E5]"
+              style={styles.screenTitle}
+            >
               {isEditMode ? "게시글 수정" : "새 글 작성"}
             </AppText>
           }
@@ -1099,11 +1175,30 @@ const CreatePostScreen = () => {
             </LinearGradient>
             <View style={styles.profileTextWrap}>
               <View style={styles.profileNameRow}>
-                <AppText variant="caption" className="text-[#E5E5E5]">
+                <AppText
+                  variant="caption"
+                  className="text-[#E5E5E5]"
+                  style={styles.profileNickname}
+                >
                   {author?.nickname}
                 </AppText>
-                <View style={styles.teamChip}>
-                  <AppText variant="smallRegular" className="text-[#FF4D6D]">
+                <View
+                  style={[
+                    styles.teamChip,
+                    team?.labelStyle?.backgroundColor != null && {
+                      backgroundColor: team.labelStyle.backgroundColor,
+                    },
+                  ]}
+                >
+                  <AppText
+                    variant="smallRegular"
+                    style={[
+                      styles.teamName,
+                      {
+                        color: team?.labelStyle?.color ?? "#CCCCCC",
+                      },
+                    ]}
+                  >
                     {author?.favoriteTeamName}
                   </AppText>
                 </View>
@@ -1205,17 +1300,33 @@ const CreatePostScreen = () => {
           </View>
 
           <View style={styles.guideBox}>
-            <AppText variant="semi13" className="text-[#E5E5E5]">
+            <AppText
+              variant="semi13"
+              className="text-[#E5E5E5]"
+              style={styles.guideHeading}
+            >
               🔥 응원 문화 가이드
             </AppText>
             <View style={styles.guideList}>
-              <AppText variant="labelSmall" className="text-[#9B9B9B]">
+              <AppText
+                variant="labelSmall"
+                className="text-[#9B9B9B]"
+                style={styles.guideLine}
+              >
                 · 상대팀 비하 및 욕설은 자동으로 신고됩니다.
               </AppText>
-              <AppText variant="labelSmall" className="text-[#9B9B9B]">
+              <AppText
+                variant="labelSmall"
+                className="text-[#9B9B9B]"
+                style={styles.guideLine}
+              >
                 · 부적절한 게시물은 사전 통보 없이 삭제될 수 있습니다.
               </AppText>
-              <AppText variant="labelSmall" className="text-[#9B9B9B]">
+              <AppText
+                variant="labelSmall"
+                className="text-[#9B9B9B]"
+                style={styles.guideLine}
+              >
                 · 게시글은 작성 후 24시간 내 수정 가능합니다.
               </AppText>
             </View>
@@ -1275,8 +1386,14 @@ const CreatePostScreen = () => {
           >
             <Pressable style={styles.limitModalCard} onPress={() => {}}>
               <View style={styles.limitModalContent}>
-                <AppText variant="middle">⚠️</AppText>
-                <AppText variant="middle" className="text-[#E5E5E5]">
+                <AppText variant="middle" style={styles.limitModalText}>
+                  ⚠️
+                </AppText>
+                <AppText
+                  variant="middle"
+                  className="text-[#E5E5E5]"
+                  style={styles.limitModalText}
+                >
                   {limitModalMessage || ""}
                 </AppText>
               </View>
@@ -1301,10 +1418,7 @@ const CreatePostScreen = () => {
         </Modal>
 
         {uploadBodyToastVisible ? (
-          <View
-            pointerEvents="auto"
-            style={styles.uploadHintToastOverlay}
-          >
+          <View pointerEvents="auto" style={styles.uploadHintToastOverlay}>
             <View pointerEvents="none" style={styles.uploadHintToast}>
               <AppText variant="caption" style={styles.uploadHintToastText}>
                 {UPLOAD_REQUIRES_BODY_TOAST}
@@ -1361,6 +1475,10 @@ const styles = StyleSheet.create({
   uploadHintToastText: {
     color: "#E5E5E5",
     textAlign: "center",
+    lineHeight: 18,
+  },
+  screenTitle: {
+    lineHeight: 29,
   },
   uploadButtonEnabled: {
     backgroundColor: "#F9F9F9",
@@ -1387,7 +1505,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#232323",
     paddingHorizontal: 16,
-    marginTop: 12,
+    marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1399,9 +1517,11 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16,
   },
   categorySubText: {
     color: "#E5E5E5",
+    lineHeight: 19,
   },
   divider: {
     borderWidth: 1,
@@ -1429,11 +1549,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+  profileNickname: {
+    lineHeight: 18,
+  },
+  teamName: {
+    lineHeight: 14,
+  },
   teamChip: {
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 5,
-    backgroundColor: "rgba(255,77,109,0.12)",
+    backgroundColor: "rgba(60, 60, 60, 0.5)",
   },
   inputCard: {
     justifyContent: "flex-start",
@@ -1448,12 +1574,12 @@ const styles = StyleSheet.create({
   },
   richTextContainer: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
     color: "#E5E5E5",
   },
   richTextBase: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
   },
   richTextNormal: {
     color: "#E5E5E5",
@@ -1463,14 +1589,14 @@ const styles = StyleSheet.create({
   },
   richTextPlaceholder: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
     color: "#6F6F6F",
   },
   richInput: {
     ...StyleSheet.absoluteFillObject,
     color: "transparent",
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 19,
     padding: 0,
   },
   counterRow: {
@@ -1481,9 +1607,11 @@ const styles = StyleSheet.create({
   },
   counterText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16,
   },
   counterTextMax: {
     color: "#EEEEEE",
+    lineHeight: 16,
   },
   loadingOverlay: {
     flex: 1,
@@ -1520,10 +1648,17 @@ const styles = StyleSheet.create({
   },
   hashtagText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 16.3,
   },
 
   guideBox: {
     marginTop: 18,
+  },
+  guideHeading: {
+    lineHeight: 18,
+  },
+  guideLine: {
+    lineHeight: 16,
   },
   guideList: {
     marginTop: 10,
@@ -1568,5 +1703,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 6,
   },
-
+  limitModalText: {
+    lineHeight: 18,
+  },
 });

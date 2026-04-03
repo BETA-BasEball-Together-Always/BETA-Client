@@ -100,7 +100,9 @@ const ProfileScreen = ({ navigation, route }) => {
     });
 
     const payload = {
-      trigger: justSwitchedToLike ? "tab_switch_to_like" : "data_update_while_like",
+      trigger: justSwitchedToLike
+        ? "tab_switch_to_like"
+        : "data_update_while_like",
       postCount: rows.length,
       query: {
         isLoading: myLikedQuery.isLoading,
@@ -113,8 +115,7 @@ const ProfileScreen = ({ navigation, route }) => {
         myLikedQuery.data?.pages?.[0] != null
           ? Object.keys(myLikedQuery.data.pages[0])
           : [],
-      sampleFirstPostFromApi:
-        myLikedQuery.data?.pages?.[0]?.posts?.[0] ?? null,
+      sampleFirstPostFromApi: myLikedQuery.data?.pages?.[0]?.posts?.[0] ?? null,
     };
 
     if (__DEV__) {
@@ -188,6 +189,7 @@ const ProfileScreen = ({ navigation, route }) => {
             hasNext={!!myCommentedQuery.hasNextPage}
             isError={myCommentedQuery.isError}
             onRetry={() => myCommentedQuery.refetch()}
+            profileCommentHighlight
           />
         );
       default:
@@ -206,7 +208,7 @@ const ProfileScreen = ({ navigation, route }) => {
           <AppText
             variant="displayTitle2"
             className="text-white"
-            style={{ lineHeight: 29 }}
+            style={styles.profileHeaderTitle}
           >
             마이스타디움
           </AppText>
@@ -251,7 +253,7 @@ const ProfileScreen = ({ navigation, route }) => {
                   <AppText
                     variant="heading"
                     className="text-white"
-                    style={{ lineHeight: 24.5 }}
+                    style={styles.profileNickname}
                   >
                     {displayNickname}
                   </AppText>
@@ -312,7 +314,7 @@ const ProfileScreen = ({ navigation, route }) => {
               <AppText
                 variant="semi14"
                 className="text-white"
-                style={{ lineHeight: 19 }}
+                style={styles.tabLabel}
               >
                 {tab.label}
               </AppText>
@@ -333,6 +335,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#121212",
+  },
+  profileHeaderTitle: {
+    lineHeight: 29,
+  },
+  profileNickname: {
+    lineHeight: 24.5,
+  },
+  tabLabel: {
+    lineHeight: 19,
   },
   header: {
     flexDirection: "row",

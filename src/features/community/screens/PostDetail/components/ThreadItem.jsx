@@ -27,6 +27,7 @@ export default function ThreadItem({
   onToggleLike,
   onLongPress,
   onPressProfile,
+  onThreadLayout,
   showReplyActions = false,
   onReplyPress,
   isPressed = false,
@@ -50,7 +51,9 @@ export default function ThreadItem({
     item?.authorNickname ??
     "";
 
-  const displayNickname = isDeleted ? DELETED_USER_NICKNAME : rawDisplayNickname;
+  const displayNickname = isDeleted
+    ? DELETED_USER_NICKNAME
+    : rawDisplayNickname;
   const avatarLetter =
     displayNickname === DELETED_USER_NICKNAME
       ? DELETED_USER_AVATAR_INITIAL
@@ -63,6 +66,12 @@ export default function ThreadItem({
 
   return (
     <View
+      onLayout={(e) => {
+        if (typeof onThreadLayout !== "function") return;
+        const id = item?.commentId ?? item?.id;
+        if (id == null) return;
+        onThreadLayout(id, e?.nativeEvent?.layout?.y ?? 0);
+      }}
       style={[
         styles.container,
         variant === "reply" && styles.replyContainer,
@@ -133,7 +142,13 @@ export default function ThreadItem({
             <View style={styles.contentLeft}>
               <AppText
                 variant="caption"
-                style={[styles.content, isDeleted && styles.deletedContent]}
+                style={[
+                  styles.content,
+                  variant === "reply"
+                    ? styles.contentReply
+                    : styles.contentComment,
+                  isDeleted && styles.deletedContent,
+                ]}
               >
                 {isDeleted ? DELETED_COMMENT_TEXT : item.content}
               </AppText>
@@ -165,7 +180,7 @@ export default function ThreadItem({
               <View style={styles.likeIconWrap}>
                 {heartPressed ? (
                   <HeartOnPressIcon width={HEART_SIZE} height={HEART_SIZE} />
-                ) : item.isLiked ? (
+                ) : item.isLiked || item.liked ? (
                   <HeartFilledIcon width={HEART_SIZE} height={HEART_SIZE} />
                 ) : (
                   <HeartIcon width={HEART_SIZE} height={HEART_SIZE} />
@@ -249,6 +264,7 @@ const styles = StyleSheet.create({
   },
   nickname: {
     color: "#D4D4D4",
+    lineHeight: 22,
   },
   teamLabelWrap: {
     marginLeft: 6,
@@ -256,10 +272,11 @@ const styles = StyleSheet.create({
   authorTag: {
     color: "#666666",
     marginLeft: 4,
+    lineHeight: 13.6,
   },
   timeText: {
     color: "rgba(228, 228, 228, 0.50)",
-    // marginLeft: 8,
+    lineHeight: 15,
   },
   contentRow: {
     flexDirection: "row",
@@ -273,7 +290,12 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#F9F9F9",
     marginRight: 12,
-    lineHeight: 17,
+  },
+  contentComment: {
+    lineHeight: 20,
+  },
+  contentReply: {
+    lineHeight: 20,
   },
   deletedContent: {
     color: "rgba(228, 228, 228, 0.55)",
@@ -288,6 +310,7 @@ const styles = StyleSheet.create({
   likeCount: {
     marginTop: 2,
     color: "#666",
+    lineHeight: 12,
   },
   replyButton: {
     flexDirection: "row",
@@ -301,6 +324,7 @@ const styles = StyleSheet.create({
   },
   replyText: {
     color: "rgba(228, 228, 228, 0.50)",
+    lineHeight: 15,
   },
   replyMoreButton: {
     marginHorizontal: 5,

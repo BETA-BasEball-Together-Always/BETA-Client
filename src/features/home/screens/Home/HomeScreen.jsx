@@ -5,14 +5,20 @@ import {
   TouchableOpacity,
   ScrollView,
   ImageBackground,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import React, { useMemo } from "react";
-import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
+import React, { useCallback, useMemo } from "react";
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+} from "@react-navigation/native";
+import { useNetInfo } from "@react-native-community/netinfo";
+import { useQueryClient } from "@tanstack/react-query";
+// 다음 버전 알림
+// import AlarmIcon from "../../../community/assets/svg/TopBar/alarmIcon.svg";
 import SearchIcon from "../../../community/assets/svg/TopBar/searchIcon.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
-import { useNavigation } from "@react-navigation/native";
 
 import AllCommunityBackgroundLayer from "../../../community/component/AllCommunityBackgroundLayer";
 import Banner from "../../assets/png/banner.png";
@@ -23,19 +29,37 @@ import KboRankCard from "./component/KboRankCard";
 import { useMyLikedPostsInfiniteQuery } from "../../../profile/hooks/useMypagePosts";
 import useHomeQuery from "../../hooks/useHomeQuery";
 import FetchStateView from "../../../../shared/components/FetchStateView";
+import { homeKeys } from "../../services/homeKeys";
+
+const HOME_REFETCH_MS = 45 * 1000;
 
 const HomeScreen = () => {
   const user = useUserStore((state) => state.user);
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
+  const isFocused = useIsFocused();
+  const netInfo = useNetInfo();
+  const isOffline =
+    netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
   const year = useMemo(() => new Date().getFullYear(), []);
+
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: homeKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["community"] });
+    }, [queryClient]),
+  );
 
   const {
     data: homeData,
     isPending: isHomePending,
     isError: isHomeError,
     refetch: refetchHome,
-  } = useHomeQuery({ enabled: !!user });
+  } = useHomeQuery({
+    enabled: !!user && !isOffline,
+    refetchInterval: isFocused && !isOffline ? HOME_REFETCH_MS : false,
+  });
 
   const allTeamRankings = useMemo(() => {
     const list = homeData?.teamRankings;
@@ -55,8 +79,10 @@ const HomeScreen = () => {
   const showPopularEmptyMessage =
     !isHomeError && !isHomePending && popularPosts.length === 0;
 
+  const shouldShowHomeError = isOffline || isHomeError;
+
   const homeBody =
-    isHomePending || isHomeError ? null : (
+    isHomePending || shouldShowHomeError ? null : (
       <>
         <KboRankCard
           year={year}
@@ -126,7 +152,7 @@ const HomeScreen = () => {
           <Text style={styles.appName}>BETA</Text>
 
           <View style={styles.btnContainer}>
-            {/* 검색 페이지 navigation 연결! */}
+            {/* 검색: 기존 알림 아이콘 자리(맨 오른쪽)에 배치 */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={() => navigation.navigate("Search")}
@@ -134,40 +160,37 @@ const HomeScreen = () => {
               <SearchIcon width={24} height={24} />
             </TouchableOpacity>
 
-            {/* 나중에 알림 페이지 만들면 여기에 연결할 것! */}
+            {/* 다음 버전 알림
             <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
               <AlarmIcon width={24} height={24} />
             </TouchableOpacity>
+            */}
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <AppText variant="displayTitle" style={styles.header}>
-            {user?.nickname} 님
-          </AppText>
-          <AppText variant="heading" style={styles.subText}>
-            오늘도 BETA와 함께 응원해봐요 🔥
-          </AppText>
-
-          {isHomePending ? (
-            <View style={styles.homeLoading}>
-              <ActivityIndicator color="#F9F9F9" size="large" />
-            </View>
-          ) : null}
-
-          {isHomeError ? (
+        {isHomePending || shouldShowHomeError ? (
+          <View style={styles.mainFill}>
             <FetchStateView
-              style={styles.homeErrorFetch}
-              isError
+              isLoading={isHomePending && !shouldShowHomeError}
+              isError={shouldShowHomeError}
               onRetry={() => refetchHome()}
             />
-          ) : null}
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <AppText variant="displayTitle" style={styles.header}>
+              {user?.nickname} 님
+            </AppText>
+            <AppText variant="heading" style={styles.subText}>
+              오늘도 BETA와 함께 응원해봐요 🔥
+            </AppText>
 
-          {homeBody}
-        </ScrollView>
+            {homeBody}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -183,14 +206,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
-    justifyContent: "center",
+  },
+  mainFill: {
+    flex: 1,
+    minHeight: 0,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 22,
-    paddingVertical: 10,
+    paddingVertical: 7,
   },
   leftPlaceholder: {
     width: 60,
@@ -217,7 +243,7 @@ const styles = StyleSheet.create({
   },
   header: {
     color: "#F9F9F9",
-    marginTop: 17,
+    marginTop: 10,
     lineHeight: 32.7,
   },
   subText: {

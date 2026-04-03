@@ -9,6 +9,7 @@ const PostList = ({
   onEndReached,
   isLoading = false,
   hasNext = false,
+  profileCommentHighlight = false,
 }) => {
   return (
     <View style={styles.container}>
@@ -19,7 +20,11 @@ const PostList = ({
         }
         renderItem={({ item }) => (
           <View style={styles.postCardWrap}>
-            <PostCard post={item} showTeam={isAllChannelPost(item.channel)} />
+            <PostCard
+              post={item}
+              showTeam={isAllChannelPost(item.channel)}
+              profileCommentHighlight={profileCommentHighlight}
+            />
           </View>
         )}
         contentContainerStyle={styles.listContainer}

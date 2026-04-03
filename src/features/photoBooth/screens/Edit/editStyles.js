@@ -32,6 +32,7 @@ export const editStyles = StyleSheet.create({
   topTitle: {
     color: "#F9F9F9",
     textAlign: "center",
+    lineHeight: 24.5,
   },
   saveBtn: {
     zIndex: 1,
@@ -94,6 +95,10 @@ export const editStyles = StyleSheet.create({
     lineHeight: 15,
   },
 
+  /**
+   * 글라스 패널 외곽(테두리/모서리/그림자)
+   * 세로 크기는 여기가 아니라 editConstants.getOverlayHeight -> EditScreen 의 height 로 결정됨!
+   */
   overlayWrap: {
     position: "absolute",
     left: 0,
@@ -115,11 +120,15 @@ export const editStyles = StyleSheet.create({
   /** 사진/프레임 글래스 */
   overlayGlassTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
   },
+  /**
+   * [텍스트 선택 후 폰트/색 패널] 오버레이 뒤 틴트
+   */
   overlayTextStyleGlassTint: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(18, 18, 18, 0.20)",
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
@@ -153,6 +162,7 @@ export const editStyles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1,
   },
+
   photoListContent: {
     paddingLeft: 11,
     paddingRight: 14,
@@ -171,9 +181,13 @@ export const editStyles = StyleSheet.create({
     gap: 11,
     paddingRight: 0,
   },
+  /**
+   * 사진 촬영/갤러리에서 사진 추가 버튼 카드 박스 크기
+   * 아래 thumb 과 동일하게 맞추기
+   */
   photoActionCardOuter: {
     width: 92,
-    height: 110,
+    height: 130,
     borderRadius: 10,
     overflow: "hidden",
   },
@@ -188,32 +202,42 @@ export const editStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(41, 41, 41, 0.20)",
   },
+  /** 촬영/갤러리 카드 안쪽 아이콘/라벨 정렬/패딩 */
   photoActionContent: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 8,
     paddingVertical: 6,
-    gap: 6,
+    gap: 12,
   },
   photoActionLabel: {
     color: "#FFFFFF",
     textAlign: "center",
     lineHeight: 16.3,
   },
+  /**
+   * 썸네일(슬롯) 한 칸 크기 — components/PhotoToolPanel.jsx renderItem
+   * 썸네일 간 간격: PhotoToolPanel 의 ItemSeparatorComponent width
+   */
   thumb: {
     width: 92,
-    height: 110,
+    height: 130,
     borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#222",
   },
-  thumbImg: { width: "100%", height: "100%", opacity: 1 },
+  thumbImg: {
+    width: "100%",
+    height: "100%",
+    opacity: 1,
+  },
   thumbPlaceholder: {
     flex: 1,
     backgroundColor: "#333",
   },
 
+  /** 2×2 / 1×4 카드 행 — 글라스 안에서 카드와 상/하단 여백 */
   frameOptionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -221,16 +245,19 @@ export const editStyles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 12,
     flex: 1,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
 
   /**
-   * 수정 시: FrameToolPanel의 frameCardIconWrap + frameCardImg와 함께 봐야 함!!
+   * 프레임 선택 버튼(카드) 박스 크기
+   * 수정 시 FrameToolPanel.jsx 와 함께 볼 것
    */
   frameCard: {
-    width: 152,
-    minHeight: 156,
+    width: 120,
+    minHeight: 130,
     borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(80, 80, 80, 0.20)",
     flexDirection: "column",
     alignItems: "stretch",
     justifyContent: "flex-start",
@@ -238,9 +265,10 @@ export const editStyles = StyleSheet.create({
     overflow: "hidden",
   },
   frameCardActive: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(239, 241, 245, 0.90)",
   },
 
+  /** 프레임 PNG가 들어가는 영역(패딩/고정 높이) — 카드 높이의 대부분을 차지 */
   frameCardIconWrap: {
     paddingTop: 10.574,
     paddingRight: 18.66,
@@ -248,7 +276,7 @@ export const editStyles = StyleSheet.create({
     paddingLeft: 17.416,
     alignItems: "center",
     justifyContent: "center",
-    height: 122,
+    height: 130,
     width: "100%",
   },
   frameCardImg: {
@@ -256,11 +284,13 @@ export const editStyles = StyleSheet.create({
     height: "100%",
   },
   frameCardLabel: {
-    fontSize: 13,
+    fontSize: 11,
+    lineHeight: 11,
     marginTop: 4,
     marginBottom: 10,
     textAlign: "center",
     color: "rgba(228, 228, 228, 0.50)",
+    includeFontPadding: false,
   },
   frameCardLabelActive: {
     color: "#000",
@@ -345,28 +375,35 @@ export const editStyles = StyleSheet.create({
     width: 40,
     height: 25,
   },
+  /** 텍스트 추가 버튼 — components/AddTextToolPanel.jsx */
   addTextButton: {
     width: "100%",
     borderRadius: 6,
-    height: 49,
-    backgroundColor: "#F2F2F2",
+    height: 55,
+    // paddingVertical: 30,
+    backgroundColor: "#F9F9F9",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
   },
   addTextPlus: {
-    color: "#111",
+    color: "#1E1E1E",
     fontSize: 20,
     fontWeight: "800",
   },
   addTextLabel: {
     color: "#1E1E1E",
+    lineHeight: 24.5,
   },
+  /**
+   * [폰트/색 패널] 좌우 패딩
+   */
   textPanelWrap: {
     width: "100%",
     paddingHorizontal: 16,
   },
+  /** 제목과 콘텐츠 사이 gap */
   textPanelRow: {
     width: "100%",
     flexDirection: "row",
@@ -380,11 +417,12 @@ export const editStyles = StyleSheet.create({
   fontRow: {
     alignItems: "center",
     gap: 8,
+    paddingBottom: 5,
   },
   fontChip: {
     paddingHorizontal: 14,
     height: 49,
-    borderRadius: 10,
+    borderRadius: 5,
     backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
@@ -398,12 +436,13 @@ export const editStyles = StyleSheet.create({
   fontChipLabelActive: {
     color: "#000",
   },
+  /** 색상 스와치 가로 나열 — 패널 내 위치는 textPanelRow gap·margin 과 연동 */
   colorRow: {
     flexDirection: "row",
     alignItems: "center",
     flexShrink: 1,
   },
-  /** TextStylePanel에서 첫/끝 radius와 겹침은 인라인으로 처리 */
+  /** 스와치 한 칸 크기 — 테두리·선택 링은 TextStylePanel 인라인 style */
   swatchBase: {
     width: 40,
     height: 40,

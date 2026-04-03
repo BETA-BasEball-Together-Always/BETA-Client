@@ -14,7 +14,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { initializeNaver } from "../features/auth/libs/Login/naverInit";
 import { hydrateUserEmotionSelectionsFromStorage } from "../features/community/store/userEmotionSelectionStore";
-import PushDeviceBootstrap from "../shared/components/PushDeviceBootstrap";
+import PushDeviceBootstrap from "../shared/component/PushDeviceBootstrap";
 import PushOpenBootstrap from "../shared/components/PushOpenBootstrap";
 import { flushPendingPushNavigation } from "../shared/services/pushOpenService";
 import { rootNavigationRef } from "./navigation/rootNavigation";
@@ -22,12 +22,11 @@ import { rootNavigationRef } from "./navigation/rootNavigation";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // 데이터 신선도/수명 관련 기본값
-      staleTime: 30 * 1000, // 30초 동안은 fresh
-      gcTime: 10 * 60 * 1000, // 5분 지나면 캐시 가비지 컬렉션
-      retry: 1, // 실패 시 1회 재시도
-      refetchOnReconnect: true, // 네트워크 복구 시 자동 리패치
-      refetchOnWindowFocus: true, // RN에선 focusManager로 동작
+      staleTime: 30 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 1,
+      refetchOnReconnect: true,
+      refetchOnWindowFocus: true,
     },
   },
 });
@@ -46,7 +45,6 @@ const AppProviders = ({ children }) => {
     };
   }, []);
 
-  // 1) 전역 폰트 로드 (NotoSansKR 3종)
   const [fontsLoaded] = useFonts({
     NotoSansKR_Light: require("@shared/assets/fonts/NotoSansKR-Light.ttf"),
     NotoSansKR_Regular: require("@shared/assets/fonts/NotoSansKR-Regular.ttf"),
@@ -54,7 +52,6 @@ const AppProviders = ({ children }) => {
     NotoSansKR_SemiBold: require("@shared/assets/fonts/NotoSansKR-SemiBold.ttf"),
   });
 
-  // ✅ 0) 네이버 SDK 초기화 (앱 시작 시 한 번)
   useEffect(() => {
     try {
       initializeNaver();
@@ -64,7 +61,6 @@ const AppProviders = ({ children }) => {
     }
   }, []);
 
-  // 2) 네트워크 연결 상태를 TanStack Query에 알려줌(동기화용) */
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
       const online = !!state.isConnected && !!state.isInternetReachable;
@@ -73,7 +69,6 @@ const AppProviders = ({ children }) => {
     return () => unsub();
   }, []);
 
-  /* 앱 전후면(포커스) 상태를 TanStack Query에 알려줌(동기화용) */
   useEffect(() => {
     const sub = AppState.addEventListener("change", (status) => {
       focusManager.setFocused(status === "active");

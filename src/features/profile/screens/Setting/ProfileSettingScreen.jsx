@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  InteractionManager,
   Linking,
   Modal,
   Platform,
@@ -28,6 +29,7 @@ import {
   logoutApi,
   withdrawAccountApi,
 } from "../../../auth/services/authSessionService";
+import { notifyOfflineIfNeeded } from "../../../../shared/utils/networkErrors";
 import { getDeviceId } from "../../../auth/libs/Login/deviceUtils";
 import { getRootNavigation } from "../../utils/navigation/getRootNavigation";
 import {
@@ -48,7 +50,7 @@ const NOTION_URLS = {
   termsOfService:
     "https://bouncy-bush-b08.notion.site/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
   privacyPolicy:
-    "https://bouncy-bush-b08.notion.site/29b226b7125d800c92c9e2d4fca7696e?source=copy_link",
+    "https://bouncy-bush-b08.notion.site/2e1226b7125d80398dece59a2b1f0a6b?source=copy_link",
 };
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
@@ -197,24 +199,39 @@ const ProfileSettingScreen = () => {
   const resetAppSession = useCallback(async () => {
     await clearAuth();
     delete api.defaults.headers.Authorization;
-    queryClient.clear();
-    useUserEmotionSelectionStore.setState({ selectionsByPostId: {} });
+
+    // 모달 닫힘/레이아웃 안정화 후 전환 (iOS 네이티브 스택과의 타이밍 충돌 완화)
+    await new Promise((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve());
+    });
 
     const rootNav = getRootNavigation(navigation);
-    rootNav.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: "Auth",
-            state: {
-              routes: [{ name: "Login" }],
-              index: 0,
-            },
-          },
-        ],
-      }),
-    );
+    if (!rootNav?.dispatch) {
+      console.warn("[resetAppSession] root navigation unavailable");
+    } else {
+      try {
+        rootNav.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              {
+                name: "Auth",
+                state: {
+                  routes: [{ name: "Login" }],
+                  index: 0,
+                },
+              },
+            ],
+          }),
+        );
+      } catch (e) {
+        console.warn("[resetAppSession] navigation reset failed", e);
+      }
+    }
+
+    // 메인 탭·스택이 내려간 뒤 캐시 정리 (로그아웃 직후 크래시 완화)
+    queryClient.clear();
+    useUserEmotionSelectionStore.setState({ selectionsByPostId: {} });
   }, [clearAuth, navigation, queryClient]);
 
   // 전체 푸시 토글: 서비스에서 push-detail-settings까지 맞추므로 성공 시 반환 settings로 댓글/공감 UI도 동기화
@@ -257,10 +274,15 @@ const ProfileSettingScreen = () => {
         }
       } catch (e) {
         logAxiosError("pushSettingsToggle", e);
-        Alert.alert(
-          "오류",
-          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        if (notifyOfflineIfNeeded(e)) {
+          await refreshPushSettings({ showLoading: false });
+          return;
+        }
+        const msg = getApiErrorUserMessage(
+          e,
+          "푸시 설정을 변경하지 못했습니다.\n네트워크 상태를 확인해 주세요.",
         );
+        if (msg != null) Alert.alert("오류", msg);
         await refreshPushSettings({ showLoading: false });
       } finally {
         setPushToggleBusy(false);
@@ -315,10 +337,15 @@ const ProfileSettingScreen = () => {
         }
       } catch (e) {
         logAxiosError("pushDetailChange", e);
-        Alert.alert(
-          "오류",
-          getApiErrorUserMessage(e, "푸시 설정을 변경하지 못했습니다."),
+        if (notifyOfflineIfNeeded(e)) {
+          await refreshPushSettings({ showLoading: false });
+          return;
+        }
+        const msg = getApiErrorUserMessage(
+          e,
+          "푸시 설정을 변경하지 못했습니다.",
         );
+        if (msg != null) Alert.alert("오류", msg);
         await refreshPushSettings({ showLoading: false });
       } finally {
         setPushToggleBusy(false);
@@ -334,14 +361,20 @@ const ProfileSettingScreen = () => {
     },
     onSuccess: async () => {
       setLogoutModalVisible(false);
-      await resetAppSession();
+      try {
+        await resetAppSession();
+      } catch (e) {
+        console.warn("[logout] resetAppSession", e);
+      }
     },
     onError: (error) => {
       logAxiosError("logout", error);
+      if (notifyOfflineIfNeeded(error)) return;
       const message = getApiErrorUserMessage(
         error,
-        "로그아웃에 실패했습니다. 다시 시도해 주세요.",
+        "로그아웃에 실패했습니다.\n네트워크 상태 확인 후 다시 시도해 주세요.",
       );
+      if (message == null) return;
       Alert.alert("오류", String(message));
     },
   });
@@ -351,25 +384,28 @@ const ProfileSettingScreen = () => {
     onSuccess: async (data) => {
       setWithdrawModalVisible(false);
       const message = data?.message;
-      if (message) {
-        Alert.alert("안내", message, [
-          {
-            text: "확인",
-            onPress: async () => {
-              await resetAppSession();
-            },
-          },
-        ]);
-      } else {
+      // 탈퇴 요청 성공 즉시 로그아웃 처리
+      try {
         await resetAppSession();
+      } catch (e) {
+        console.warn("[withdraw] resetAppSession", e);
+      }
+
+      // 세션 초기화/내비게이션 리셋 이후 안내 메시지 노출
+      if (message) {
+        setTimeout(() => {
+          Alert.alert("안내", message);
+        }, 0);
       }
     },
     onError: (error) => {
       logAxiosError("withdrawAccount", error);
+      if (notifyOfflineIfNeeded(error)) return;
       const message = getApiErrorUserMessage(
         error,
         "회원 탈퇴 요청에 실패했습니다. 다시 시도해 주세요.",
       );
+      if (message == null) return;
       Alert.alert("오류", String(message));
     },
   });

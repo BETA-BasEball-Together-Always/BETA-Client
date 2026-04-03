@@ -52,7 +52,12 @@ export default function EditScreen() {
   const viewShotRef = useRef(null);
   const insets = useSafeAreaInsets();
   const store = photoBoothStore();
-  const { selectedTeam, selectedFrame, capturedPhotos } = store;
+  const { selectedTeam, selectedFrame, capturedPhotos, setCapturedPhotos } =
+    store;
+  const imagePool = photoBoothStore((s) => s.imagePool);
+  const setImagePool = photoBoothStore((s) => s.setImagePool);
+  const addImagePoolItem = photoBoothStore((s) => s.addImagePoolItem);
+  const removeImagePoolItem = photoBoothStore((s) => s.removeImagePoolItem);
 
   const [activeTool, setActiveTool] = useState("photo");
   const [bottomBarH, setBottomBarH] = useState(86);
@@ -153,6 +158,7 @@ export default function EditScreen() {
   }, [editingTextId, texts]);
 
   const isTextStylePanel = selectedTextId !== null;
+  /** 폰트/색 패널일 때만 TEXT_STYLE_PANEL_HEIGHT — editConstants */
   const overlayHeight = isTextStylePanel
     ? TEXT_STYLE_PANEL_HEIGHT
     : getOverlayHeight(activeTool);
@@ -176,6 +182,23 @@ export default function EditScreen() {
   useEffect(() => {
     setPhotosLocal(capturedPhotos.slice(0, 4));
   }, [capturedPhotos]);
+
+  // imagePool에 slot-0..3 미러(삭제 여부 포함)를 한 번 보장
+  useEffect(() => {
+    const cur = Array.isArray(imagePool) ? imagePool : [];
+    const hasSlot = cur.some((x) => x?.kind === "slot");
+    if (hasSlot) return;
+
+    const slots = Array.from({ length: 4 }).map((_, i) => ({
+      id: `slot-${i}`,
+      kind: "slot",
+      slotIndex: i,
+      uri: photosLocal?.[i] ?? null,
+      deleted: false,
+    }));
+    const added = cur.filter((x) => x?.kind === "added");
+    setImagePool([...slots, ...added]);
+  }, [imagePool, photosLocal, setImagePool]);
 
   const [selectedSlot, setSelectedSlot] = useState(null);
 
@@ -311,6 +334,7 @@ export default function EditScreen() {
     setPhotosLocal((prev) => {
       const next = [...prev];
       next[selectedSlot] = uri;
+      setCapturedPhotos(next);
       return next;
     });
     setSelectedSlot(null);
@@ -322,18 +346,45 @@ export default function EditScreen() {
       setPhotosLocal((prev) => {
         const next = [...prev];
         next[selectedSlot] = uri;
+        setCapturedPhotos(next);
         return next;
       });
     },
-    [selectedSlot],
+    [selectedSlot, setCapturedPhotos],
+  );
+
+  /** 썸네일 리스트 순서 변경! 프레임 슬롯 photosLocal 동일 인덱스에 반영 */
+  const onReorderPhotos = React.useCallback(
+    (fromIndex, toIndex) => {
+      if (fromIndex === toIndex) return;
+      setPhotosLocal((prev) => {
+        const next = [...prev];
+        const [removed] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, removed);
+        setCapturedPhotos(next);
+        return next;
+      });
+      // slot 미러도 동일 순서로 이동(값만)
+      const cur = Array.isArray(imagePool) ? imagePool : [];
+      const slotUris = [0, 1, 2, 3].map(
+        (i) => cur.find((x) => x?.id === `slot-${i}`)?.uri ?? null,
+      );
+      const [removedUri] = slotUris.splice(fromIndex, 1);
+      slotUris.splice(toIndex, 0, removedUri);
+      setImagePool(
+        cur.map((x) => {
+          if (x?.kind !== "slot") return x;
+          const idx = x?.slotIndex;
+          if (typeof idx !== "number") return x;
+          return { ...x, uri: slotUris[idx] };
+        }),
+      );
+    },
+    [setCapturedPhotos, imagePool, setImagePool],
   );
 
   const handleReplaceFromCamera = React.useCallback(async () => {
     saveAndClearEditing();
-    if (selectedSlot === null) {
-      Alert.alert("알림", "프레임에서 먼저 바꿀 칸을 선택해 주세요.");
-      return;
-    }
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("권한 필요", "카메라 권한이 필요합니다.");
@@ -346,17 +397,53 @@ export default function EditScreen() {
       exif: false,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      applyUriToSelectedSlot(result.assets[0].uri);
-      setSelectedSlot(null);
+      const uri = result.assets[0].uri;
+      const exists = (imagePool ?? []).some((x) => x?.uri === uri);
+      if (!exists) {
+        const cur = Array.isArray(imagePool) ? imagePool : [];
+        const visibleSlots = cur.filter(
+          (x) => x?.kind === "slot" && x?.deleted !== true,
+        ).length;
+        const maxAdded = Math.max(0, 6 - visibleSlots);
+        const addedCount = cur.filter((x) => x?.kind === "added").length;
+        if (addedCount >= maxAdded) {
+          Alert.alert("알림", "추가 이미지는 최대 2장까지 가능합니다.");
+          return;
+        }
+        const id = `added-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        addImagePoolItem({ id, uri, kind: "added" });
+      }
+      if (selectedSlot !== null) {
+        // swap: slot-i와 선택된 added(또는 exists) 아이템을 교환해야 리스트가 덮어쓰기 되지 않음
+        const oldUri = photosLocal?.[selectedSlot] ?? null;
+        applyUriToSelectedSlot(uri);
+        const cur = Array.isArray(imagePool) ? imagePool : [];
+        const tapped = cur.find((x) => x?.uri === uri);
+        const tappedId = tapped?.id;
+        if (tappedId) {
+          setImagePool(
+            cur.map((x) => {
+              if (x?.id === `slot-${selectedSlot}`) return { ...x, uri };
+              if (x?.id === tappedId) return { ...x, uri: oldUri };
+              return x;
+            }),
+          );
+        }
+        setSelectedSlot(null);
+      }
     }
-  }, [selectedSlot, applyUriToSelectedSlot, saveAndClearEditing]);
+  }, [
+    selectedSlot,
+    applyUriToSelectedSlot,
+    saveAndClearEditing,
+    imagePool,
+    addImagePoolItem,
+    photosLocal,
+    setImagePool,
+  ]);
 
   const handleReplaceFromGallery = React.useCallback(async () => {
     saveAndClearEditing();
-    if (selectedSlot === null) {
-      Alert.alert("알림", "프레임에서 먼저 바꿀 칸을 선택해 주세요.");
-      return;
-    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("권한 필요", "사진 라이브러리 권한이 필요합니다.");
@@ -369,10 +456,155 @@ export default function EditScreen() {
       allowsMultipleSelection: false,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      applyUriToSelectedSlot(result.assets[0].uri);
-      setSelectedSlot(null);
+      const uri = result.assets[0].uri;
+      const exists = (imagePool ?? []).some((x) => x?.uri === uri);
+      if (!exists) {
+        const cur = Array.isArray(imagePool) ? imagePool : [];
+        const visibleSlots = cur.filter(
+          (x) => x?.kind === "slot" && x?.deleted !== true,
+        ).length;
+        const maxAdded = Math.max(0, 6 - visibleSlots);
+        const addedCount = cur.filter((x) => x?.kind === "added").length;
+        if (addedCount >= maxAdded) {
+          Alert.alert("알림", "추가 이미지는 최대 2장까지 가능합니다.");
+          return;
+        }
+        const id = `added-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        addImagePoolItem({ id, uri, kind: "added" });
+      }
+      if (selectedSlot !== null) {
+        const oldUri = photosLocal?.[selectedSlot] ?? null;
+        applyUriToSelectedSlot(uri);
+        const cur = Array.isArray(imagePool) ? imagePool : [];
+        const tapped = cur.find((x) => x?.uri === uri);
+        const tappedId = tapped?.id;
+        if (tappedId) {
+          setImagePool(
+            cur.map((x) => {
+              if (x?.id === `slot-${selectedSlot}`) return { ...x, uri };
+              if (x?.id === tappedId) return { ...x, uri: oldUri };
+              return x;
+            }),
+          );
+        }
+        setSelectedSlot(null);
+      }
     }
-  }, [selectedSlot, applyUriToSelectedSlot, saveAndClearEditing]);
+  }, [
+    selectedSlot,
+    applyUriToSelectedSlot,
+    saveAndClearEditing,
+    imagePool,
+    addImagePoolItem,
+    photosLocal,
+    setImagePool,
+  ]);
+
+  const handlePressSlotThumb = React.useCallback(
+    (idx, _uri) => {
+      saveAndClearEditing();
+      if (selectedSlot === null) {
+        setSelectedSlot(idx);
+        return;
+      }
+      if (selectedSlot === idx) {
+        setSelectedSlot(null);
+        return;
+      }
+      // 다른 슬롯 탭: 항상 두 칸의 이미지를 교환 (한쪽 URI로 덮어쓰기 금지)
+      const other = idx;
+      setPhotosLocal((prev) => {
+        const next = [...prev];
+        const a = next[selectedSlot];
+        next[selectedSlot] = next[other];
+        next[other] = a;
+        setCapturedPhotos(next);
+        return next;
+      });
+      const cur = Array.isArray(imagePool) ? imagePool : [];
+      const aUri = photosLocal?.[selectedSlot] ?? null;
+      const bUri = photosLocal?.[other] ?? null;
+      setImagePool(
+        cur.map((x) => {
+          if (x?.id === `slot-${selectedSlot}`) return { ...x, uri: bUri };
+          if (x?.id === `slot-${other}`) return { ...x, uri: aUri };
+          return x;
+        }),
+      );
+      setSelectedSlot(null);
+    },
+    [
+      saveAndClearEditing,
+      selectedSlot,
+      photosLocal,
+      setCapturedPhotos,
+      setImagePool,
+      imagePool,
+    ],
+  );
+
+  const handleApplyPoolItemToSlot = React.useCallback(
+    (item) => {
+      const uri = item?.uri;
+      if (selectedSlot === null) {
+        Alert.alert("알림", "프레임에서 먼저 바꿀 칸을 선택해 주세요.");
+        return;
+      }
+      if (!uri) return;
+
+      // slot을 탭한 경우: 프레임 슬롯끼리 swap
+      if (item?.kind === "slot" && typeof item?.slotIndex === "number") {
+        const other = item.slotIndex;
+        if (other === selectedSlot) {
+          setSelectedSlot(null);
+          return;
+        }
+        setPhotosLocal((prev) => {
+          const next = [...prev];
+          const a = next[selectedSlot];
+          next[selectedSlot] = next[other];
+          next[other] = a;
+          setCapturedPhotos(next);
+          return next;
+        });
+        const cur = Array.isArray(imagePool) ? imagePool : [];
+        const aUri = photosLocal?.[selectedSlot] ?? null;
+        const bUri = photosLocal?.[other] ?? null;
+        setImagePool(
+          cur.map((x) => {
+            if (x?.id === `slot-${selectedSlot}`) return { ...x, uri: bUri };
+            if (x?.id === `slot-${other}`) return { ...x, uri: aUri };
+            return x;
+          }),
+        );
+        setSelectedSlot(null);
+        return;
+      }
+
+      // added를 탭한 경우: slot-i와 tapped item의 uri를 swap
+      const oldUri = photosLocal?.[selectedSlot] ?? null;
+      applyUriToSelectedSlot(uri);
+      if (item?.id) {
+        const cur = Array.isArray(imagePool) ? imagePool : [];
+        setImagePool(
+          cur.map((x) => {
+            if (x?.id === `slot-${selectedSlot}`) return { ...x, uri };
+            if (x?.id === item.id) return { ...x, uri: oldUri };
+            return x;
+          }),
+        );
+      }
+      setSelectedSlot(null);
+    },
+    [
+      applyUriToSelectedSlot,
+      selectedSlot,
+      imagePool,
+      photosLocal,
+      setCapturedPhotos,
+      setImagePool,
+    ],
+  );
 
   const handleStickerPalettePick = React.useCallback(
     (SvgComp, paletteIdx) => {
@@ -433,9 +665,14 @@ export default function EditScreen() {
       return (
         <PhotoToolPanel
           photosLocal={photosLocal}
-          onPressThumb={onPressThumb}
+          selectedSlot={selectedSlot}
+          imagePool={imagePool}
+          onPressSlotThumb={handlePressSlotThumb}
+          onPressPoolItem={handleApplyPoolItemToSlot}
+          onDeletePoolItem={removeImagePoolItem}
           onReplaceFromCamera={handleReplaceFromCamera}
           onReplaceFromGallery={handleReplaceFromGallery}
+          onReorderPhotos={onReorderPhotos}
         />
       );
     }

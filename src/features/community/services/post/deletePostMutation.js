@@ -71,7 +71,8 @@ export const useDeletePostMutation = () => {
     },
 
     onSuccess: (_data, postId) => {
-      if (postId != null) useSoftDeletedPostStore.getState().markDeleted(postId);
+      if (postId != null)
+        useSoftDeletedPostStore.getState().markDeleted(postId);
     },
 
     onSettled: (_data, error, postId) => {

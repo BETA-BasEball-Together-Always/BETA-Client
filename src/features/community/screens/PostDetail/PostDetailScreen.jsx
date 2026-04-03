@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -12,10 +12,12 @@ import {
   Modal,
   ActivityIndicator,
   Text,
+  RefreshControl,
+  Keyboard,
 } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import AppHeader from "../../../../shared/components/AppHeader";
 
 import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
@@ -53,22 +55,28 @@ import { isAllChannelPost } from "../../utils/communityChannel";
 import {
   DELETED_POST_MESSAGE,
   getActivePostImages,
+  getHashtagLabelsNotInContent,
   isPostDeletedOrHiddenInFeed,
 } from "../../utils/communityPostVisibility";
 import { getApiErrorMessage } from "../../../../shared/utils/apiErrorMessage";
+import { isOfflineError } from "../../../../shared/utils/networkErrors";
 import { withImageDisplayCacheKey } from "../../utils/imageDisplayUri";
 import FetchStateView from "../../../../shared/components/FetchStateView";
 import { useRemoteImageAspectRatio } from "../../utils/useRemoteImageAspectRatio";
 
-const { width } = Dimensions.get("window");
+const { width, height: SCREEN_H } = Dimensions.get("window");
 const DETAIL_IMAGE_HEIGHT = 450;
+const POST_DETAIL_REFETCH_MS = 3000;
+const SCROLL_CONTENT_BOTTOM_GAP = 16;
 
 function PostDetailImageItem({ uri, maxWidth, imageStyle }) {
   const aspectRatio = useRemoteImageAspectRatio(uri, 1);
   if (!uri) return null;
 
   const safeAspectRatio =
-    typeof aspectRatio === "number" && Number.isFinite(aspectRatio) && aspectRatio > 0
+    typeof aspectRatio === "number" &&
+    Number.isFinite(aspectRatio) &&
+    aspectRatio > 0
       ? aspectRatio
       : 1;
   const naturalWidth = DETAIL_IMAGE_HEIGHT * safeAspectRatio;
@@ -91,17 +99,23 @@ const PostDetailScreen = ({ route, navigation }) => {
     postId: paramPostId,
     from,
     initialSelectedEmotionType,
+    /** 게시글 리스트/인기 피드 등에서 댓글 아이콘으로 진입 시 댓글 입력 포커스 */
+    focusCommentInput,
   } = route.params ?? {};
   const postId = paramPostId ?? initialPostParam?.postId;
 
   const currentUser = useUserStore((s) => s.user);
+  const isFocused = useIsFocused();
 
   const {
     data: detail,
     isFetched: isPostDetailFetched,
     isError: isPostDetailError,
     refetch: refetchPostDetail,
-  } = usePostDetailQuery(postId);
+  } = usePostDetailQuery(postId, {
+    refetchInterval: isFocused ? POST_DETAIL_REFETCH_MS : false,
+    refetchIntervalInBackground: false,
+  });
   const post = detail ?? initialPostParam ?? {};
 
   const hiddenCommentKeys = useCommentRemovalStore((s) => s.hiddenKeys);
@@ -146,16 +160,24 @@ const PostDetailScreen = ({ route, navigation }) => {
 
       if (start > lastIndex) {
         nodes.push(
-          <Text key={`t-${segIdx++}-${lastIndex}`}>
+          <AppText
+            variant="caption"
+            key={`t-${segIdx++}-${lastIndex}`}
+            style={styles.contentInline}
+          >
             {displayContent.slice(lastIndex, start)}
-          </Text>,
+          </AppText>,
         );
       }
 
       nodes.push(
-        <Text key={`h-${segIdx++}-${start}`} style={styles.hashText}>
+        <AppText
+          variant="caption"
+          key={`h-${segIdx++}-${start}`}
+          style={styles.hashText}
+        >
           {token}
-        </Text>,
+        </AppText>,
       );
 
       lastIndex = start + token.length;
@@ -163,16 +185,33 @@ const PostDetailScreen = ({ route, navigation }) => {
 
     if (lastIndex < displayContent.length) {
       nodes.push(
-        <Text key={`t-${segIdx++}-${lastIndex}`}>
+        <AppText
+          variant="caption"
+          key={`t-${segIdx++}-${lastIndex}`}
+          style={styles.contentInline}
+        >
           {displayContent.slice(lastIndex)}
-        </Text>,
+        </AppText>,
       );
     }
 
     return nodes;
   }, [displayContent]);
 
+  // 본문에 #로 없는 서버 전용 해시태그만 (인라인 초록색과 중복되지 않게)
+  const extraHashtagLabels = useMemo(() => {
+    const source = detail ?? initialPostParam ?? post ?? {};
+    return getHashtagLabelsNotInContent(displayContent, source);
+  }, [detail, initialPostParam, post, displayContent]);
+
   const scrollRef = useRef(null);
+  const scrollViewHeightRef = useRef(0);
+  const scrollContentHeightRef = useRef(0);
+  const scrollEndDebounceRef = useRef(null);
+  const pendingAutoScrollOffRef = useRef(null);
+  const waitForInitialCommentFocusRef = useRef(false);
+  const threadYByIdRef = useRef(new Map());
+  const commentInputFocusReasonRef = useRef(null); // 'bottom' | 'thread' | null
 
   const [replyTarget, setReplyTarget] = useState(null);
   const [threadActionModal, setThreadActionModal] = useState({
@@ -192,6 +231,100 @@ const PostDetailScreen = ({ route, navigation }) => {
     targetType: null,
     targetId: null,
   });
+
+  const [commentInputFocusKey, setCommentInputFocusKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [commentInputHeight, setCommentInputHeight] = useState(0);
+  const [pendingAutoScrollToBottom, setPendingAutoScrollToBottom] =
+    useState(false);
+  const [commentSectionY, setCommentSectionY] = useState(0);
+  const [commentListY, setCommentListY] = useState(0);
+
+  const scrollToCommentBottomClamped = useCallback(() => {
+    if (!scrollRef.current) return;
+    const viewportH = scrollViewHeightRef.current;
+    const contentH = scrollContentHeightRef.current;
+    const pad = SCROLL_CONTENT_BOTTOM_GAP;
+    if (
+      viewportH <= 0 ||
+      contentH <= 0 ||
+      contentH <= viewportH + 1
+    ) {
+      scrollRef.current.scrollToEnd({ animated: true });
+      return;
+    }
+    const maxY = contentH - viewportH;
+    const y = Math.max(0, maxY - pad);
+    scrollRef.current.scrollTo({ y, animated: true });
+  }, []);
+
+  const scheduleScrollToCommentBottom = useCallback(() => {
+    if (scrollEndDebounceRef.current != null) {
+      clearTimeout(scrollEndDebounceRef.current);
+    }
+    scrollEndDebounceRef.current = setTimeout(() => {
+      scrollEndDebounceRef.current = null;
+      scrollToCommentBottomClamped();
+    }, 150);
+
+    if (pendingAutoScrollOffRef.current != null) {
+      clearTimeout(pendingAutoScrollOffRef.current);
+    }
+    pendingAutoScrollOffRef.current = setTimeout(() => {
+      pendingAutoScrollOffRef.current = null;
+      setPendingAutoScrollToBottom(false);
+    }, 420);
+  }, [scrollToCommentBottomClamped]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollEndDebounceRef.current != null) {
+        clearTimeout(scrollEndDebounceRef.current);
+      }
+      if (pendingAutoScrollOffRef.current != null) {
+        clearTimeout(pendingAutoScrollOffRef.current);
+      }
+    };
+  }, []);
+
+  const requestCommentInputFocus = (reason) => {
+    commentInputFocusReasonRef.current = reason ?? null;
+    setCommentInputFocusKey((prev) => prev + 1);
+  };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      const h = e?.endCoordinates?.height;
+      setKeyboardHeight(typeof h === "number" ? h : 0);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub?.remove?.();
+      hideSub?.remove?.();
+    };
+  }, []);
+
+  const registerThreadLayout = (threadId, y) => {
+    if (threadId == null) return;
+    threadYByIdRef.current.set(String(threadId), y);
+  };
+
+  const scrollToThread = (threadId) => {
+    if (!scrollRef.current || threadId == null) return;
+    const y = threadYByIdRef.current.get(String(threadId));
+    if (typeof y !== "number") return;
+
+    const absoluteY = Math.max(0, commentSectionY + commentListY + y);
+    const visibleH = Math.max(
+      1,
+      SCREEN_H - keyboardHeight - Math.max(commentInputHeight, 56),
+    );
+    const desiredTop = Math.max(0, absoluteY - visibleH * 0.25);
+    scrollRef.current.scrollTo({ y: desiredTop, animated: true });
+  };
 
   const myEmotionTypeFromStore = useUserEmotionSelection(postId);
 
@@ -225,7 +358,7 @@ const PostDetailScreen = ({ route, navigation }) => {
 
   const toggleCommentLikeMutation = useToggleCommentLikeMutation(postId);
   const toggleEmotionMutation = useTogglePostEmotionMutation(postId);
-  const blockUserMutation = useBlockUserMutation();
+  // const blockUserMutation = useBlockUserMutation(); 사용자 차단은 다음 버전으로
 
   const imageList = useMemo(() => {
     const source = detail ?? initialPostParam;
@@ -273,6 +406,18 @@ const PostDetailScreen = ({ route, navigation }) => {
     ],
   );
 
+  // 목록/인기 피드에서 댓글 아이콘으로 진입 시: 입력 포커스 + (포커스/레이아웃에서 한 번만) 최하단 스크롤
+  useEffect(() => {
+    if (!focusCommentInput) return;
+    // 여기서 schedule을 호출하면 포커스/키보드보다 먼저 scrollToEnd가 한 번 돌아가 이중 스크롤이 남음
+    setPendingAutoScrollToBottom(true);
+    // 첫 렌더에서 onContentSizeChange가 먼저 스크롤을 걸어버리면,
+    // 이후 autoFocus(onFocusInput)에서 또 스크롤이 걸려 2단으로 끊겨 보인다.
+    // 따라서 "첫 포커스가 잡힌 뒤"에만 contentSize 기반 자동 스크롤을 허용한다.
+    waitForInitialCommentFocusRef.current = true;
+    requestCommentInputFocus("bottom");
+  }, [focusCommentInput]);
+
   // 피드(PostCard)에서 넘긴 선택 감정 / 화면 전환 시 동기화
   const openThreadActionModal = ({ targetType, targetId }) => {
     setPressedThread({ targetType, targetId });
@@ -307,7 +452,9 @@ const PostDetailScreen = ({ route, navigation }) => {
               navigation.goBack();
             },
             onError: (e) => {
+              if (isOfflineError(e)) return;
               const msg = getApiErrorMessage(e, "삭제에 실패했습니다.");
+              if (msg == null) return;
               setTimeout(() => Alert.alert("오류", msg), 0);
             },
           });
@@ -359,10 +506,13 @@ const PostDetailScreen = ({ route, navigation }) => {
                 if (editTarget?.commentId === targetId) setEditTarget(null);
               },
               onError: (err) => {
-                Alert.alert(
-                  "오류",
-                  getApiErrorMessage(err, "댓글 삭제에 실패했습니다."),
+                if (isOfflineError(err)) return;
+                const msg = getApiErrorMessage(
+                  err,
+                  "댓글 삭제에 실패했습니다.",
                 );
+                if (msg == null) return;
+                Alert.alert("오류", msg);
               },
             },
           );
@@ -521,7 +671,44 @@ const PostDetailScreen = ({ route, navigation }) => {
           }
         />
 
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
+        <ScrollView
+          ref={scrollRef}
+          onLayout={(e) => {
+            const h = e?.nativeEvent?.layout?.height;
+            if (typeof h === "number" && Number.isFinite(h) && h > 0) {
+              scrollViewHeightRef.current = h;
+            }
+          }}
+          contentContainerStyle={[
+            styles.container,
+            { paddingBottom: SCROLL_CONTENT_BOTTOM_GAP },
+          ]}
+          scrollIndicatorInsets={{
+            bottom: SCROLL_CONTENT_BOTTOM_GAP,
+          }}
+          onContentSizeChange={(_w, h) => {
+            if (typeof h === "number" && Number.isFinite(h) && h > 0) {
+              scrollContentHeightRef.current = h;
+            }
+            if (!pendingAutoScrollToBottom) return;
+            if (waitForInitialCommentFocusRef.current) return;
+            scheduleScrollToCommentBottom();
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={async () => {
+                try {
+                  setIsRefreshing(true);
+                  await refetchPostDetail();
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+              tintColor="#F9F9F9"
+            />
+          }
+        >
           <View style={styles.containerSection}>
             <View style={styles.header}>
               <CommunityUserProfile
@@ -582,11 +769,25 @@ const PostDetailScreen = ({ route, navigation }) => {
                 })}
               </ScrollView>
             )}
-            {detail?.content && (
+            {typeof displayContent === "string" && displayContent.length > 0 && (
               <View style={styles.textWrapper}>
                 <AppText variant="middle" style={styles.content}>
                   {renderContentWithHighlightedHashtags}
                 </AppText>
+              </View>
+            )}
+
+            {extraHashtagLabels.length > 0 && (
+              <View style={styles.hashtagExtraRow}>
+                {extraHashtagLabels.map((tag, i) => (
+                  <AppText
+                    key={`tag-${tag}`}
+                    variant="caption"
+                    style={styles.hashText}
+                  >
+                    {`${i > 0 ? " " : ""}#${tag}`}
+                  </AppText>
+                ))}
               </View>
             )}
 
@@ -604,18 +805,37 @@ const PostDetailScreen = ({ route, navigation }) => {
                   emotionType: reaction.id,
                 });
               }}
+              onCommentPress={() => {
+                setPendingAutoScrollToBottom(true);
+                scheduleScrollToCommentBottom();
+                requestCommentInputFocus("bottom");
+              }}
             />
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.commentSection}>
+          <View
+            style={styles.commentSection}
+            onLayout={(e) => {
+              const y = e?.nativeEvent?.layout?.y;
+              if (typeof y === "number" && Number.isFinite(y)) {
+                setCommentSectionY(y);
+              }
+            }}
+          >
             <AppText variant="middle" style={styles.commentTitle}>
               댓글
             </AppText>
             <CommentList
               comments={displayComments}
-              onReplyPress={(commentId) => setReplyTarget(commentId)}
+              onReplyPress={(commentId) => {
+                setReplyTarget(commentId);
+                requestCommentInputFocus("thread");
+                // 키보드/인풋이 올라오는 걸 고려해서 대상 댓글이 보이도록 스크롤
+                setTimeout(() => scrollToThread(commentId), 0);
+                setTimeout(() => scrollToThread(commentId), 250);
+              }}
               setCommentData={() => {}}
               postAuthorNickname={post?.author?.nickname}
               onLongPressThread={openThreadActionModal}
@@ -657,6 +877,8 @@ const PostDetailScreen = ({ route, navigation }) => {
                       },
                 });
               }}
+              onThreadLayout={registerThreadLayout}
+              onListLayout={setCommentListY}
             />
           </View>
         </ScrollView>
@@ -666,6 +888,21 @@ const PostDetailScreen = ({ route, navigation }) => {
           cancelReply={() => setReplyTarget(null)}
           editTarget={editTarget}
           cancelEdit={() => setEditTarget(null)}
+          autoFocusOnMount={!!focusCommentInput}
+          focusRequestKey={commentInputFocusKey}
+          onHeightChange={setCommentInputHeight}
+          onFocusInput={() => {
+            const reason = commentInputFocusReasonRef.current;
+            commentInputFocusReasonRef.current = null;
+
+            // 답글 버튼 → 해당 댓글로 포커스(scrollToThread)가 우선. 최하단 스크롤 금지.
+            if (reason === "thread") return;
+
+            // 인풋 포커스 시 레이아웃/키보드와 겹치는 scrollToEnd는 schedule로 한 번만
+            setPendingAutoScrollToBottom(true);
+            waitForInitialCommentFocusRef.current = false;
+            scheduleScrollToCommentBottom();
+          }}
         />
 
         <Modal visible={showDeleteBusy} transparent animationType="fade">
@@ -724,13 +961,14 @@ const styles = StyleSheet.create({
   backLabel: {
     color: "#F9F9F9",
     marginLeft: 15,
+    lineHeight: 22,
   },
 
   container: {
     // flex: 1,
   },
   containerSection: {
-    paddingHorizontal: 15,
+    paddingHorizontal: 22,
     paddingTop: 8,
   },
   header: {
@@ -794,11 +1032,25 @@ const styles = StyleSheet.create({
   },
   hashText: {
     color: "#6F9D48",
+    fontSize: 15,
+    lineHeight: 19,
+  },
+  contentInline: {
+    fontSize: 15,
+    lineHeight: 19,
+    color: "#F9F9F9",
   },
   content: {
     color: "#F9F9F9",
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 19,
+  },
+  hashtagExtraRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 2,
+    marginTop: -4,
+    marginBottom: 12,
   },
   divider: {
     width: "100%",
@@ -813,6 +1065,7 @@ const styles = StyleSheet.create({
   commentTitle: {
     color: "rgba(228, 228, 228, 0.5)",
     marginBottom: 13,
+    lineHeight: 15,
   },
   modalOverlay: {
     position: "absolute",

@@ -10,25 +10,27 @@ import {
   Keyboard,
   Platform,
   ScrollView,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AuthBackground from "../../components/AuthBackground";
-import SignupStepIndicator from "../../components/SignupStepIndicator";
+import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupCompleteMutation } from "../../services/signupCompleteMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 
-import BackIcon from "../../../../shared/assets/svg/chevrons/back.svg";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../shared/store/userStore";
 import api from "../../../../shared/libs/api";
-
-const { height } = Dimensions.get("window");
+import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const SignupGenderAgeScreen = ({ navigation, route }) => {
-  const [gender, setGender] = useState(null); // 'FEMALE' | 'MALE' | null
-  const [age, setAge] = useState("");
+  const draftGender = useSignupDraftStore((s) => s.gender);
+  const draftAge = useSignupDraftStore((s) => s.age);
+  const setDraftGender = useSignupDraftStore((s) => s.setGender);
+  const setDraftAge = useSignupDraftStore((s) => s.setAge);
+
+  const [gender, setGender] = useState(draftGender ?? null); // "F" | "M" | null
+  const [age, setAge] = useState(draftAge ?? "");
   const [signupData, setSignupData] = useState({});
 
   const handleBack = useStepBack("SignupFavoriteTeam");
@@ -50,6 +52,14 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
     const routeSignup = route?.params?.signup ?? {};
     setSignupData(routeSignup);
   }, [route]);
+
+  useEffect(() => {
+    setDraftGender(gender);
+  }, [gender, setDraftGender]);
+
+  useEffect(() => {
+    setDraftAge(age);
+  }, [age, setDraftAge]);
 
   // 호출 시 signupData 포함하도록 수정
   const submitSignup = ({ genderValue, ageValue }) => {
@@ -121,21 +131,7 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
             >
               <View style={styles.inner}>
                 {/* 헤더 */}
-                <View style={styles.headerRow}>
-                  <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={handleBack}
-                    activeOpacity={0.8}
-                  >
-                    <BackIcon />
-                  </TouchableOpacity>
-
-                  <View style={styles.stepWrapper}>
-                    <SignupStepIndicator currentStep={3} />
-                  </View>
-
-                  <View style={styles.rightPlaceholder} />
-                </View>
+                <SignupProgressHeader currentStep={3} onBack={handleBack} />
 
                 {/* 성별 */}
                 <View style={styles.textWrap}>
@@ -261,27 +257,7 @@ const styles = StyleSheet.create({
   },
 
   /* Header */
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    height: height * 0.1,
-    marginBottom: 20,
-  },
-  backButton: {
-    width: 32,
-    alignItems: "center",
-  },
-  backButtonText: {
-    color: "#FFFFFF",
-  },
-  stepWrapper: {
-    width: 150,
-    alignItems: "center",
-  },
-  rightPlaceholder: {
-    width: 32,
-  },
+  // header styles moved to SignupProgressHeader
 
   /* Title */
   textWrap: {
@@ -294,6 +270,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: "NotoSansKR_SemiBold",
     color: "#FFFFFF",
+    lineHeight: 32.7,
   },
   optional: {
     color: "rgba(255,255,255,0.6)",

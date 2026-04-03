@@ -5,6 +5,14 @@ import { clearPersistedUserEmotionSelections } from "../../features/community/st
 
 const USER_JSON_KEY = "userJson";
 
+async function safeDeleteSecureStoreKey(key) {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    /* 키 없음/플랫폼 오류 등 — 로그아웃 흐름은 계속 진행 */
+  }
+}
+
 export const useUserStore = create((set) => ({
   user: null,
   accessToken: null,
@@ -44,14 +52,10 @@ export const useUserStore = create((set) => ({
    */
   clearAuth: async () => {
     set({ user: null, accessToken: null, refreshToken: null });
-    await SecureStore.deleteItemAsync("accessToken");
-    await SecureStore.deleteItemAsync("refreshToken");
-    await SecureStore.deleteItemAsync("favoriteTeamLabel");
-    try {
-      await SecureStore.deleteItemAsync(USER_JSON_KEY);
-    } catch {
-      /* ignore */
-    }
+    await safeDeleteSecureStoreKey("accessToken");
+    await safeDeleteSecureStoreKey("refreshToken");
+    await safeDeleteSecureStoreKey("favoriteTeamLabel");
+    await safeDeleteSecureStoreKey(USER_JSON_KEY);
     await clearPersistedUserEmotionSelections();
   },
 }));

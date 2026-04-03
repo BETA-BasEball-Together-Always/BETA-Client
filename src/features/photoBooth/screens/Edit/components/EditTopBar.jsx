@@ -4,7 +4,11 @@ import { AppText } from "../../../../../shared/theme/components/AppText";
 import BackIcon from "../../../../../shared/assets/svg/chevrons/back.svg";
 import { editStyles } from "../editStyles";
 
-export default function EditTopBar({ onBack, onSave, title = "야구네컷 편집" }) {
+export default function EditTopBar({
+  onBack,
+  onSave,
+  title = "야구네컷 편집",
+}) {
   return (
     <View style={editStyles.topBar}>
       <TouchableOpacity
