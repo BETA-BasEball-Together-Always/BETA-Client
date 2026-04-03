@@ -28,10 +28,7 @@ export function applySignupStatusToDraft(status) {
   }
 
   const nick =
-    status.nickname ??
-    status.nickName ??
-    status.profileNickname ??
-    null;
+    status.nickname ?? status.nickName ?? status.profileNickname ?? null;
   if (typeof nick === "string" && nick.trim()) {
     store.hydrateNickname(nick.trim(), true);
   } else if (step === "PROFILE_COMPLETED" || step === "TEAM_SELECTED") {
