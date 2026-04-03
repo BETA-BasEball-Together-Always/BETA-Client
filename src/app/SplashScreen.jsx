@@ -1,11 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Animated, {
@@ -30,9 +24,6 @@ const LOGO_FADE_MS = 420;
  * @param {() => void} props.onExitComplete — 로고 페이드아웃 후 메인/인증 전환
  */
 const SplashScreen = ({ bootResult = null, onExitComplete }) => {
-  const { width: winW } = useWindowDimensions();
-  const w = winW || Dimensions.get("window").width;
-
   /** 0 = 첫 화면, 1 = 두 번째 화면 (800ms 후 400ms linear dissolve) */
   const phase = useSharedValue(0);
   const logoOpacity = useSharedValue(1);

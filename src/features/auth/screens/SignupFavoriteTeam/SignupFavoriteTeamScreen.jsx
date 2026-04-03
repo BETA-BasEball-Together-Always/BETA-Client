@@ -32,6 +32,16 @@ function normalizeTeamCode(code) {
     .toUpperCase();
 }
 
+/** useMemo 실패/빈 배열 대비 — 항상 로컬 10개 구단으로 폴백 */
+function buildDefaultSignupRows() {
+  return TEAM_LIST.map((t) => ({
+    rowKey: t.key,
+    label: t.label,
+    MainIcon: t.MainIcon,
+    apiTeamCode: t.key,
+  }));
+}
+
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const draftFavoriteTeamCode = useSignupDraftStore((s) => s.favoriteTeamCode);
   const setDraftFavoriteTeam = useSignupDraftStore((s) => s.setFavoriteTeam);
@@ -43,8 +53,17 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   // signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
   const [serverTeamList, setServerTeamList] = useState(null);
-  const externalTeamList =
-    route?.params?.teamList ?? serverTeamList ?? null;
+ 
+  const externalTeamList = useMemo(() => {
+    const fromRoute = route?.params?.teamList;
+    if (Array.isArray(fromRoute) && fromRoute.length > 0) {
+      return fromRoute;
+    }
+    if (Array.isArray(serverTeamList) && serverTeamList.length > 0) {
+      return serverTeamList;
+    }
+    return null;
+  }, [route?.params?.teamList, serverTeamList]);
 
   const signupTeamMutation = useSignupTeamMutation();
   const signupStatusMutation = useSignupStatusMutation();
@@ -80,7 +99,10 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
    * 아이콘/라벨만 로컬 TEAM_LIST와 normalize 매칭.
    */
   const teams = useMemo(() => {
-    const raw = Array.isArray(externalTeamList) ? externalTeamList : [];
+    const raw =
+      Array.isArray(externalTeamList) && externalTeamList.length > 0
+        ? externalTeamList
+        : [];
 
     const fromLocalList = () =>
       TEAM_LIST.map((t) => ({
@@ -115,9 +137,15 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     return rows.length > 0 ? rows : fromLocalList();
   }, [externalTeamList]);
 
+  const displayTeams = useMemo(() => {
+    if (teams.length > 0) return teams;
+    return buildDefaultSignupRows();
+  }, [teams]);
+
   const goToGenderAge = async (teamCode) => {
+    const list = displayTeams;
     const selectedTeamLabel =
-      teams.find((t) => t.apiTeamCode === teamCode)?.label ??
+      list.find((t) => t.apiTeamCode === teamCode)?.label ??
       TEAM_LIST.find((t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode))
         ?.label;
 
@@ -177,19 +205,19 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
   /** 이전 단계에서 온 코드가 로컬 키만 맞는 경우 → 현재 rows의 apiTeamCode로 맞춤 */
   useEffect(() => {
-    if (!selectedTeam || teams.length === 0) return;
-    if (teams.some((t) => t.apiTeamCode === selectedTeam)) return;
-    const row = teams.find(
+    if (!selectedTeam || displayTeams.length === 0) return;
+    if (displayTeams.some((t) => t.apiTeamCode === selectedTeam)) return;
+    const row = displayTeams.find(
       (t) =>
         normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(selectedTeam),
     );
     if (row) setSelectedTeam(row.apiTeamCode);
-  }, [teams, selectedTeam]);
+  }, [displayTeams, selectedTeam]);
 
   useEffect(() => {
     if (!selectedTeam) return;
     const selectedTeamLabel =
-      teams.find((t) => t.apiTeamCode === selectedTeam)?.label ??
+      displayTeams.find((t) => t.apiTeamCode === selectedTeam)?.label ??
       TEAM_LIST.find((t) => t.key === selectedTeam)?.label ??
       TEAM_LIST.find(
         (t) => normalizeTeamCode(t.key) === normalizeTeamCode(selectedTeam),
@@ -198,13 +226,16 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
       code: selectedTeam,
       label: selectedTeamLabel,
     });
-  }, [selectedTeam, teams, setDraftFavoriteTeam]);
+  }, [selectedTeam, displayTeams, setDraftFavoriteTeam]);
 
   return (
     <View style={styles.root}>
       <SelectTeamBackground />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback
+          style={styles.touchableFill}
+          onPress={Keyboard.dismiss}
+        >
           <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -223,7 +254,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
                 {/* 팀 선택 */}
                 <View style={styles.grid}>
-                  {teams.map(({ rowKey, label, MainIcon, apiTeamCode }) => {
+                  {displayTeams.map(({ rowKey, label, MainIcon, apiTeamCode }) => {
                     const selected =
                       selectedTeam != null &&
                       normalizeTeamCode(selectedTeam) ===
@@ -314,6 +345,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
+  touchableFill: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -341,13 +375,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 12,
-    rowGap: 22,
   },
 
   item: {
     width: "48%",
     alignItems: "center",
+    marginBottom: 22,
   },
 
   iconBox: {
