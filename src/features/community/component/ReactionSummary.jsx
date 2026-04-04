@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   summaryCircle: {
     width: 22,
     height: 22,
-    borderRadius: 18,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
     marginRight: -3,
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   summaryCircleCompact: {
     width: 17,
     height: 17,
-    borderRadius: 9,
+    borderRadius: 8.5,
     marginRight: -2,
   },
   totalText: {
@@ -126,13 +126,10 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   emojiInCircle: {
-    width: 22,
-    height: 22,
-    fontSize: 13,
-    lineHeight: 22,
+    fontSize: 11,
+    lineHeight: 20,
     textAlign: "center",
     ...Platform.select({
-      ios: { paddingTop: 0 },
       android: {
         includeFontPadding: false,
         textAlignVertical: "center",
@@ -140,10 +137,8 @@ const styles = StyleSheet.create({
     }),
   },
   emojiInCircleCompact: {
-    width: 17,
-    height: 17,
     fontSize: 10,
-    lineHeight: 17,
+    lineHeight: 10,
   },
   commentCountText: {
     color: "#D4D4D4",
