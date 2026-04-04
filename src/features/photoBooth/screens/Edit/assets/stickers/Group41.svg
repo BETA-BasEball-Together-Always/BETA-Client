@@ -1,0 +1,50 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M50 0L61.2257 34.5491H97.5528L68.1636 55.9017L79.3893 90.4509L50 69.0983L20.6107 90.4509L31.8364 55.9017L2.44717 34.5491H38.7743L50 0Z" fill="url(#paint0_radial_18_293)"/>
+<mask id="mask0_18_293" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="2" y="0" width="96" height="91">
+<path d="M50 0L61.2257 34.5491H97.5528L68.1636 55.9017L79.3893 90.4509L50 69.0983L20.6107 90.4509L31.8364 55.9017L2.44717 34.5491H38.7743L50 0Z" fill="url(#paint1_radial_18_293)"/>
+</mask>
+<g mask="url(#mask0_18_293)">
+<line x1="66.0875" y1="0.121849" x2="-11.9125" y2="56.1218" stroke="white" stroke-width="0.3"/>
+<line x1="74.0875" y1="9.12185" x2="-3.91252" y2="65.1218" stroke="white" stroke-width="0.3"/>
+<line x1="82.0875" y1="18.1218" x2="4.08748" y2="74.1218" stroke="white" stroke-width="0.3"/>
+<line x1="90.0875" y1="27.1218" x2="12.0875" y2="83.1218" stroke="white" stroke-width="0.3"/>
+<line x1="98.0875" y1="36.1218" x2="20.0875" y2="92.1218" stroke="white" stroke-width="0.3"/>
+<line x1="106.087" y1="45.1218" x2="28.0875" y2="101.122" stroke="white" stroke-width="0.3"/>
+<line x1="114.087" y1="54.1218" x2="36.0875" y2="110.122" stroke="white" stroke-width="0.3"/>
+<line x1="122.087" y1="63.1218" x2="44.0875" y2="119.122" stroke="white" stroke-width="0.3"/>
+<line x1="-5.87854" y1="49.912" x2="44.1215" y2="118.912" stroke="white" stroke-width="0.3"/>
+<line x1="2.12146" y1="44.912" x2="52.1215" y2="113.912" stroke="white" stroke-width="0.3"/>
+<line x1="4.12146" y1="31.912" x2="54.1215" y2="100.912" stroke="white" stroke-width="0.3"/>
+<line x1="16.1215" y1="31.912" x2="66.1215" y2="100.912" stroke="white" stroke-width="0.3"/>
+<line x1="25.1215" y1="26.912" x2="75.1215" y2="95.912" stroke="white" stroke-width="0.3"/>
+<line x1="34.1215" y1="21.912" x2="84.1215" y2="90.912" stroke="white" stroke-width="0.3"/>
+<line x1="43.1215" y1="16.912" x2="93.1215" y2="85.912" stroke="white" stroke-width="0.3"/>
+<line x1="46.1215" y1="4.91198" x2="96.1215" y2="73.912" stroke="white" stroke-width="0.3"/>
+<line x1="49.1215" y1="-7.08802" x2="99.1215" y2="61.912" stroke="white" stroke-width="0.3"/>
+<line x1="52.1215" y1="-19.088" x2="102.121" y2="49.912" stroke="white" stroke-width="0.3"/>
+<line x1="55.1215" y1="-31.088" x2="105.121" y2="37.912" stroke="white" stroke-width="0.3"/>
+</g>
+<g filter="url(#filter0_d_18_293)">
+<path d="M36.75 43V42.25H39.75V41.5H40.5V42.25H43.5V43H40.5V43.75H39.75V43H36.75ZM39 45.25V43.75H39.75V45.25H39ZM40.5 45.25V43.75H41.25V45.25H40.5ZM38.25 46V45.25H39V46H38.25ZM41.25 46V45.25H42V46H41.25ZM36 49V48.25H39.75V46H40.5V48.25H44.25V49H36ZM36.75 46.75V46H38.25V46.75H36.75ZM42 46.75V46H43.5V46.75H42ZM45 46V45.25H51.75V42.25H45.75V41.5H52.5V45.25H53.25V46H49.5V49.75H48.75V46H45ZM54 46V41.5H58.5V42.25H57V45.25H58.5V46H54ZM60 46V41.5H60.75V43H62.25V43.75H60.75V46H60ZM54.75 45.25H56.25V42.25H54.75V45.25ZM54.75 47.5V46.75H60.75V49.75H60V47.5H54.75ZM41.25 53.25V52.5H48V55.5H47.25V53.25H41.25ZM40.5 57V56.25H48.75V57H40.5ZM41.25 60.75V57.75H48V60.75H41.25ZM42 60H47.25V58.5H42V60ZM49.5 53.25V52.5H54.75V53.25H52.5V55.5H51.75V53.25H49.5ZM56.25 60.75V52.5H57V60.75H56.25ZM51 57V55.5H51.75V57H51ZM52.5 57V55.5H53.25V57H52.5ZM50.25 58.5V57H51V58.5H50.25ZM53.25 58.5V57H54V58.5H53.25ZM49.5 59.25V58.5H50.25V59.25H49.5ZM54 59.25V58.5H54.75V59.25H54Z" fill="#F70000"/>
+</g>
+<defs>
+<filter id="filter0_d_18_293" x="32" y="41.5" width="34.25" height="27.25" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_18_293"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_18_293" result="shape"/>
+</filter>
+<radialGradient id="paint0_radial_18_293" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(50 50) rotate(90) scale(50)">
+<stop stop-color="white"/>
+<stop offset="0.740398" stop-color="#FF61BA"/>
+</radialGradient>
+<radialGradient id="paint1_radial_18_293" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(50 50) rotate(90) scale(50)">
+<stop stop-color="white"/>
+<stop offset="0.740398" stop-color="#FF61BA"/>
+</radialGradient>
+</defs>
+</svg>

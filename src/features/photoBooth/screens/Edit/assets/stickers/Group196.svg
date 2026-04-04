@@ -1,0 +1,59 @@
+<svg width="122" height="57" viewBox="0 0 122 57" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="60.5759" cy="25.2212" rx="60.4508" ry="24.9161" transform="rotate(-0.289457 60.5759 25.2212)" fill="#FFFFBB"/>
+<path d="M108.148 54.9273L97.0007 45.1439L100.798 39L108.148 54.9273Z" fill="#FFFFBB"/>
+<mask id="mask0_24_411" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="122" height="51">
+<ellipse cx="60.5759" cy="25.2212" rx="60.4508" ry="24.9161" transform="rotate(-0.289457 60.5759 25.2212)" fill="#FFFFBB"/>
+</mask>
+<g mask="url(#mask0_24_411)">
+<circle cx="16.5" cy="10.5" r="2.5" fill="white"/>
+<circle cx="13.5" cy="23.5" r="2.5" fill="white"/>
+<circle cx="41.5" cy="20.5" r="2.5" fill="white"/>
+<circle cx="69.5" cy="17.5" r="2.5" fill="white"/>
+<circle cx="97.5" cy="14.5" r="2.5" fill="white"/>
+<circle cx="36.5" cy="45.5" r="2.5" fill="white"/>
+<circle cx="63.5" cy="41.5" r="2.5" fill="white"/>
+<circle cx="90.5" cy="37.5" r="2.5" fill="white"/>
+<circle cx="117.5" cy="33.5" r="2.5" fill="white"/>
+<circle cx="10.5" cy="36.5" r="2.5" fill="white"/>
+<circle cx="43.5" cy="8.5" r="2.5" fill="white"/>
+<circle cx="71.5" cy="5.5" r="2.5" fill="white"/>
+<circle cx="39.5" cy="34.5" r="2.5" fill="white"/>
+<circle cx="66.5" cy="30.5" r="2.5" fill="white"/>
+<circle cx="93.5" cy="26.5" r="2.5" fill="white"/>
+<circle cx="120.5" cy="22.5" r="2.5" fill="white"/>
+<circle cx="87.5" cy="48.5" r="2.5" fill="white"/>
+<circle cx="27.5" cy="5.5" r="2.5" fill="white"/>
+<circle cx="24.5" cy="18.5" r="2.5" fill="white"/>
+<circle cx="52.5" cy="15.5" r="2.5" fill="white"/>
+<circle cx="80.5" cy="12.5" r="2.5" fill="white"/>
+<circle cx="108.5" cy="9.5" r="2.5" fill="white"/>
+<circle cx="20.5" cy="44.5" r="2.5" fill="white"/>
+<circle cx="47.5" cy="40.5" r="2.5" fill="white"/>
+<circle cx="74.5" cy="36.5" r="2.5" fill="white"/>
+<circle cx="101.5" cy="32.5" r="2.5" fill="white"/>
+<circle cx="21.5" cy="31.5" r="2.5" fill="white"/>
+<circle cx="54.5" cy="3.5" r="2.5" fill="white"/>
+<circle cx="82.5" cy="0.5" r="2.5" fill="white"/>
+<circle cx="50.5" cy="29.5" r="2.5" fill="white"/>
+<circle cx="77.5" cy="25.5" r="2.5" fill="white"/>
+<circle cx="104.5" cy="21.5" r="2.5" fill="white"/>
+<circle cx="70.5" cy="48.5" r="2.5" fill="white"/>
+<circle cx="5.5" cy="15.5" r="2.5" fill="white"/>
+<circle cx="2.5" cy="28.5" r="2.5" fill="white"/>
+<circle cx="30.5" cy="25.5" r="2.5" fill="white"/>
+<circle cx="58.5" cy="22.5" r="2.5" fill="white"/>
+<circle cx="86.5" cy="19.5" r="2.5" fill="white"/>
+<circle cx="114.5" cy="16.5" r="2.5" fill="white"/>
+<circle cx="52.5" cy="46.5" r="2.5" fill="white"/>
+<circle cx="79.5" cy="42.5" r="2.5" fill="white"/>
+<circle cx="106.5" cy="38.5" r="2.5" fill="white"/>
+<circle cx="32.5" cy="13.5" r="2.5" fill="white"/>
+<circle cx="60.5" cy="10.5" r="2.5" fill="white"/>
+<circle cx="88.5" cy="7.5" r="2.5" fill="white"/>
+<circle cx="28.5" cy="39.5" r="2.5" fill="white"/>
+<circle cx="55.5" cy="35.5" r="2.5" fill="white"/>
+<circle cx="82.5" cy="31.5" r="2.5" fill="white"/>
+<circle cx="109.5" cy="27.5" r="2.5" fill="white"/>
+</g>
+<path d="M33.002 22V21H37.002V22H33.002ZM40.002 27V21H41.002V22H43.002V23H41.002V24H43.002V25H41.002V27H40.002ZM32.002 26V22H33.002V26H32.002ZM37.002 26V22H38.002V26H37.002ZM33.002 27V26H37.002V27H33.002ZM33.002 29V28H41.002V32H40.002V29H33.002ZM49.002 23V21H50.002V23H49.002ZM47.002 24V23H49.002V24H47.002ZM50.002 24V23H52.002V24H50.002ZM44.002 27V26H49.002V24H50.002V26H55.002V27H44.002ZM45.002 25V24H47.002V25H45.002ZM52.002 25V24H54.002V25H52.002ZM45.002 29V28H54.002V32H53.002V29H45.002ZM57.002 22V21H62.002V22H57.002ZM65.002 32V21H66.002V32H65.002ZM56.002 26V22H57.002V26H56.002ZM62.002 26V22H63.002V26H62.002ZM57.002 27V26H62.002V27H57.002ZM56.002 31V30H64.002V31H56.002ZM72.998 23V22H75.998V23H72.998ZM71.998 26V23H72.998V26H71.998ZM75.998 26V23H76.998V26H75.998ZM72.998 27V26H75.998V27H72.998ZM71.998 30V27H72.998V30H71.998ZM75.998 30V27H76.998V30H75.998ZM72.998 31V30H75.998V31H72.998ZM77.998 23V22H80.998V21H81.998V22H84.998V23H77.998ZM86.998 32V21H87.998V32H86.998ZM78.998 25V24H83.998V25H78.998ZM77.998 27V25H78.998V27H77.998ZM83.998 27V25H84.998V27H83.998ZM77.998 31V30H80.998V28H78.998V27H83.998V28H81.998V30H85.998V31H77.998Z" fill="black"/>
+</svg>
