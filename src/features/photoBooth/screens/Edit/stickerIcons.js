@@ -41,13 +41,7 @@ import stickerGroup19 from "./assets/stickers/Group 19.svg";
 import stickerGroup20 from "./assets/stickers/Group 20.svg";
 import stickerGroup21 from "./assets/stickers/Group 21.svg";
 import stickerGroup22 from "./assets/stickers/Group 22.svg";
-import stickerGroup23 from "./assets/stickers/Group 23.svg";
-import stickerGroup24 from "./assets/stickers/Group 24.svg";
-import stickerGroup25 from "./assets/stickers/Group 25.svg";
 import stickerGroup26 from "./assets/stickers/Group 26.svg";
-import stickerGroup27 from "./assets/stickers/Group 27.svg";
-import stickerGroup28 from "./assets/stickers/Group 28.svg";
-import stickerGroup29 from "./assets/stickers/Group 29.svg";
 import stickerGroup30 from "./assets/stickers/Group 30.svg";
 import stickerGroup31 from "./assets/stickers/Group 31.svg";
 import stickerGroup32 from "./assets/stickers/Group 32.svg";
@@ -96,13 +90,7 @@ export const SVG_STICKER_COMPONENTS = [
   stickerGroup20,
   stickerGroup21,
   stickerGroup22,
-  stickerGroup23,
-  stickerGroup24,
-  stickerGroup25,
   stickerGroup26,
-  stickerGroup27,
-  stickerGroup28,
-  stickerGroup29,
   stickerGroup30,
   stickerGroup31,
   stickerGroup32,
