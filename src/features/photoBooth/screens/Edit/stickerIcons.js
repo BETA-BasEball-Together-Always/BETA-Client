@@ -22,29 +22,44 @@ import textbubble10 from "./assets/stickers/textbubble10.svg";
 import textbubble11 from "./assets/stickers/textbubble11.svg";
 import textbubble12 from "./assets/stickers/textbubble12.svg";
 import textbubble13 from "./assets/stickers/textbubble13.svg";
-import stickerGroup4 from "./assets/stickers/Group 4.svg";
-import stickerGroup5 from "./assets/stickers/Group 5.svg";
-import stickerGroup6 from "./assets/stickers/Group 6.svg";
-import stickerGroup7 from "./assets/stickers/Group 7.svg";
-import stickerGroup8 from "./assets/stickers/Group 8.svg";
-import stickerGroup9 from "./assets/stickers/Group 9.svg";
-import stickerGroup10 from "./assets/stickers/Group 10.svg";
-import stickerGroup11 from "./assets/stickers/Group 11.svg";
-import stickerGroup12 from "./assets/stickers/Group 12.svg";
-import stickerGroup13 from "./assets/stickers/Group 13.svg";
-import stickerGroup14 from "./assets/stickers/Group 14.svg";
-import stickerGroup15 from "./assets/stickers/Group 15.svg";
-import stickerGroup16 from "./assets/stickers/Group 16.svg";
-import stickerGroup17 from "./assets/stickers/Group 17.svg";
-import stickerGroup18 from "./assets/stickers/Group 18.svg";
-import stickerGroup19 from "./assets/stickers/Group 19.svg";
-import stickerGroup20 from "./assets/stickers/Group 20.svg";
-import stickerGroup21 from "./assets/stickers/Group 21.svg";
-import stickerGroup22 from "./assets/stickers/Group 22.svg";
-import stickerGroup26 from "./assets/stickers/Group 26.svg";
-import stickerGroup30 from "./assets/stickers/Group 30.svg";
-import stickerGroup31 from "./assets/stickers/Group 31.svg";
-import stickerGroup32 from "./assets/stickers/Group 32.svg";
+import textGroup52 from "./assets/stickers/textGroup52.svg";
+import textGroup53 from "./assets/stickers/textGroup53.svg";
+import stickerGroup4 from "./assets/stickers/Group4.svg";
+import stickerGroup5 from "./assets/stickers/Group5.svg";
+import stickerGroup6 from "./assets/stickers/Group6.svg";
+import stickerGroup7 from "./assets/stickers/Group7.svg";
+import stickerGroup8 from "./assets/stickers/Group8.svg";
+import stickerGroup9 from "./assets/stickers/Group9.svg";
+import stickerGroup10 from "./assets/stickers/Group10.svg";
+import stickerGroup11 from "./assets/stickers/Group11.svg";
+import stickerGroup12 from "./assets/stickers/Group12.svg";
+import stickerGroup13 from "./assets/stickers/Group13.svg";
+import stickerGroup14 from "./assets/stickers/Group14.svg";
+import stickerGroup15 from "./assets/stickers/Group15.svg";
+import stickerGroup16 from "./assets/stickers/Group16.svg";
+import stickerGroup17 from "./assets/stickers/Group17.svg";
+import stickerGroup18 from "./assets/stickers/Group18.svg";
+import stickerGroup19 from "./assets/stickers/Group19.svg";
+import stickerGroup20 from "./assets/stickers/Group20.svg";
+import stickerGroup21 from "./assets/stickers/Group21.svg";
+import stickerGroup22 from "./assets/stickers/Group22.svg";
+import stickerGroup26 from "./assets/stickers/Group26.svg";
+import stickerGroup30 from "./assets/stickers/Group30.svg";
+import stickerGroup31 from "./assets/stickers/Group31.svg";
+import stickerGroup32 from "./assets/stickers/Group32.svg";
+import stickerGroup35 from "./assets/stickers/Group35.svg";
+import stickerGroup41 from "./assets/stickers/Group41.svg";
+import stickerGroup42 from "./assets/stickers/Group42.svg";
+import stickerGroup44 from "./assets/stickers/Group44.svg";
+import stickerGroup45 from "./assets/stickers/Group45.svg";
+import stickerGroup46 from "./assets/stickers/Group46.svg";
+import stickerGroup47 from "./assets/stickers/Group47.svg";
+import stickerGroup48 from "./assets/stickers/Group48.svg";
+import stickerGroup49 from "./assets/stickers/Group49.svg";
+import stickerGroup50 from "./assets/stickers/Group50.svg";
+import stickerGroup51 from "./assets/stickers/Group51.svg";
+import stickerGroup196 from "./assets/stickers/Group196.svg";
+import stickerGroup197 from "./assets/stickers/Group197.svg";
 
 export const SVG_STICKER_COMPONENTS = [
   icon1,
@@ -71,6 +86,8 @@ export const SVG_STICKER_COMPONENTS = [
   textbubble11,
   textbubble12,
   textbubble13,
+  textGroup52,
+  textGroup53,
   stickerGroup4,
   stickerGroup5,
   stickerGroup6,
@@ -94,4 +111,17 @@ export const SVG_STICKER_COMPONENTS = [
   stickerGroup30,
   stickerGroup31,
   stickerGroup32,
+  stickerGroup35,
+  stickerGroup41,
+  stickerGroup42,
+  stickerGroup44,
+  stickerGroup45,
+  stickerGroup46,
+  stickerGroup47,
+  stickerGroup48,
+  stickerGroup49,
+  stickerGroup50,
+  stickerGroup51,
+  stickerGroup196,
+  stickerGroup197,
 ];
