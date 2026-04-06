@@ -29,7 +29,8 @@
           "kakaokompassauth",
           "kakaolink",
           "naversearchapp"
-        ]
+        ],
+        "UIDeviceFamily": [1]
       },
       "bundleIdentifier": "com.beta.baseballapp"
     },
