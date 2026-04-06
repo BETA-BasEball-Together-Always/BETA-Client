@@ -15,7 +15,7 @@
     },
     "ios": {
       "googleServicesFile": "./fcm-ios-com-beta-baseballapp.plist",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "야구네컷 촬영을 위해 카메라 접근이 필요합니다.",
