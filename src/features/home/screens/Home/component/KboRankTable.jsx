@@ -3,8 +3,16 @@ import { View, StyleSheet } from "react-native";
 import { AppText } from "../../../../../shared/theme/components/AppText";
 import { TEAM_DATA } from "../../../../../shared/constants/teams";
 import { resolveTeamKeyFromApiTeamName } from "../../../utils/kboTeamName";
+import {
+  USE_KBO_RABBIT_RANK_LOGO,
+  getKboRankRabbitHatColors,
+} from "../../../constants/kboRankRabbitConfig";
+import KboRabbitRankLogo from "./KboRabbitRankLogo";
 
 const LOGO_SIZE = 30;
+/** 토끼 캐릭터 크기 */
+const RABBIT_LOGO_W = 22;
+const RABBIT_LOGO_H = Math.round((RABBIT_LOGO_W * 95) / 91);
 const RANK_W = 40;
 const STAT_W = 35;
 const WINRATE_W = 52;
@@ -87,6 +95,10 @@ export default function KboRankTable({
       {safeRows.map((row, idx) => {
         const teamKey = resolveTeamKeyFromApiTeamName(row.teamName);
         const MainIcon = teamKey ? TEAM_DATA[teamKey]?.MainIcon : null;
+        const rabbitHat =
+          USE_KBO_RABBIT_RANK_LOGO && teamKey
+            ? getKboRankRabbitHatColors(teamKey)
+            : null;
         const highlight = rowShouldHighlight({
           rank: row.rank,
           teamName: row.teamName,
@@ -107,7 +119,17 @@ export default function KboRankTable({
                 {row.rank}
               </AppText>
               <View style={styles.teamCell}>
-                {MainIcon ? (
+                {rabbitHat ? (
+                  <View style={styles.logoWrapRabbit}>
+                    <KboRabbitRankLogo
+                      width={RABBIT_LOGO_W}
+                      height={RABBIT_LOGO_H}
+                      hatMain={rabbitHat.main}
+                      hatShade={rabbitHat.shade}
+                      maskSuffix={`${idx}-${row.rank}`}
+                    />
+                  </View>
+                ) : MainIcon ? (
                   <View style={styles.logoWrap}>
                     <MainIcon width={LOGO_SIZE} height={LOGO_SIZE} />
                   </View>
@@ -240,6 +262,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+  },
+  /** 토끼는 상단 귀·모자 stroke가 viewBox 밖으로 나와 원형 overflow에 잘리므로, 동일 슬롯(30) 안에 여백 두고 표시 */
+  logoWrapRabbit: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
   },
   teamNameText: {
     color: "#121212",
