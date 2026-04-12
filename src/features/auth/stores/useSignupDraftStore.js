@@ -27,8 +27,15 @@ export const useSignupDraftStore = create(
       age: "", // string to match input
 
       setEmail: (email) => set({ email: email ?? "" }),
+      /** 닉네임 문자열이 바뀔 때만 중복확인 플래그 초기화(동일 문자열 재저장으로 리셋되는 레이스 방지) */
       setNickname: (nickname) =>
-        set({ nickname: nickname ?? "", nicknameChecked: false }),
+        set((state) => {
+          const next = nickname ?? "";
+          if (state.nickname === next) {
+            return { nickname: next };
+          }
+          return { nickname: next, nicknameChecked: false };
+        }),
       /** 서버 상태/재진입 복원용 — 중복확인 플래그를 함께 설정 */
       hydrateNickname: (nickname, nicknameChecked = true) =>
         set({

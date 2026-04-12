@@ -22,7 +22,11 @@ const nicknameCheckApi = async (nickname) => {
     },
   });
   // 백엔드 명세: { duplicate: boolean }
-  return response.data.duplicate;
+  const raw = response?.data?.duplicate;
+  if (typeof raw !== "boolean") {
+    throw new Error("INVALID_NICKNAME_CHECK_RESPONSE");
+  }
+  return raw;
 };
 
 // useCheckedField에서 mutateAsync로 직접 호출하는 용도

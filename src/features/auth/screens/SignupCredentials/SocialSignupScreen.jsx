@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -92,9 +93,21 @@ const SocialSignupScreen = ({ navigation, route }) => {
           applySignupStatusToDraft(status);
           const d = useSignupDraftStore.getState();
           const f = nicknameFieldRef.current;
+          const beforeTrim = String(f.value ?? "").trim();
+          const beforeAvailable = f.isAvailable;
           f.setValue(d.nickname ?? "");
           f.setTouched(!!(d.nickname ?? "").trim());
-          f.setIsAvailable(!!d.nicknameChecked);
+          const draftNick = String(d.nickname ?? "").trim();
+          const nickAligned =
+            draftNick !== "" &&
+            draftNick === beforeTrim &&
+            beforeAvailable &&
+            !d.nicknameChecked;
+          if (nickAligned) {
+            setDraftNicknameChecked(true);
+          } else {
+            f.setIsAvailable(!!d.nicknameChecked);
+          }
         } catch {
           /* 오프라인 등 */
         }
@@ -102,7 +115,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
       return () => {
         cancelled = true;
       };
-    }, [signupStatusMutation]),
+    }, [signupStatusMutation, setDraftNicknameChecked]),
   );
 
   useEffect(() => {
@@ -110,7 +123,7 @@ const SocialSignupScreen = ({ navigation, route }) => {
   }, [readonlyEmail, setDraftEmail]);
 
   useEffect(() => {
-    // 입력 변경 시 draft에 저장 (중복확인은 setNickname에서 자동으로 false로 리셋)
+    // 입력 변경 시 draft에 저장 (닉네임 문자열이 바뀔 때만 setNickname이 중복확인 플래그 초기화)
     setDraftNickname(nicknameField.value);
   }, [nicknameField.value, setDraftNickname]);
 
@@ -120,8 +133,11 @@ const SocialSignupScreen = ({ navigation, route }) => {
     );
   }, [nicknameField.value, nicknameField.error, nicknameField.isAvailable]);
 
+  const isNextBusy = signupProfileMutation.isPending;
+
   const handleNext = async () => {
     if (!isFormValid) return;
+    if (signupProfileMutation.isPending) return;
 
     try {
       const status = await signupStatusMutation.mutateAsync();
@@ -150,6 +166,22 @@ const SocialSignupScreen = ({ navigation, route }) => {
             },
             teamList,
           });
+        },
+        onError: (e) => {
+          const raw = e?.response?.data;
+          let msg =
+            typeof raw === "string"
+              ? raw
+              : typeof raw?.message === "string"
+                ? raw.message
+                : null;
+          if (!msg && e?.message === "NO_ACCESS_TOKEN") {
+            msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+          }
+          if (!msg) {
+            msg = "프로필 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+          }
+          Alert.alert("안내", msg);
         },
       },
     );
@@ -222,12 +254,14 @@ const SocialSignupScreen = ({ navigation, route }) => {
               styles.nextButton,
               !isFormValid && styles.nextButtonDisabled,
             ]}
-            activeOpacity={isFormValid ? 0.8 : 1}
+            activeOpacity={
+              isFormValid && !isNextBusy ? 0.8 : 1
+            }
             onPress={handleNext}
-            disabled={!isFormValid}
+            disabled={!isFormValid || isNextBusy}
           >
             <AppText variant="heading" style={styles.nextButtonText}>
-              다음
+              {isNextBusy ? "처리 중..." : "다음"}
             </AppText>
           </TouchableOpacity>
         </View>

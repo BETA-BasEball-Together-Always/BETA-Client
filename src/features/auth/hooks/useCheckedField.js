@@ -1,5 +1,5 @@
 // src/features/auth/hooks/useCheckedField.js
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 
 export const useCheckedField = ({
   initialValue = "",
@@ -14,6 +14,17 @@ export const useCheckedField = ({
   const [touched, setTouched] = useState(initialTouched);
   const [isAvailable, setIsAvailable] = useState(initialIsAvailable);
   const [isChecking, setIsChecking] = useState(false);
+  const mountedRef = useRef(true);
+  const valueRef = useRef(value);
+
+  valueRef.current = value;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const handleChange = (text) => {
     const next = text.trimStart();
@@ -50,6 +61,12 @@ export const useCheckedField = ({
       setError("");
 
       const available = await checkAvailability(trimmed); // boolean 기대
+      if (!mountedRef.current) return;
+      // 요청 중 닉네임이 바뀌면 오래된 응답으로 성공 처리하지 않음
+      if (valueRef.current.trim() !== trimmed) {
+        setIsAvailable(false);
+        return;
+      }
       console.log("after checkAvailability", available);
       if (available) {
         setIsAvailable(true);
@@ -58,10 +75,13 @@ export const useCheckedField = ({
         setError("이미 사용 중인 값이에요.");
       }
     } catch (e) {
+      if (!mountedRef.current) return;
       setIsAvailable(false);
       setError("중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
-      setIsChecking(false);
+      if (mountedRef.current) {
+        setIsChecking(false);
+      }
     }
   };
 
