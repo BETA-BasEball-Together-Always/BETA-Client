@@ -9,11 +9,22 @@ import NC from "../assets/svg/teams/NC.svg";
 import SAMSUNG from "../assets/svg/teams/Samsung.svg";
 import SSG from "../assets/svg/teams/SSG.svg";
 
+import PROFILE_DOOSAN from "../assets/svg/profile/profileDoosan.svg";
+import PROFILE_HANWHA from "../assets/svg/profile/profileHanhwa.svg";
+import PROFILE_KIA from "../assets/svg/profile/profileKia.svg";
+import PROFILE_KIWOOM from "../assets/svg/profile/profileKiwoom.svg";
+import PROFILE_KT from "../assets/svg/profile/profileKT.svg";
+import PROFILE_LG from "../assets/svg/profile/profileLG.svg";
+import PROFILE_LOTTE from "../assets/svg/profile/profileLotte.svg";
+import PROFILE_NC from "../assets/svg/profile/profileNC.svg";
+import PROFILE_SAMSUNG from "../assets/svg/profile/profileSamsung.svg";
+import PROFILE_SSG from "../assets/svg/profile/profileSSG.svg";
+
 export const TEAM_DATA = {
   KT: {
     label: "KT위즈",
     MainIcon: KT,
-    ProfileIcon: KT,
+    ProfileIcon: PROFILE_KT,
     gradient: {
       colors: ["#4A4A4A", "#2A2A2A", "#141414", "#050505"],
       locations: [0, 0.3, 0.65, 1],
@@ -28,7 +39,7 @@ export const TEAM_DATA = {
   LG: {
     label: "LG 트윈스",
     MainIcon: LG,
-    ProfileIcon: LG,
+    ProfileIcon: PROFILE_LG,
     gradient: {
       colors: ["#231F20", "#B0293C", "#EA465D", "#FF866A", "#FFB5C0"],
       locations: [0, 0.5, 0.8, 1, 1],
@@ -44,7 +55,7 @@ export const TEAM_DATA = {
   SAMSUNG: {
     label: "삼성라이온즈",
     MainIcon: SAMSUNG,
-    ProfileIcon: SAMSUNG,
+    ProfileIcon: PROFILE_SAMSUNG,
     gradient: {
       colors: ["#7ABFFF", "#1A6FCC", "#003A80", "#001A40"],
       locations: [0, 0.3, 0.65, 1],
@@ -59,7 +70,7 @@ export const TEAM_DATA = {
   KIA: {
     label: "KIA타이거즈",
     MainIcon: KIA,
-    ProfileIcon: KIA,
+    ProfileIcon: PROFILE_KIA,
     gradient: {
       colors: ["#FF5050", "#CC1020", "#7A0010", "#380005"],
       locations: [0, 0.35, 0.7, 1],
@@ -74,7 +85,7 @@ export const TEAM_DATA = {
   DOOSAN: {
     label: "두산베어스",
     MainIcon: DOOSAN,
-    ProfileIcon: DOOSAN,
+    ProfileIcon: PROFILE_DOOSAN,
     gradient: {
       colors: ["#4B6FA5", "#1A2E6E", "#0A1540", "#05091F"],
       locations: [0, 0.3, 0.65, 1],
@@ -89,7 +100,7 @@ export const TEAM_DATA = {
   HANWHA: {
     label: "한화이글스",
     MainIcon: HANWHA,
-    ProfileIcon: HANWHA,
+    ProfileIcon: PROFILE_HANWHA,
     gradient: {
       colors: ["#FFAA50", "#E85C00", "#C24B00", "#7A2800"],
       locations: [0, 0.3, 0.65, 1],
@@ -104,7 +115,7 @@ export const TEAM_DATA = {
   KIWOOM: {
     label: "키움히어로즈",
     MainIcon: KIWOOM,
-    ProfileIcon: KIWOOM,
+    ProfileIcon: PROFILE_KIWOOM,
     gradient: {
       colors: ["#C03050", "#8C1A2E", "#4A0818", "#1A0008"],
       locations: [0, 0.35, 0.7, 1],
@@ -119,7 +130,7 @@ export const TEAM_DATA = {
   LOTTE: {
     label: "롯데자이언츠",
     MainIcon: LOTTE,
-    ProfileIcon: LOTTE,
+    ProfileIcon: PROFILE_LOTTE,
     gradient: {
       colors: ["#C05070", "#8B1A35", "#4A0D1C", "#1A0008"],
       locations: [0, 0.35, 0.7, 1],
@@ -134,7 +145,7 @@ export const TEAM_DATA = {
   NC: {
     label: "NC다이노스",
     MainIcon: NC,
-    ProfileIcon: NC,
+    ProfileIcon: PROFILE_NC,
     gradient: {
       colors: ["#5A8FCC", "#1A3B6E", "#0D1F3C", "#060F1E"],
       locations: [0, 0.35, 0.7, 1],
@@ -149,7 +160,7 @@ export const TEAM_DATA = {
   SSG: {
     label: "SSG랜더스",
     MainIcon: SSG,
-    ProfileIcon: SSG,
+    ProfileIcon: PROFILE_SSG,
     gradient: {
       colors: ["#FF7A3D", "#D42B2B", "#8B0000", "#5A0000"],
       locations: [0, 0.35, 0.7, 1],

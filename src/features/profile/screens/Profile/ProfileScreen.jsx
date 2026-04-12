@@ -26,6 +26,9 @@ import { getUserEmotionSelection } from "../../../community/store/userEmotionSel
 
 const BIO_PLACEHOLDER = "한 줄 소개를 작성해 보세요 :)";
 
+/** 팀 프로필 SVG — avatarCircle(70) + overflow:hidden 안에서 잘리지 않도록 여유 있게 */
+const PROFILE_HEADER_TEAM_ICON_SIZE = 40;
+
 const ProfileScreen = ({ navigation, route }) => {
   const user = useUserStore((s) => s.user);
   const favoriteTeamCode = user?.favoriteTeamCode;
@@ -245,13 +248,18 @@ const ProfileScreen = ({ navigation, route }) => {
                 end={displayTeam?.gradient?.end}
                 style={styles.avatarCircle}
               >
-                {DisplayProfileIcon ? (
-                  <DisplayProfileIcon width={47} height={47} />
-                ) : (
-                  <AppText style={{ color: "#FFF" }}>
-                    {displayNickname?.[0]}
-                  </AppText>
-                )}
+                <View style={styles.avatarIconCenter}>
+                  {DisplayProfileIcon ? (
+                    <DisplayProfileIcon
+                      width={PROFILE_HEADER_TEAM_ICON_SIZE}
+                      height={PROFILE_HEADER_TEAM_ICON_SIZE}
+                    />
+                  ) : (
+                    <AppText style={{ color: "#FFF" }}>
+                      {displayNickname?.[0]}
+                    </AppText>
+                  )}
+                </View>
               </LinearGradient>
               <View style={styles.userInfoContainer}>
                 <View style={styles.userNameContainer}>
@@ -367,10 +375,15 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 70,
     height: 70,
-    borderRadius: 70,
+    borderRadius: 35,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
+  },
+  avatarIconCenter: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
   },
   userInfoContainer: {
     marginLeft: 16,
