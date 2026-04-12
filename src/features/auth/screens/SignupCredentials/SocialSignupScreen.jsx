@@ -1,5 +1,11 @@
 // src/features/auth/screens/SignupCredentials/SocialSignupScreen.jsx
-import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
@@ -10,7 +16,6 @@ import {
   Keyboard,
   Platform,
   ScrollView,
-  Dimensions,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +25,7 @@ import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
 import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
+import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
@@ -28,9 +34,46 @@ import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSi
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
-const { height } = Dimensions.get("window");
+function normalizeSignupStepFromStatus(status) {
+  const raw = status?.signupStep ?? status?.signup_step;
+  return typeof raw === "string" ? raw.trim() : "";
+}
 
-const SocialSignupScreen = ({ navigation, route }) => {
+function signupFlowErrorMessage(e, fallback) {
+  const raw = e?.response?.data;
+  let msg =
+    typeof raw === "string"
+      ? raw
+      : typeof raw?.message === "string"
+        ? raw.message
+        : null;
+  if (!msg && e?.message === "NO_ACCESS_TOKEN") {
+    msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+  }
+  return msg ?? fallback;
+}
+
+const FROZEN_EMPTY_CHECKED_FIELD = {
+  value: "",
+  error: "",
+  touched: false,
+  isAvailable: false,
+  isChecking: false,
+  status: "idle",
+  handleChange: () => {},
+  handleBlur: () => {},
+  handleCheck: async () => {},
+};
+
+/** draft persist rehydrate 이후에만 mount — 닉네임 필드 초기값이 스토어와 일치 */
+function SocialSignupHydratedBody({ navigation, route, handleBack }) {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const signup = route?.params?.signup ?? {};
   const draftEmail = useSignupDraftStore((s) => s.email);
   const readonlyEmail = signup.email ?? draftEmail ?? "";
@@ -46,11 +89,10 @@ const SocialSignupScreen = ({ navigation, route }) => {
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const signupProfileMutation = useSignupProfileMutation();
   const signupStatusMutation = useSignupStatusMutation();
-  const handleBack = useStepBack("TermsDetail");
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
 
-  const validateNickname = (value) => {
+  const validateNickname = useCallback((value) => {
     if (!value) return "닉네임을 입력해주세요.";
 
     const trimmed = value.trim();
@@ -64,11 +106,11 @@ const SocialSignupScreen = ({ navigation, route }) => {
     }
 
     return "";
-  };
+  }, []);
 
   const nicknameField = useCheckedField({
     initialValue: draftNickname ?? "",
-    initialTouched: !!(draftNickname ?? ""),
+    initialTouched: !!(draftNickname ?? "").trim(),
     initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
@@ -123,8 +165,10 @@ const SocialSignupScreen = ({ navigation, route }) => {
   }, [readonlyEmail, setDraftEmail]);
 
   useEffect(() => {
-    // 입력 변경 시 draft에 저장 (닉네임 문자열이 바뀔 때만 setNickname이 중복확인 플래그 초기화)
-    setDraftNickname(nicknameField.value);
+    const next = nicknameField.value;
+    if (useSignupDraftStore.getState().nickname !== next) {
+      setDraftNickname(next);
+    }
   }, [nicknameField.value, setDraftNickname]);
 
   const isFormValid = useMemo(() => {
@@ -133,138 +177,255 @@ const SocialSignupScreen = ({ navigation, route }) => {
     );
   }, [nicknameField.value, nicknameField.error, nicknameField.isAvailable]);
 
-  const isNextBusy = signupProfileMutation.isPending;
+  const [nextActionBusy, setNextActionBusy] = useState(false);
+  const isNextBusy = nextActionBusy;
 
   const handleNext = async () => {
     if (!isFormValid) return;
-    if (signupProfileMutation.isPending) return;
+    if (nextActionBusy) return;
+
+    const nickname = nicknameField.value.trim();
+    setNextActionBusy(true);
 
     try {
-      const status = await signupStatusMutation.mutateAsync();
-      if (status?.signupStep && status.signupStep !== "CONSENT_AGREED") {
+      let status;
+      try {
+        status = await signupStatusMutation.mutateAsync();
+      } catch (e) {
+        console.warn("[signup/status]", e);
+        Alert.alert(
+          "안내",
+          signupFlowErrorMessage(
+            e,
+            "회원가입 상태를 확인하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+          ),
+        );
+        return;
+      }
+
+      const step = normalizeSignupStepFromStatus(status);
+
+      if (!step) {
+        Alert.alert(
+          "안내",
+          "회원가입 단계 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
+      }
+
+      if (step !== "CONSENT_AGREED") {
         navigateFromSignupStatus(status, navigation);
         return;
       }
+
+      const data = await signupProfileMutation.mutateAsync({ nickname });
+      const teamList = data?.teamList ?? [];
+      setDraftNickname(nickname);
+      setDraftNicknameChecked(true);
+      navigation.navigate("SignupFavoriteTeam", {
+        signup: {
+          ...signup,
+          email: readonlyEmail,
+          nickname,
+        },
+        teamList,
+      });
     } catch (e) {
-      console.warn("[signup/status]", e);
+      console.warn("[signup/profile]", e);
+      let msg = signupFlowErrorMessage(
+        e,
+        "프로필 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      );
+      const combined = String(msg);
+      if (/CONSENT_AGREED|PROFILE_COMPLETED|회원가입 단계/i.test(combined)) {
+        try {
+          const s = await signupStatusMutation.mutateAsync();
+          const st = normalizeSignupStepFromStatus(s);
+          if (st && st !== "CONSENT_AGREED") {
+            navigateFromSignupStatus(s, navigation);
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      Alert.alert("안내", msg);
+    } finally {
+      if (mountedRef.current) {
+        setNextActionBusy(false);
+      }
     }
-
-    const nickname = nicknameField.value.trim();
-
-    signupProfileMutation.mutate(
-      { nickname },
-      {
-        onSuccess: (data) => {
-          const teamList = data?.teamList ?? [];
-          setDraftNickname(nickname);
-          setDraftNicknameChecked(true);
-          navigation.navigate("SignupFavoriteTeam", {
-            signup: {
-              ...signup,
-              email: readonlyEmail,
-              nickname,
-            },
-            teamList,
-          });
-        },
-        onError: (e) => {
-          const raw = e?.response?.data;
-          let msg =
-            typeof raw === "string"
-              ? raw
-              : typeof raw?.message === "string"
-                ? raw.message
-                : null;
-          if (!msg && e?.message === "NO_ACCESS_TOKEN") {
-            msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
-          }
-          if (!msg) {
-            msg = "프로필 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.";
-          }
-          Alert.alert("안내", msg);
-        },
-      },
-    );
   };
+
+  return (
+    <>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.inner}>
+              <SignupProgressHeader currentStep={1} onBack={handleBack} />
+
+              <View style={styles.section}>
+                <AppText variant="displayTitle" style={styles.sectionTitle}>
+                  회원가입 이메일
+                </AppText>
+                <AppText
+                  variant="smallRegular"
+                  style={styles.sectionDescription}
+                >
+                  * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
+                  사용됩니다.
+                </AppText>
+
+                <View style={styles.readonlyEmailBox}>
+                  <AppText variant="middle" style={styles.readonlyEmailText}>
+                    {readonlyEmail || "-"}
+                  </AppText>
+                </View>
+              </View>
+
+              <View style={[styles.section, { marginTop: 32 }]}>
+                <AppText variant="displayTitle" style={styles.sectionTitle}>
+                  닉네임을 입력해주세요
+                </AppText>
+
+                <View style={styles.nicknameInputWrapper}>
+                  <SignupCheckedInput
+                    label={null}
+                    placeholder="닉네임을 입력해주세요."
+                    placeholderTextColor="#E4E4E4"
+                    maxLength={13}
+                    field={nicknameField}
+                    buttonLabel="중복확인"
+                  />
+                  <AppText variant="labelSmall" style={styles.lengthText}>
+                    {nicknameField.value.length}/13
+                  </AppText>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+
+      <View style={styles.bottomButtonArea}>
+        <TouchableOpacity
+          style={[styles.nextButton, !isFormValid && styles.nextButtonDisabled]}
+          activeOpacity={isFormValid && !isNextBusy ? 0.8 : 1}
+          onPress={handleNext}
+          disabled={!isFormValid || isNextBusy}
+        >
+          <AppText variant="heading" style={styles.nextButtonText}>
+            {isNextBusy ? "처리 중..." : "다음"}
+          </AppText>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+}
+
+const SocialSignupScreen = ({ navigation, route }) => {
+  const draftHydrated = useSignupDraftPersistHydrated();
+  const handleBack = useStepBack("TermsDetail");
+  const signupFromRoute = route?.params?.signup ?? {};
+  const shellEmail = signupFromRoute.email ?? "";
 
   return (
     <View style={styles.root}>
       <AuthBackground />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={styles.inner}>
-                <SignupProgressHeader currentStep={1} onBack={handleBack} />
+        {!draftHydrated ? (
+          <>
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+              >
+                <ScrollView
+                  contentContainerStyle={styles.scrollContent}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <View style={styles.inner}>
+                    <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
-                {/* 이메일 (읽기 전용) */}
-                <View style={styles.section}>
-                  <AppText variant="displayTitle" style={styles.sectionTitle}>
-                    회원가입 이메일
-                  </AppText>
-                  <AppText
-                    variant="smallRegular"
-                    style={styles.sectionDescription}
-                  >
-                    * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
-                    사용됩니다.
-                  </AppText>
+                    <View style={styles.section}>
+                      <AppText
+                        variant="displayTitle"
+                        style={styles.sectionTitle}
+                      >
+                        회원가입 이메일
+                      </AppText>
+                      <AppText
+                        variant="smallRegular"
+                        style={styles.sectionDescription}
+                      >
+                        * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
+                        사용됩니다.
+                      </AppText>
 
-                  <View style={styles.readonlyEmailBox}>
-                    <AppText variant="middle" style={styles.readonlyEmailText}>
-                      {readonlyEmail || "-"}
-                    </AppText>
+                      <View style={styles.readonlyEmailBox}>
+                        <AppText
+                          variant="middle"
+                          style={styles.readonlyEmailText}
+                        >
+                          {shellEmail || "-"}
+                        </AppText>
+                      </View>
+                    </View>
+
+                    <View style={[styles.section, { marginTop: 32 }]}>
+                      <AppText
+                        variant="displayTitle"
+                        style={styles.sectionTitle}
+                      >
+                        닉네임을 입력해주세요
+                      </AppText>
+
+                      <View style={styles.nicknameInputWrapper}>
+                        <SignupCheckedInput
+                          label={null}
+                          placeholder="닉네임을 입력해주세요."
+                          placeholderTextColor="#E4E4E4"
+                          maxLength={13}
+                          field={FROZEN_EMPTY_CHECKED_FIELD}
+                          buttonLabel="중복확인"
+                          editable={false}
+                        />
+                        <AppText variant="labelSmall" style={styles.lengthText}>
+                          0/13
+                        </AppText>
+                      </View>
+                    </View>
                   </View>
-                </View>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
 
-                {/* 닉네임 입력 */}
-                <View style={[styles.section, { marginTop: 32 }]}>
-                  <AppText variant="displayTitle" style={styles.sectionTitle}>
-                    닉네임을 입력해주세요
-                  </AppText>
-
-                  <View style={styles.nicknameInputWrapper}>
-                    <SignupCheckedInput
-                      label={null}
-                      placeholder="닉네임을 입력해주세요."
-                      placeholderTextColor="#E4E4E4"
-                      maxLength={13}
-                      field={nicknameField}
-                      buttonLabel="중복확인"
-                    />
-                    <AppText variant="labelSmall" style={styles.lengthText}>
-                      {nicknameField.value.length}/13
-                    </AppText>
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
-        {/* 하단 버튼 */}
-        <View style={styles.bottomButtonArea}>
-          <TouchableOpacity
-            style={[
-              styles.nextButton,
-              !isFormValid && styles.nextButtonDisabled,
-            ]}
-            activeOpacity={
-              isFormValid && !isNextBusy ? 0.8 : 1
-            }
-            onPress={handleNext}
-            disabled={!isFormValid || isNextBusy}
-          >
-            <AppText variant="heading" style={styles.nextButtonText}>
-              {isNextBusy ? "처리 중..." : "다음"}
-            </AppText>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.bottomButtonArea}>
+              <TouchableOpacity
+                style={[styles.nextButton, styles.nextButtonDisabled]}
+                activeOpacity={1}
+                disabled
+              >
+                <AppText variant="heading" style={styles.nextButtonText}>
+                  다음
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <SocialSignupHydratedBody
+            navigation={navigation}
+            route={route}
+            handleBack={handleBack}
+          />
+        )}
       </SafeAreaView>
     </View>
   );
@@ -288,7 +449,6 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     alignSelf: "center",
   },
-  // header styles moved to SignupProgressHeader
   section: {
     marginBottom: 16,
   },

@@ -20,11 +20,16 @@ import PROFILE_NC from "../assets/svg/profile/profileNC.svg";
 import PROFILE_SAMSUNG from "../assets/svg/profile/profileSamsung.svg";
 import PROFILE_SSG from "../assets/svg/profile/profileSSG.svg";
 
+/**
+ * 가입 구단 선택/야구네컷 팀 카드 등에서만 사용(생략 시 1)
+ * 동일 박스 안 시각적 크기를 맞추기 위해 1 미만(축소)/1 초과(확대) 모두 가능!!
+ */
 export const TEAM_DATA = {
   KT: {
     label: "KT위즈",
     MainIcon: KT,
     ProfileIcon: PROFILE_KT,
+    mainLogoScale: 0.82,
     gradient: {
       colors: ["#4A4A4A", "#2A2A2A", "#141414", "#050505"],
       locations: [0, 0.3, 0.65, 1],
@@ -56,6 +61,7 @@ export const TEAM_DATA = {
     label: "삼성라이온즈",
     MainIcon: SAMSUNG,
     ProfileIcon: PROFILE_SAMSUNG,
+    mainLogoScale: 0.8,
     gradient: {
       colors: ["#7ABFFF", "#1A6FCC", "#003A80", "#001A40"],
       locations: [0, 0.3, 0.65, 1],
@@ -71,6 +77,7 @@ export const TEAM_DATA = {
     label: "KIA타이거즈",
     MainIcon: KIA,
     ProfileIcon: PROFILE_KIA,
+    mainLogoScale: 0.9,
     gradient: {
       colors: ["#FF5050", "#CC1020", "#7A0010", "#380005"],
       locations: [0, 0.35, 0.7, 1],
@@ -116,6 +123,7 @@ export const TEAM_DATA = {
     label: "키움히어로즈",
     MainIcon: KIWOOM,
     ProfileIcon: PROFILE_KIWOOM,
+    mainLogoScale: 1.1,
     gradient: {
       colors: ["#C03050", "#8C1A2E", "#4A0818", "#1A0008"],
       locations: [0, 0.35, 0.7, 1],
@@ -131,6 +139,7 @@ export const TEAM_DATA = {
     label: "롯데자이언츠",
     MainIcon: LOTTE,
     ProfileIcon: PROFILE_LOTTE,
+    mainLogoScale: 1.1,
     gradient: {
       colors: ["#C05070", "#8B1A35", "#4A0D1C", "#1A0008"],
       locations: [0, 0.35, 0.7, 1],
@@ -146,6 +155,7 @@ export const TEAM_DATA = {
     label: "NC다이노스",
     MainIcon: NC,
     ProfileIcon: PROFILE_NC,
+    mainLogoScale: 0.82,
     gradient: {
       colors: ["#5A8FCC", "#1A3B6E", "#0D1F3C", "#060F1E"],
       locations: [0, 0.35, 0.7, 1],
@@ -161,6 +171,7 @@ export const TEAM_DATA = {
     label: "SSG랜더스",
     MainIcon: SSG,
     ProfileIcon: PROFILE_SSG,
+    mainLogoScale: 1.08,
     gradient: {
       colors: ["#FF7A3D", "#D42B2B", "#8B0000", "#5A0000"],
       locations: [0, 0.35, 0.7, 1],
@@ -173,6 +184,13 @@ export const TEAM_DATA = {
     },
   },
 };
+
+export function getFeedProfileIconSize(teamCode, baseSize) {
+  if (teamCode === "LG" || teamCode === "KT") {
+    return baseSize * 0.82;
+  }
+  return baseSize;
+}
 
 // 배열 형태의 팀 리스트!
 export const TEAM_LIST = Object.entries(TEAM_DATA).map(([key, value]) => ({

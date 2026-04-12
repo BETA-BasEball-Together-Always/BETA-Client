@@ -14,33 +14,33 @@ import photoBoothStore from "@features/photoBooth/store/photoBoothStore";
 import { FRAMES } from "@features/photoBooth/constants/framesMap";
 import { usePrefetchEditFonts } from "@features/photoBooth/hooks/usePrefetchEditFonts";
 
-import KiwoomIcon from "@shared/assets/svg/teams/Kiwoom.svg";
-import DoosanIcon from "@shared/assets/svg/teams/Doosan.svg";
-import LotteIcon from "@shared/assets/svg/teams/Lotte.svg";
-import SamsungIcon from "@shared/assets/svg/teams/Samsung.svg";
-import HanhwaIcon from "@shared/assets/svg/teams/Hanhwa.svg";
-import KIAIcon from "@shared/assets/svg/teams/KIA.svg";
-import LGIcon from "@shared/assets/svg/teams/LG.svg";
-import SSGIcon from "@shared/assets/svg/teams/SSG.svg";
-import NCIcon from "@shared/assets/svg/teams/NC.svg";
-import KTIcon from "@shared/assets/svg/teams/KT.svg";
+import { TEAM_DATA } from "@shared/constants/teams";
 import { AppText } from "../../../../shared/theme/components/AppText";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import PhotoBoothBack from "../assets/svg/photoBoothBack.svg";
 
-const teams = [
-  { id: "1", teamKey: "kiwoom", name: "키움 히어로즈", Icon: KiwoomIcon },
-  { id: "2", teamKey: "doosan", name: "두산 베어스", Icon: DoosanIcon },
-  { id: "3", teamKey: "lotte", name: "롯데 자이언츠", Icon: LotteIcon },
-  { id: "4", teamKey: "samsung", name: "삼성 라이온즈", Icon: SamsungIcon },
-  { id: "5", teamKey: "hanhwa", name: "한화 이글스", Icon: HanhwaIcon },
-  { id: "6", teamKey: "kia", name: "KIA 타이거즈", Icon: KIAIcon },
-  { id: "7", teamKey: "lg", name: "LG 트윈스", Icon: LGIcon },
-  { id: "8", teamKey: "ssg", name: "SSG 랜더스", Icon: SSGIcon },
-  { id: "9", teamKey: "nc", name: "NC 다이노스", Icon: NCIcon },
-  { id: "10", teamKey: "kt", name: "KT 위즈", Icon: KTIcon },
+const PHOTO_BOOTH_TEAM_ROWS = [
+  { id: "1", teamKey: "kiwoom", name: "키움 히어로즈", dataKey: "KIWOOM" },
+  { id: "2", teamKey: "doosan", name: "두산 베어스", dataKey: "DOOSAN" },
+  { id: "3", teamKey: "lotte", name: "롯데 자이언츠", dataKey: "LOTTE" },
+  { id: "4", teamKey: "samsung", name: "삼성 라이온즈", dataKey: "SAMSUNG" },
+  { id: "5", teamKey: "hanhwa", name: "한화 이글스", dataKey: "HANWHA" },
+  { id: "6", teamKey: "kia", name: "KIA 타이거즈", dataKey: "KIA" },
+  { id: "7", teamKey: "lg", name: "LG 트윈스", dataKey: "LG" },
+  { id: "8", teamKey: "ssg", name: "SSG 랜더스", dataKey: "SSG" },
+  { id: "9", teamKey: "nc", name: "NC 다이노스", dataKey: "NC" },
+  { id: "10", teamKey: "kt", name: "KT 위즈", dataKey: "KT" },
 ];
+
+const teams = PHOTO_BOOTH_TEAM_ROWS.map((row) => {
+  const meta = TEAM_DATA[row.dataKey];
+  return {
+    ...row,
+    Icon: meta?.MainIcon,
+    mainLogoScale: meta?.mainLogoScale ?? 1,
+  };
+});
 
 /** 2) 프레임 종류 정의(아이디만 사용; 이미지는 아래 FRAMES에서 고름) */
 const frames = [

@@ -29,7 +29,10 @@ import CameraIcon from "../../../community/assets/svg/CommunityPost/camera.svg";
 import GalleryIcon from "../../../community/assets/svg/CommunityPost/image.svg";
 import DropDownIcon from "../../assets/svg/CommunityPost/dropDown.svg";
 import { useUserStore } from "../../../../shared/store/userStore";
-import { TEAM_DATA } from "../../../../shared/constants/teams";
+import {
+  TEAM_DATA,
+  getFeedProfileIconSize,
+} from "../../../../shared/constants/teams";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
@@ -877,7 +880,7 @@ const CreatePostScreen = () => {
     if (isEditMode) {
       const formData = new FormData();
       formData.append("content", contentForUpload);
-     
+
       deletedImageIds.forEach((id) => {
         formData.append("deletedImageIds", String(id));
       });
@@ -1166,7 +1169,10 @@ const CreatePostScreen = () => {
               style={styles.avatarCircle}
             >
               {ProfileIcon ? (
-                <ProfileIcon width={28} height={28} />
+                <ProfileIcon
+                  width={getFeedProfileIconSize(author?.favoriteTeamCode, 26)}
+                  height={getFeedProfileIconSize(author?.favoriteTeamCode, 26)}
+                />
               ) : (
                 <AppText style={{ color: "#FFF" }}>
                   {(author?.nickname?.trim()?.[0] ?? "U").toUpperCase()}

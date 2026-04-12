@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppText } from "@shared/theme/components/AppText";
-import { TEAM_DATA } from "@shared/constants/teams";
+import { TEAM_DATA, getFeedProfileIconSize } from "@shared/constants/teams";
 import TeamLabel from "@features/community/component/communityMain/TeamLabel";
 
 const SearchUserRow = ({
@@ -37,7 +37,10 @@ const SearchUserRow = ({
         ]}
       >
         {ProfileIcon ? (
-          <ProfileIcon width={avatarSize * 0.7} height={avatarSize * 0.7} />
+          <ProfileIcon
+            width={getFeedProfileIconSize(user?.teamCode, avatarSize * 0.7)}
+            height={getFeedProfileIconSize(user?.teamCode, avatarSize * 0.7)}
+          />
         ) : (
           <AppText variant="semi16" style={styles.avatarFallback}>
             {user?.nickname?.[0] ?? "?"}

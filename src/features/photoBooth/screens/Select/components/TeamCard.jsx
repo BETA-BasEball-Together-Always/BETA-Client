@@ -5,6 +5,7 @@ import GlassSurface from "./GlassSurface";
 
 const TeamCard = ({ item, isSelected, onPress }) => {
   const Logo = item.Icon;
+  const logoSize = Math.round(88 * (item.mainLogoScale ?? 1));
 
   return (
     <View style={styles.itemWrap}>
@@ -20,7 +21,7 @@ const TeamCard = ({ item, isSelected, onPress }) => {
           contentStyle={styles.glassInner}
         >
           {Logo ? (
-            <Logo width={88} height={88} />
+            <Logo width={logoSize} height={logoSize} />
           ) : (
             <Image
               source={item.logo}

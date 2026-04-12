@@ -1,7 +1,10 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { AppText } from "../../../../shared/theme/components/AppText";
-import { TEAM_DATA } from "../../../../shared/constants/teams";
+import {
+  TEAM_DATA,
+  getFeedProfileIconSize,
+} from "../../../../shared/constants/teams";
 
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -29,7 +32,10 @@ const QuestionCard = ({ user, onPress }) => {
         style={styles.avatarCircle}
       >
         {ProfileIcon ? (
-          <ProfileIcon width={28} height={28} />
+          <ProfileIcon
+            width={getFeedProfileIconSize(favoriteTeamCode, 26)}
+            height={getFeedProfileIconSize(favoriteTeamCode, 26)}
+          />
         ) : (
           <AppText
             variant="caption"

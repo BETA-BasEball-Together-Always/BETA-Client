@@ -33,7 +33,11 @@ export const useCheckedField = ({
     setError("");
 
     if (touched) {
-      setError(validate(next));
+      try {
+        setError(validate(next) ?? "");
+      } catch {
+        setError("입력값을 확인해 주세요.");
+      }
     } else {
       setError("");
     }
@@ -43,20 +47,30 @@ export const useCheckedField = ({
     setTouched(true);
     const trimmed = value.trim();
     setValue(trimmed);
-    setError(validate(trimmed));
+    try {
+      setError(validate(trimmed) ?? "");
+    } catch {
+      setError("입력값을 확인해 주세요.");
+    }
   };
 
   const handleCheck = async () => {
-    const trimmed = value.trim();
-    setTouched(true);
-    const validationError = validate(trimmed);
-
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
     try {
+      const trimmed = value.trim();
+      setTouched(true);
+
+      let validationError = "";
+      try {
+        validationError = validate(trimmed) ?? "";
+      } catch {
+        validationError = "입력값을 확인해 주세요.";
+      }
+
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
       setIsChecking(true);
       setError("");
 
@@ -67,14 +81,13 @@ export const useCheckedField = ({
         setIsAvailable(false);
         return;
       }
-      console.log("after checkAvailability", available);
       if (available) {
         setIsAvailable(true);
       } else {
         setIsAvailable(false);
         setError("이미 사용 중인 값이에요.");
       }
-    } catch (e) {
+    } catch {
       if (!mountedRef.current) return;
       setIsAvailable(false);
       setError("중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요.");

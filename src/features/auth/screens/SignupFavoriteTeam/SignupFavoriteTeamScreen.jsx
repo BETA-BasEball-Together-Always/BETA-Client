@@ -38,6 +38,7 @@ function buildDefaultSignupRows() {
     rowKey: t.key,
     label: t.label,
     MainIcon: t.MainIcon,
+    mainLogoScale: t.mainLogoScale ?? 1,
     apiTeamCode: t.key,
   }));
 }
@@ -53,7 +54,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   // signup 객체로만 누적 전달
   const signup = route?.params?.signup ?? {};
   const [serverTeamList, setServerTeamList] = useState(null);
- 
+
   const externalTeamList = useMemo(() => {
     const fromRoute = route?.params?.teamList;
     if (Array.isArray(fromRoute) && fromRoute.length > 0) {
@@ -68,12 +69,14 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
   const signupTeamMutation = useSignupTeamMutation();
   const signupStatusMutation = useSignupStatusMutation();
 
+  const signupStatusMutateAsync = signupStatusMutation.mutateAsync;
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       (async () => {
         try {
-          const status = await signupStatusMutation.mutateAsync();
+          const status = await signupStatusMutateAsync();
           if (cancelled) return;
           applySignupStatusToDraft(status);
           if (Array.isArray(status?.teamList) && status.teamList.length > 0) {
@@ -86,18 +89,13 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
       return () => {
         cancelled = true;
       };
-    }, [signupStatusMutation]),
+    }, [signupStatusMutateAsync]),
   );
 
   const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
 
   const handleBack = useStepBack("SocialSignup");
 
-  /**
-   * 화면 행 + POST /api/v1/auth/signup/team(processTeamSelection)에 보낼 teamCode.
-   * 서버 teamList(TeamDto[])가 있으면 teamCode는 **응답 문자열 그대로** 써야 TEAM001(구단 없음)을 피할 수 있음.
-   * 아이콘/라벨만 로컬 TEAM_LIST와 normalize 매칭.
-   */
   const teams = useMemo(() => {
     const raw =
       Array.isArray(externalTeamList) && externalTeamList.length > 0
@@ -109,6 +107,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
         rowKey: t.key,
         label: t.label,
         MainIcon: t.MainIcon,
+        mainLogoScale: t.mainLogoScale ?? 1,
         apiTeamCode: t.key,
       }));
 
@@ -130,6 +129,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
         rowKey: apiTeamCode,
         label: ext.teamNameKr ?? match?.label ?? apiTeamCode,
         MainIcon: match?.MainIcon ?? null,
+        mainLogoScale: match?.mainLogoScale ?? 1,
         apiTeamCode,
       });
     }
@@ -146,8 +146,9 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     const list = displayTeams;
     const selectedTeamLabel =
       list.find((t) => t.apiTeamCode === teamCode)?.label ??
-      TEAM_LIST.find((t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode))
-        ?.label;
+      TEAM_LIST.find(
+        (t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode),
+      )?.label;
 
     await SecureStore.setItemAsync(
       "favoriteTeamLabel",
@@ -172,7 +173,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     if (!isNextEnabled) return;
 
     try {
-      const status = await signupStatusMutation.mutateAsync();
+      const status = await signupStatusMutateAsync();
       if (status?.signupStep === "TEAM_SELECTED") {
         await goToGenderAge(selectedTeam);
         return;
@@ -203,7 +204,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
     }
   };
 
-  /** 이전 단계에서 온 코드가 로컬 키만 맞는 경우 → 현재 rows의 apiTeamCode로 맞춤 */
+  /** 이전 단계에서 온 코드가 로컬 키만 맞는 경우 -> 현재 rows의 apiTeamCode로 맞춤 */
   useEffect(() => {
     if (!selectedTeam || displayTeams.length === 0) return;
     if (displayTeams.some((t) => t.apiTeamCode === selectedTeam)) return;
@@ -254,53 +255,63 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
                 {/* 팀 선택 */}
                 <View style={styles.grid}>
-                  {displayTeams.map(({ rowKey, label, MainIcon, apiTeamCode }) => {
-                    const selected =
-                      selectedTeam != null &&
-                      normalizeTeamCode(selectedTeam) ===
-                        normalizeTeamCode(apiTeamCode);
+                  {displayTeams.map(
+                    ({
+                      rowKey,
+                      label,
+                      MainIcon,
+                      mainLogoScale,
+                      apiTeamCode,
+                    }) => {
+                      const selected =
+                        selectedTeam != null &&
+                        normalizeTeamCode(selectedTeam) ===
+                          normalizeTeamCode(apiTeamCode);
+                      const logoSize = Math.round(100 * (mainLogoScale ?? 1));
 
-                    return (
-                      <TouchableOpacity
-                        key={rowKey}
-                        style={styles.item}
-                        activeOpacity={0.85}
-                        onPress={() => setSelectedTeam(apiTeamCode)}
-                      >
-                        <View
-                          style={[
-                            styles.iconBox,
-                            selected && styles.iconBoxSelected,
-                          ]}
+                      return (
+                        <TouchableOpacity
+                          key={rowKey}
+                          style={styles.item}
+                          activeOpacity={0.85}
+                          onPress={() => setSelectedTeam(apiTeamCode)}
                         >
-                          {MainIcon ? (
-                            <MainIcon width={100} height={100} />
-                          ) : (
-                            <AppText
-                              variant="heading"
-                              style={[
-                                styles.fallbackTeamInitials,
-                                selected && styles.fallbackTeamInitialsOnLight,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {label.slice(0, 2)}
-                            </AppText>
-                          )}
-                        </View>
+                          <View
+                            style={[
+                              styles.iconBox,
+                              selected && styles.iconBoxSelected,
+                            ]}
+                          >
+                            {MainIcon ? (
+                              <MainIcon width={logoSize} height={logoSize} />
+                            ) : (
+                              <AppText
+                                variant="heading"
+                                style={[
+                                  styles.fallbackTeamInitials,
+                                  selected &&
+                                    styles.fallbackTeamInitialsOnLight,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {label.slice(0, 2)}
+                              </AppText>
+                            )}
+                          </View>
 
-                        <AppText
-                          variant="bodyMedium"
-                          style={[
-                            styles.teamLabel,
-                            selected && styles.teamLabelSelected,
-                          ]}
-                        >
-                          {label}
-                        </AppText>
-                      </TouchableOpacity>
-                    );
-                  })}
+                          <AppText
+                            variant="bodyMedium"
+                            style={[
+                              styles.teamLabel,
+                              selected && styles.teamLabelSelected,
+                            ]}
+                          >
+                            {label}
+                          </AppText>
+                        </TouchableOpacity>
+                      );
+                    },
+                  )}
                 </View>
               </View>
             </ScrollView>

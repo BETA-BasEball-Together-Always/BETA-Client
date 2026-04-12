@@ -13,6 +13,7 @@ const SignupCheckedInput = ({
   maxLength,
   field, // useCheckedField에서 받은 객체 {value, error, ...}
   buttonLabel = "중복확인",
+  editable = true,
 }) => {
   const {
     value,
@@ -40,6 +41,7 @@ const SignupCheckedInput = ({
           keyboardType={keyboardType}
           autoCapitalize="none"
           maxLength={maxLength}
+          editable={editable}
         />
 
         {status === "success" && (
@@ -60,8 +62,10 @@ const SignupCheckedInput = ({
               styles.checkButton,
               (!value || !!error || isChecking) && styles.checkButtonDisabled,
             ]}
-            activeOpacity={!value || !!error || isChecking ? 1 : 0.8}
-            disabled={!value || !!error || isChecking}
+            activeOpacity={
+              !value || !!error || isChecking || !editable ? 1 : 0.8
+            }
+            disabled={!value || !!error || isChecking || !editable}
             onPress={handleCheck}
           >
             <AppText variant="labelSmall" style={styles.checkButtonText}>
@@ -87,7 +91,6 @@ const SignupCheckedInput = ({
 
 export default SignupCheckedInput;
 
-// 스타일은 NativeSignupScreen에서 쓰던 것 그대로 옮겨오고, 필요하면 props로 override
 const styles = StyleSheet.create({
   fieldGroup: { marginBottom: 16 },
   label: {

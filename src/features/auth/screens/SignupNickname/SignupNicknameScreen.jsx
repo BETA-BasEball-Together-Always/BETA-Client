@@ -1,5 +1,11 @@
 // src/features/auth/screens/SignupNickname/SignupNicknameScreen.jsx
-import React, { useMemo, useEffect } from "react";
+import React, {
+  useMemo,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -11,12 +17,14 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Alert,
 } from "react-native";
 
 import AuthBackground from "../../components/AuthBackground";
 import SignupCheckedInput from "../../components/SignupCheckedInput";
 import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
+import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
 import { useStepBack } from "../../hooks/useStepBack";
@@ -24,10 +32,45 @@ import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const { height } = Dimensions.get("window");
 
-const SignupNicknameScreen = ({ navigation, route }) => {
-  const signup = route?.params?.signup ?? {}; // ? { signupType, email, terms ... }
+function signupNicknameCheckErrorMessage(error) {
+  if (error?.message === "NO_ACCESS_TOKEN") {
+    return "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+  }
+  if (error?.message === "INVALID_NICKNAME_CHECK_RESPONSE") {
+    return "서버 응답을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  }
+  const raw = error?.response?.data;
+  if (typeof raw === "string") return raw;
+  if (typeof raw?.message === "string") return raw.message;
+  return "닉네임 확인에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
+const FROZEN_EMPTY_CHECKED_FIELD = {
+  value: "",
+  error: "",
+  touched: false,
+  isAvailable: false,
+  isChecking: false,
+  status: "idle",
+  handleChange: () => {},
+  handleBlur: () => {},
+  handleCheck: async () => {},
+};
+
+/**
+ * persist rehydrate 완료 후에만 mount — useCheckedField 초기값이 복원된 draft와 일치
+ */
+function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
-  const handleBack = useStepBack("Login");
+  const mountedRef = useRef(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const draftNickname = useSignupDraftStore((s) => s.nickname);
   const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
@@ -38,39 +81,40 @@ const SignupNicknameScreen = ({ navigation, route }) => {
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
-  const validateNickname = (value) => {
+  const validateNickname = useCallback((value) => {
     if (!value) return "닉네임을 입력해주세요.";
 
     const trimmed = value.trim();
 
-    // 길이: 1~13
     if (trimmed.length < 1 || trimmed.length > 13) {
       return "닉네임은 1~13자 이내로 입력해주세요.";
     }
 
-    // 허용 문자
     if (!nicknameRegex.test(trimmed)) {
       return "한글, 영문, 숫자, _, . 만 사용할 수 있어요.";
     }
 
     return "";
-  };
+  }, []);
 
   const nicknameField = useCheckedField({
     initialValue: draftNickname ?? "",
-    initialTouched: !!(draftNickname ?? ""),
+    initialTouched: !!(draftNickname ?? "").trim(),
     initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
       const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
       const available = !isDuplicate;
       setDraftNicknameChecked(available);
-      return available; // useCheckedField 쪽에서는 boolean만 쓰면 됨
+      return available;
     },
   });
 
   useEffect(() => {
-    setDraftNickname(nicknameField.value);
+    const next = nicknameField.value;
+    if (useSignupDraftStore.getState().nickname !== next) {
+      setDraftNickname(next);
+    }
   }, [nicknameField.value, setDraftNickname]);
 
   const isNextEnabled = useMemo(() => {
@@ -79,21 +123,108 @@ const SignupNicknameScreen = ({ navigation, route }) => {
     );
   }, [nicknameField.value, nicknameField.error, nicknameField.isAvailable]);
 
-  const handleNext = () => {
-    if (!isNextEnabled) return;
+  const canPressNext =
+    isNextEnabled && !isSubmitting && !nicknameField.isChecking;
+
+  const handleNext = async () => {
+    if (!canPressNext) return;
 
     const nickname = nicknameField.value.trim();
-    setDraftNickname(nickname);
-    setDraftNicknameChecked(true);
+    const draftSnap = useSignupDraftStore.getState();
+    if (
+      !draftSnap.nicknameChecked ||
+      String(draftSnap.nickname ?? "").trim() !== nickname
+    ) {
+      Alert.alert("안내", "닉네임 중복확인을 완료해 주세요.");
+      return;
+    }
 
-    // 다음 단계로 이동 (즐겨찾는 팀 화면으로 이동 예시)
-    navigation.navigate("SignupFavoriteTeam", {
-      signup: {
-        ...signup,
-        nickname,
-      },
-    });
+    setIsSubmitting(true);
+    try {
+      setDraftNickname(nickname);
+      setDraftNicknameChecked(true);
+
+      const rawSignup = route?.params?.signup;
+      const baseSignup =
+        rawSignup != null &&
+        typeof rawSignup === "object" &&
+        !Array.isArray(rawSignup)
+          ? { ...rawSignup }
+          : {};
+      const safeEmail =
+        typeof baseSignup.email === "string" ? baseSignup.email.trim() : "";
+
+      navigation.navigate("SignupFavoriteTeam", {
+        signup: {
+          ...baseSignup,
+          email: safeEmail,
+          nickname,
+        },
+      });
+    } catch (e) {
+      if (!mountedRef.current) return;
+      Alert.alert("안내", signupNicknameCheckErrorMessage(e));
+    } finally {
+      if (mountedRef.current) {
+        setIsSubmitting(false);
+      }
+    }
   };
+
+  return (
+    <>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.inner}>
+          <SignupProgressHeader currentStep={1} onBack={handleBack} />
+
+          <Text style={styles.title}>닉네임을 입력해주세요</Text>
+
+          <View style={styles.formWrapper}>
+            <SignupCheckedInput
+              label={null}
+              placeholder="닉네임을 입력해주세요."
+              maxLength={13}
+              field={nicknameField}
+              buttonLabel="중복확인"
+            />
+
+            <Text style={styles.lengthText}>
+              {nicknameField.value.length}/13
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      <View style={styles.floatingBottomArea}>
+        <TouchableOpacity
+          style={[
+            styles.nextButton,
+            !canPressNext && styles.nextButtonDisabled,
+          ]}
+          activeOpacity={canPressNext ? 0.8 : 1}
+          onPress={handleNext}
+          disabled={!canPressNext}
+        >
+          <Text
+            style={[
+              styles.nextButtonText,
+              !canPressNext && styles.nextButtonTextDisabled,
+            ]}
+          >
+            {isSubmitting ? "처리 중..." : "다음"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+}
+
+const SignupNicknameScreen = ({ navigation, route }) => {
+  const draftHydrated = useSignupDraftPersistHydrated();
+  const handleBack = useStepBack("Login");
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -104,55 +235,55 @@ const SignupNicknameScreen = ({ navigation, route }) => {
         >
           <AuthBackground />
 
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.inner}>
-              <SignupProgressHeader currentStep={1} onBack={handleBack} />
-
-              {/* 타이틀 */}
-              <Text style={styles.title}>닉네임을 입력해주세요</Text>
-
-              {/* 닉네임 입력 */}
-              <View style={styles.formWrapper}>
-                <SignupCheckedInput
-                  label={null}
-                  placeholder="닉네임을 입력해주세요."
-                  maxLength={13}
-                  field={nicknameField}
-                  buttonLabel="중복확인"
-                />
-
-                {/* 글자 수 표시 */}
-                <Text style={styles.lengthText}>
-                  {nicknameField.value.length}/13
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* 하단 플로팅 버튼 */}
-          <View style={styles.floatingBottomArea}>
-            <TouchableOpacity
-              style={[
-                styles.nextButton,
-                !isNextEnabled && styles.nextButtonDisabled,
-              ]}
-              activeOpacity={isNextEnabled ? 0.8 : 1}
-              onPress={handleNext}
-              disabled={!isNextEnabled}
-            >
-              <Text
-                style={[
-                  styles.nextButtonText,
-                  !isNextEnabled && styles.nextButtonTextDisabled,
-                ]}
+          {!draftHydrated ? (
+            <>
+              <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
               >
-                다음
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <View style={styles.inner}>
+                  <SignupProgressHeader currentStep={1} onBack={handleBack} />
+
+                  <Text style={styles.title}>닉네임을 입력해주세요</Text>
+
+                  <View style={styles.formWrapper}>
+                    <SignupCheckedInput
+                      label={null}
+                      placeholder="닉네임을 입력해주세요."
+                      maxLength={13}
+                      field={FROZEN_EMPTY_CHECKED_FIELD}
+                      buttonLabel="중복확인"
+                      editable={false}
+                    />
+                    <Text style={styles.lengthText}>0/13</Text>
+                  </View>
+                </View>
+              </ScrollView>
+
+              <View style={styles.floatingBottomArea}>
+                <TouchableOpacity
+                  style={[styles.nextButton, styles.nextButtonDisabled]}
+                  activeOpacity={1}
+                  disabled
+                >
+                  <Text
+                    style={[
+                      styles.nextButtonText,
+                      styles.nextButtonTextDisabled,
+                    ]}
+                  >
+                    다음
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <SignupNicknameHydratedBody
+              navigation={navigation}
+              route={route}
+              handleBack={handleBack}
+            />
+          )}
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
@@ -181,7 +312,6 @@ const styles = StyleSheet.create({
     maxWidth: 390,
     alignSelf: "center",
   },
-  // header styles moved to SignupProgressHeader
   title: {
     fontSize: 22,
     fontWeight: "700",
@@ -193,7 +323,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   lengthText: {
-    // marginTop: 4,
     fontSize: 11,
     color: "#FFFFFF",
     textAlign: "right",

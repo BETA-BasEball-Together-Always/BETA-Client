@@ -8,7 +8,10 @@ import {
 } from "react-native";
 import { AppText } from "../../../shared/theme/components/AppText";
 import { LinearGradient } from "expo-linear-gradient";
-import { TEAM_DATA } from "../../../shared/constants/teams";
+import {
+  TEAM_DATA,
+  getFeedProfileIconSize,
+} from "../../../shared/constants/teams";
 import TeamLabel from "./communityMain/TeamLabel";
 import { getRelativeTimeForPostBody } from "../screens/PostDetail/utils/relativeTime";
 import MenuIcon from "../assets/svg/TopBar/menuIcon.svg";
@@ -58,7 +61,10 @@ const CommunityUserProfile = ({
           style={styles.avatarCircle}
         >
           {ProfileIcon ? (
-            <ProfileIcon width={28} height={28} />
+            <ProfileIcon
+              width={getFeedProfileIconSize(teamCode, 28)}
+              height={getFeedProfileIconSize(teamCode, 28)}
+            />
           ) : (
             <AppText style={{ color: "#FFF" }}>{nickname?.[0]}</AppText>
           )}

@@ -8,7 +8,10 @@ import HeartFilledIcon from "../../../assets/svg/CommunityPost/heartFilledIcon.s
 import HeartOnPressIcon from "../../../assets/svg/CommunityPost/heartOnPressIcon.svg";
 import ReplyIcon from "../../../assets/svg/CommunityPost/replyIcon.svg";
 import TeamLabel from "../../../component/communityMain/TeamLabel";
-import { TEAM_DATA } from "../../../../../shared/constants/teams";
+import {
+  TEAM_DATA,
+  getFeedProfileIconSize,
+} from "../../../../../shared/constants/teams";
 import { LinearGradient } from "expo-linear-gradient";
 
 const HEART_SIZE = 20;
@@ -63,6 +66,7 @@ export default function ThreadItem({
   const ProfileIcon = team?.ProfileIcon;
   const profileUserId = author.userId ?? item.userId ?? null;
   const avatarSize = variant === "reply" ? 32 : 38;
+  const profileIconSize = getFeedProfileIconSize(teamCode, avatarSize * 0.74);
 
   return (
     <View
@@ -98,7 +102,7 @@ export default function ThreadItem({
           ]}
         >
           {ProfileIcon ? (
-            <ProfileIcon width={avatarSize * 0.74} height={avatarSize * 0.74} />
+            <ProfileIcon width={profileIconSize} height={profileIconSize} />
           ) : (
             <AppText style={styles.avatarInitial}>{avatarLetter}</AppText>
           )}

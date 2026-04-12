@@ -13,7 +13,10 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { AppText } from "../../../../../shared/theme/components/AppText";
-import { TEAM_DATA } from "../../../../../shared/constants/teams";
+import {
+  TEAM_DATA,
+  getFeedProfileIconSize,
+} from "../../../../../shared/constants/teams";
 import { getRelativeTimeForPostBody } from "../../../../community/screens/PostDetail/utils/relativeTime";
 import MenuIcon from "../../../../community/assets/svg/TopBar/menuIcon.svg";
 import { useUserStore } from "../../../../../shared/store/userStore";
@@ -259,7 +262,10 @@ const PopularPostCard = ({ post }) => {
             style={styles.avatarCircle}
           >
             {ProfileIcon ? (
-              <ProfileIcon width={AVATAR_ICON} height={AVATAR_ICON} />
+              <ProfileIcon
+                width={getFeedProfileIconSize(teamCode, AVATAR_ICON)}
+                height={getFeedProfileIconSize(teamCode, AVATAR_ICON)}
+              />
             ) : (
               <AppText variant="spaced" style={styles.avatarFallback}>
                 {post.author?.nickname?.[0]}
