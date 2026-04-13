@@ -267,7 +267,7 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
                         selectedTeam != null &&
                         normalizeTeamCode(selectedTeam) ===
                           normalizeTeamCode(apiTeamCode);
-                      const logoSize = Math.round(100 * (mainLogoScale ?? 1));
+                      const logoSize = Math.round(88 * (mainLogoScale ?? 1));
 
                       return (
                         <TouchableOpacity
