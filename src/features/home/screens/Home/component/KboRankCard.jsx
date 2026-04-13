@@ -26,10 +26,10 @@ export default function KboRankCard({ year, rows, favoriteTeamCode }) {
   return (
     <View style={styles.card}>
       <AppText variant="semi18" style={styles.title}>
-        {year} KBO 랭크
+        {year} 리그 순위
       </AppText>
       <AppText variant="smallRegular" style={styles.dateRange}>
-        *KBO 리그 공식 데이터를 기반으로 제공합니다
+        *KBO 리그에서 제공한 데이터를 기반으로 계산됩니다
       </AppText>
 
       {hasRows ? (
