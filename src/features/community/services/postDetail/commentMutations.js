@@ -10,8 +10,16 @@ import {
 import { useCommentRemovalStore } from "../../store/commentRemovalStore";
 import { mergeFlatAuthor } from "../../utils/communityComments";
 import { useCommentAuthorFallbackStore } from "../../store/commentAuthorFallbackStore";
+import { mypageQueryKeys } from "../../../profile/mypageQueryKeys";
 
 const DELETED_COMMENT_TEXT = "삭제된 댓글입니다";
+
+function invalidateMypageCommentedPosts(queryClient) {
+  queryClient.invalidateQueries({
+    queryKey: mypageQueryKeys.commented(),
+    refetchType: "all",
+  });
+}
 
 /** parentId가 최상위 또는 중첩 답글인 경우 재귀적으로 replies에 추가 */
 function addReplyToCommentTree(list, parentId, newComment) {
@@ -156,6 +164,8 @@ export const useCreateCommentMutation = (postId, { currentUser } = {}) => {
           };
         },
       );
+
+      invalidateMypageCommentedPosts(queryClient);
     },
   });
 };
@@ -185,6 +195,8 @@ export const useUpdateCommentMutation = (postId) => {
           comments: updateInList(prev.comments ?? []),
         };
       });
+
+      invalidateMypageCommentedPosts(queryClient);
     },
   });
 };
@@ -280,6 +292,8 @@ export const useDeleteCommentMutation = (postId) => {
           };
         },
       );
+
+      invalidateMypageCommentedPosts(queryClient);
     },
   });
 };
