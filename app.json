@@ -18,14 +18,11 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "야구네컷 촬영을 위해 카메라 접근이 필요합니다.",
-        "NSPhotoLibraryUsageDescription": "사진을 업로드하기 위해 사진 보관함 접근이 필요합니다.",
-        "NSPhotoLibraryAddUsageDescription": "편집된 야구네컷을 사진 보관함에 저장합니다.",
+        "NSCameraUsageDescription": "게시글 작성 시 사진을 직접 촬영하여 첨부하거나, 야구네컷 카메라로 프레임 사진을 촬영할 때 사용됩니다.",
+        "NSPhotoLibraryUsageDescription": "게시글에 이미지를 첨부하거나, 야구네컷 편집 시 보관함의 사진으로 프레임 이미지를 교체할 때 사용됩니다.",
+        "NSPhotoLibraryAddUsageDescription": "편집한 야구네컷 이미지를 사진 보관함에 저장합니다.",
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
-          "kakaokompassauth",
-          "kakaolink",
-          "naversearchapp",
           "kakaokompassauth",
           "kakaolink",
           "naversearchapp"
@@ -41,7 +38,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["android.permission.CAMERA", "android.permission.CAMERA"],
+      "permissions": ["android.permission.CAMERA"],
       "package": "com.beta.baseballapp"
     },
     "web": {
