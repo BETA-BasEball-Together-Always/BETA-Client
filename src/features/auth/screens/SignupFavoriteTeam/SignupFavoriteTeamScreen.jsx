@@ -21,10 +21,13 @@ import { useSignupTeamMutation } from "../../services/signupTeamMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_LIST } from "../../../../shared/constants/teams";
+import { getKboRankCardRabbitIcon } from "../../../../shared/constants/kboRankCardRabbitIcons";
 
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+
+const RABBIT_ICON_SIZE = 74.14;
 
 function normalizeTeamCode(code) {
   return String(code ?? "")
@@ -259,15 +262,19 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
                     ({
                       rowKey,
                       label,
-                      MainIcon,
-                      mainLogoScale,
                       apiTeamCode,
                     }) => {
                       const selected =
                         selectedTeam != null &&
                         normalizeTeamCode(selectedTeam) ===
                           normalizeTeamCode(apiTeamCode);
-                      const logoSize = Math.round(88 * (mainLogoScale ?? 1));
+                      const teamKey = normalizeTeamCode(apiTeamCode);
+                      const RabbitIcon = getKboRankCardRabbitIcon(teamKey);
+                      if (!RabbitIcon) {
+                        throw new Error(
+                          `[SignupFavoriteTeamScreen] Missing rabbit icon mapping for team: ${teamKey}`,
+                        );
+                      }
 
                       return (
                         <TouchableOpacity
@@ -282,21 +289,10 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
                               selected && styles.iconBoxSelected,
                             ]}
                           >
-                            {MainIcon ? (
-                              <MainIcon width={logoSize} height={logoSize} />
-                            ) : (
-                              <AppText
-                                variant="heading"
-                                style={[
-                                  styles.fallbackTeamInitials,
-                                  selected &&
-                                    styles.fallbackTeamInitialsOnLight,
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {label.slice(0, 2)}
-                              </AppText>
-                            )}
+                            <RabbitIcon
+                              width={RABBIT_ICON_SIZE}
+                              height={RABBIT_ICON_SIZE}
+                            />
                           </View>
 
                           <AppText
