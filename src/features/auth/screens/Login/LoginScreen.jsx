@@ -1,12 +1,6 @@
 // src/features/auth/screens/LoginScreen.jsx
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { login, unlink } from "@react-native-seoul/kakao-login";
 
@@ -74,14 +68,17 @@ const LoginScreen = ({ navigation, route }) => {
 
   const showApiAuthError = (error, title, fallbackMessage) => {
     const msg =
-      getSocialLoginErrorPayload(error).message ?? error?.message ?? fallbackMessage;
+      getSocialLoginErrorPayload(error).message ??
+      error?.message ??
+      fallbackMessage;
     Alert.alert(title, msg);
   };
 
   const showDuplicateEmailAlert = (error) => {
     const payload = getSocialLoginErrorPayload(error);
     const msg =
-      payload.message ?? "이미 가입된 이메일입니다. 소셜 로그인을 확인해 주세요.";
+      payload.message ??
+      "이미 가입된 이메일입니다. 소셜 로그인을 확인해 주세요.";
     Alert.alert("로그인 안내", msg);
     setIsSocialLoading(false);
   };
@@ -110,7 +107,8 @@ const LoginScreen = ({ navigation, route }) => {
       const scheduledDeletionAt = baseUser?.scheduledDeletionAt ?? null;
 
       const scheduled =
-        scheduledDeletionAt && !Number.isNaN(new Date(scheduledDeletionAt).getTime())
+        scheduledDeletionAt &&
+        !Number.isNaN(new Date(scheduledDeletionAt).getTime())
           ? new Date(scheduledDeletionAt)
           : null;
 
@@ -155,10 +153,9 @@ const LoginScreen = ({ navigation, route }) => {
     // 회원가입 미완료
     // - SOCIAL_AUTHENTICATED 또는 단계 미표시: 약관만 필요 -> GET /signup/status 생략 가능
     // - 그 외(CONSENT_AGREED, PROFILE_COMPLETED, TEAM_SELECTED 등): 해당 화면 구성용
-    //   email/teamList 등은 반드시 GET /api/v1/auth/signup/status 로 조회
+    //   email 등은 반드시 GET /api/v1/auth/signup/status 로 조회 (팀 목록은 각 화면에서 status 재조회)
     let signupStep = userResponse.signupStep;
     let emailFromServer = null;
-    let teamListFromServer = null;
 
     const canSkipSignupStatus =
       signupStep == null || signupStep === "SOCIAL_AUTHENTICATED";
@@ -172,7 +169,6 @@ const LoginScreen = ({ navigation, route }) => {
           signupStep = status.signupStep;
         }
         emailFromServer = status?.email ?? null;
-        teamListFromServer = status?.teamList ?? null;
       } catch (e) {
         console.log("signup/status 조회 실패:", e);
         Alert.alert(
@@ -198,10 +194,11 @@ const LoginScreen = ({ navigation, route }) => {
         break;
 
       case "PROFILE_COMPLETED":
-        // 2단계: 팀 선택 (teamList 필요)
+        // 2단계: 팀 선택 — 목록은 SignupFavoriteTeam에서 GET /signup/status 로 로드
         navigation.navigate("SignupFavoriteTeam", {
-          signup: {},
-          teamList: teamListFromServer || [],
+          signup: {
+            email: emailFromServer ?? userResponse?.email ?? "",
+          },
         });
         break;
 

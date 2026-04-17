@@ -30,9 +30,11 @@ import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupSta
 const RABBIT_ICON_SIZE = 74.14;
 
 function normalizeTeamCode(code) {
-  return String(code ?? "")
-    .trim()
-    .toUpperCase();
+  let s = String(code ?? "").trim();
+  if (s.includes("_")) {
+    s = s.split("_")[0] ?? "";
+  }
+  return s.toUpperCase();
 }
 
 /** useMemo 실패/빈 배열 대비 — 항상 로컬 10개 구단으로 폴백 */
@@ -46,27 +48,31 @@ function buildDefaultSignupRows() {
 }
 
 const SignupFavoriteTeamScreen = ({ navigation, route }) => {
+  const routeParams = route?.params ?? {};
+  const signupParam =
+    routeParams?.signup != null &&
+    typeof routeParams.signup === "object" &&
+    !Array.isArray(routeParams.signup)
+      ? routeParams.signup
+      : {};
+
   const draftFavoriteTeamCode = useSignupDraftStore((s) => s.favoriteTeamCode);
   const setDraftFavoriteTeam = useSignupDraftStore((s) => s.setFavoriteTeam);
 
   const [selectedTeam, setSelectedTeam] = useState(
-    route?.params?.signup?.favoriteTeamCode ?? draftFavoriteTeamCode ?? null,
+    signupParam?.favoriteTeamCode ?? draftFavoriteTeamCode ?? null,
   );
 
-  // signup 객체로만 누적 전달
-  const signup = route?.params?.signup ?? {};
+  const signup = signupParam;
   const [serverTeamList, setServerTeamList] = useState(null);
 
+  /** 팀 목록은 params가 아니라 GET /signup/status(포커스 시) 또는 로컬 TEAM_LIST 폴백 */
   const externalTeamList = useMemo(() => {
-    const fromRoute = route?.params?.teamList;
-    if (Array.isArray(fromRoute) && fromRoute.length > 0) {
-      return fromRoute;
-    }
     if (Array.isArray(serverTeamList) && serverTeamList.length > 0) {
       return serverTeamList;
     }
     return null;
-  }, [route?.params?.teamList, serverTeamList]);
+  }, [serverTeamList]);
 
   const signupTeamMutation = useSignupTeamMutation();
   const signupStatusMutation = useSignupStatusMutation();
@@ -255,56 +261,61 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
 
                 {/* 팀 선택 */}
                 <View style={styles.grid}>
-                  {displayTeams.map(
-                    ({
-                      rowKey,
-                      label,
-                      apiTeamCode,
-                    }) => {
-                      const selected =
-                        selectedTeam != null &&
-                        normalizeTeamCode(selectedTeam) ===
-                          normalizeTeamCode(apiTeamCode);
-                      const teamKey = normalizeTeamCode(apiTeamCode);
-                      const RabbitIcon = getKboRankCardRabbitIcon(teamKey);
-                      if (!RabbitIcon) {
-                        throw new Error(
-                          `[SignupFavoriteTeamScreen] Missing rabbit icon mapping for team: ${teamKey}`,
-                        );
-                      }
+                  {displayTeams.map(({ rowKey, label, apiTeamCode }) => {
+                    const selected =
+                      selectedTeam != null &&
+                      normalizeTeamCode(selectedTeam) ===
+                        normalizeTeamCode(apiTeamCode);
+                    const teamKey = normalizeTeamCode(apiTeamCode);
+                    const RabbitIcon = getKboRankCardRabbitIcon(teamKey);
+                    const fallbackInitial =
+                      typeof label === "string" && label.trim().length > 0
+                        ? label.trim().slice(0, 2)
+                        : teamKey.slice(0, 2);
 
-                      return (
-                        <TouchableOpacity
-                          key={rowKey}
-                          style={styles.item}
-                          activeOpacity={0.85}
-                          onPress={() => setSelectedTeam(apiTeamCode)}
+                    return (
+                      <TouchableOpacity
+                        key={rowKey}
+                        style={styles.item}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedTeam(apiTeamCode)}
+                      >
+                        <View
+                          style={[
+                            styles.iconBox,
+                            selected && styles.iconBoxSelected,
+                          ]}
                         >
-                          <View
-                            style={[
-                              styles.iconBox,
-                              selected && styles.iconBoxSelected,
-                            ]}
-                          >
+                          {RabbitIcon ? (
                             <RabbitIcon
                               width={RABBIT_ICON_SIZE}
                               height={RABBIT_ICON_SIZE}
                             />
-                          </View>
+                          ) : (
+                            <AppText
+                              variant="bodyMedium"
+                              style={[
+                                styles.fallbackTeamInitials,
+                                selected && styles.fallbackTeamInitialsOnLight,
+                              ]}
+                            >
+                              {fallbackInitial}
+                            </AppText>
+                          )}
+                        </View>
 
-                          <AppText
-                            variant="bodyMedium"
-                            style={[
-                              styles.teamLabel,
-                              selected && styles.teamLabelSelected,
-                            ]}
-                          >
-                            {label}
-                          </AppText>
-                        </TouchableOpacity>
-                      );
-                    },
-                  )}
+                        <AppText
+                          variant="bodyMedium"
+                          style={[
+                            styles.teamLabel,
+                            selected && styles.teamLabelSelected,
+                          ]}
+                        >
+                          {label}
+                        </AppText>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             </ScrollView>

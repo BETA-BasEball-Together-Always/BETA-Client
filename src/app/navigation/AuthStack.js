@@ -16,10 +16,37 @@ import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSig
 
 const Stack = createNativeStackNavigator();
 
+
+const VALID_AUTH_RESUME_SCREEN_NAMES = new Set([
+  "Login",
+  "SocialSignup",
+  "TermsDetail",
+  "TermsTosDetail",
+  "TermsPrivacyRequiredDetail",
+  "SignupNickname",
+  "SignupFavoriteTeam",
+  "SignupGenderAge",
+  "SignupComplete",
+]);
+
+function coerceResumeForAuthStack(resume) {
+  if (!resume || typeof resume?.name !== "string") return null;
+  const name = resume.name.trim();
+  if (!VALID_AUTH_RESUME_SCREEN_NAMES.has(name)) {
+    return { name: "Login", params: {} };
+  }
+  if (resume.params != null && typeof resume.params === "object") {
+    return { name, params: resume.params };
+  }
+  return { name };
+}
+
 const AuthStack = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const resume = route.params?.resume ?? null;
+  const rawResume = route.params?.resume ?? null;
+  const resume =
+    rawResume == null ? null : coerceResumeForAuthStack(rawResume);
   const authErrorMessage = route.params?.authErrorMessage ?? null;
 
   const didApplyResumeStack = useRef(false);
@@ -33,12 +60,17 @@ const AuthStack = () => {
     if (didApplyResumeStack.current || !resume) return;
     let cancelled = false;
     (async () => {
-      await hydrateSignupDraftFromStorage();
-      if (cancelled) return;
-      const action = buildRootResetForAuthNestedResume(resume);
-      if (!action) return;
-      didApplyResumeStack.current = true;
-      navigation.dispatch(action);
+      try {
+        await hydrateSignupDraftFromStorage();
+        if (cancelled) return;
+        const action = buildRootResetForAuthNestedResume(resume);
+        if (!action) return;
+        didApplyResumeStack.current = true;
+        navigation.dispatch(action);
+      } catch (e) {
+        console.warn("[AuthStack] resume stack apply failed", e);
+        didApplyResumeStack.current = true;
+      }
     })();
     return () => {
       cancelled = true;

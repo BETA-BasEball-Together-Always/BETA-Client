@@ -34,6 +34,20 @@ import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSi
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
+function normalizeSignupParams(signup) {
+  if (signup == null || typeof signup !== "object" || Array.isArray(signup)) {
+    return {};
+  }
+  return signup;
+}
+
+/** route.params.signup.email 이 비어 있으면 draft /서버 status로 채움 */
+function emailStringFromSignup(signup) {
+  const s = normalizeSignupParams(signup);
+  const e = s?.email;
+  return typeof e === "string" && e.trim().length > 0 ? e.trim() : "";
+}
+
 function normalizeSignupStepFromStatus(status) {
   const raw = status?.signupStep ?? status?.signup_step;
   return typeof raw === "string" ? raw.trim() : "";
@@ -74,9 +88,13 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
     };
   }, []);
 
-  const signup = route?.params?.signup ?? {};
+  const signup = normalizeSignupParams(route?.params?.signup);
   const draftEmail = useSignupDraftStore((s) => s.email);
-  const readonlyEmail = signup.email ?? draftEmail ?? "";
+  const draftEmailTrim =
+    typeof draftEmail === "string" ? draftEmail.trim() : "";
+  const paramEmailTrim = emailStringFromSignup(signup);
+  /** 빈 문자열("") params.email 은 nullish가 아니라서 ?? 만 쓰면 draft를 덮어쓰지 못함! || 사용 */
+  const readonlyEmail = paramEmailTrim || draftEmailTrim;
 
   const draftNickname = useSignupDraftStore((s) => s.nickname);
   const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
@@ -124,7 +142,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   const nicknameFieldRef = useRef(nicknameField);
   nicknameFieldRef.current = nicknameField;
 
-  /** 뒤로가기/재진입: 이메일/닉네임 draft + 서버 signup/status 동기화 */
+  /** 뒤로가기/재진입: 이메일/닉네임 draft + 서버 signup/status 동기화 (params에 email 없을 때 폴백) */
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -218,17 +236,19 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
         return;
       }
 
-      const data = await signupProfileMutation.mutateAsync({ nickname });
-      const teamList = data?.teamList ?? [];
+      const emailFromStatus =
+        typeof status?.email === "string" ? status.email.trim() : "";
+      const emailForNav = emailFromStatus || readonlyEmail;
+
+      await signupProfileMutation.mutateAsync({ nickname });
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
       navigation.navigate("SignupFavoriteTeam", {
         signup: {
           ...signup,
-          email: readonlyEmail,
+          email: emailForNav,
           nickname,
         },
-        teamList,
       });
     } catch (e) {
       console.warn("[signup/profile]", e);
@@ -333,8 +353,12 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
 const SocialSignupScreen = ({ navigation, route }) => {
   const draftHydrated = useSignupDraftPersistHydrated();
   const handleBack = useStepBack("TermsDetail");
-  const signupFromRoute = route?.params?.signup ?? {};
-  const shellEmail = signupFromRoute.email ?? "";
+  const draftEmailShell = useSignupDraftStore((s) => s.email);
+  const signupFromRoute = normalizeSignupParams(route?.params?.signup);
+  const paramShell = emailStringFromSignup(signupFromRoute);
+  const draftShellTrim =
+    typeof draftEmailShell === "string" ? draftEmailShell.trim() : "";
+  const shellEmail = paramShell || draftShellTrim;
 
   return (
     <View style={styles.root}>

@@ -61,6 +61,8 @@ const FROZEN_EMPTY_CHECKED_FIELD = {
  * persist rehydrate 완료 후에만 mount — useCheckedField 초기값이 복원된 draft와 일치
  */
 function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
+  const routeParams = route?.params ?? {};
+
   const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const mountedRef = useRef(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,7 +146,7 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
 
-      const rawSignup = route?.params?.signup;
+      const rawSignup = routeParams?.signup;
       const baseSignup =
         rawSignup != null &&
         typeof rawSignup === "object" &&
