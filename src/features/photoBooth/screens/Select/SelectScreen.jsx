@@ -38,7 +38,6 @@ const teams = PHOTO_BOOTH_TEAM_ROWS.map((row) => {
   return {
     ...row,
     Icon: meta?.MainIcon,
-    mainLogoScale: meta?.mainLogoScale ?? 1,
   };
 });
 

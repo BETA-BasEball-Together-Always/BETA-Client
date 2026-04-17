@@ -41,7 +41,6 @@ function buildDefaultSignupRows() {
     rowKey: t.key,
     label: t.label,
     MainIcon: t.MainIcon,
-    mainLogoScale: t.mainLogoScale ?? 1,
     apiTeamCode: t.key,
   }));
 }
@@ -110,7 +109,6 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
         rowKey: t.key,
         label: t.label,
         MainIcon: t.MainIcon,
-        mainLogoScale: t.mainLogoScale ?? 1,
         apiTeamCode: t.key,
       }));
 
@@ -132,7 +130,6 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
         rowKey: apiTeamCode,
         label: ext.teamNameKr ?? match?.label ?? apiTeamCode,
         MainIcon: match?.MainIcon ?? null,
-        mainLogoScale: match?.mainLogoScale ?? 1,
         apiTeamCode,
       });
     }
