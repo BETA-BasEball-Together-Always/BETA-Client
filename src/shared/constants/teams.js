@@ -61,7 +61,7 @@ export const TEAM_DATA = {
     label: "삼성라이온즈",
     MainIcon: SAMSUNG,
     ProfileIcon: PROFILE_SAMSUNG,
-    mainLogoScale: 0.6,
+    // mainLogoScale: 0.6,
     gradient: {
       colors: ["#7ABFFF", "#1A6FCC", "#003A80", "#001A40"],
       locations: [0, 0.3, 0.65, 1],
