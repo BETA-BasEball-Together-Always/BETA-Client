@@ -2,7 +2,7 @@ import { CommonActions } from "@react-navigation/native";
 import { useSignupDraftStore } from "@features/auth/stores/useSignupDraftStore";
 
 function buildInnerAuthRoutes(resume) {
-  if (!resume?.name) return null;
+  if (!resume?.name || typeof resume.name !== "string") return null;
 
   const routes = [{ name: "Login" }];
 
@@ -26,33 +26,48 @@ function buildInnerAuthRoutes(resume) {
       break;
     case "SignupFavoriteTeam": {
       const email = resume.params?.signup?.email ?? null;
+      const draftSignup =
+        useSignupDraftStore.getState().buildSignupParams?.() ?? {};
+      const resumeSignup =
+        resume.params?.signup && typeof resume.params.signup === "object"
+          ? resume.params.signup
+          : {};
+      const mergedSignup = { ...draftSignup, ...resumeSignup };
       push("TermsDetail");
       push("SocialSignup", {
         signup: {
-          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
-          email: email ?? "",
+          ...mergedSignup,
+          email: email ?? mergedSignup.email ?? "",
         },
       });
-      push("SignupFavoriteTeam", resume.params);
+      push("SignupFavoriteTeam", {
+        signup: mergedSignup,
+      });
       break;
     }
     case "SignupGenderAge": {
       const email = resume.params?.signup?.email ?? null;
+      const draftSignup =
+        useSignupDraftStore.getState().buildSignupParams?.() ?? {};
+      const resumeSignup =
+        resume.params?.signup && typeof resume.params.signup === "object"
+          ? resume.params.signup
+          : {};
+      const mergedSignup = { ...draftSignup, ...resumeSignup };
       push("TermsDetail");
       push("SocialSignup", {
         signup: {
-          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
-          email: email ?? "",
+          ...mergedSignup,
+          email: email ?? mergedSignup.email ?? "",
         },
       });
       push("SignupFavoriteTeam", {
-        signup: {
-          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
-          ...(resume.params?.signup ?? {}),
-        },
-        teamList: resume.params?.teamList ?? [],
+        signup: mergedSignup,
       });
-      push("SignupGenderAge", resume.params);
+      const raw =
+        resume.params && typeof resume.params === "object" ? resume.params : {};
+      const { teamList: _omitTeamList, ...genderAgeParams } = raw;
+      push("SignupGenderAge", genderAgeParams);
       break;
     }
     default:

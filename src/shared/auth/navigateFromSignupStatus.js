@@ -10,7 +10,6 @@ export function navigateFromSignupStatus(status, navigation) {
 
   const step = status?.signupStep;
   const email = status?.email ?? null;
-  const teamList = status?.teamList ?? [];
   const draftSignup =
     useSignupDraftStore.getState().buildSignupParams?.() ?? {};
 
@@ -26,7 +25,6 @@ export function navigateFromSignupStatus(status, navigation) {
     case "PROFILE_COMPLETED":
       navigation.navigate("SignupFavoriteTeam", {
         signup: { ...draftSignup, email: email ?? draftSignup.email ?? "" },
-        teamList,
       });
       return true;
     case "TEAM_SELECTED":

@@ -8,7 +8,14 @@ import { useSignupDraftStore } from "@features/auth/stores/useSignupDraftStore";
 export function applySignupStatusToDraft(status) {
   if (!status || typeof status !== "object") return;
 
-  const step = status.signupStep;
+  let step;
+  try {
+    step = String(status.signupStep ?? "")
+      .trim()
+      .toUpperCase();
+  } catch {
+    step = "";
+  }
   const store = useSignupDraftStore.getState();
   const prevTerms = store.terms ?? {};
 

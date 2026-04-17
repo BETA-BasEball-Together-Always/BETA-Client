@@ -5,7 +5,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import SplashScreen from "@app/SplashScreen";
 import CommunityStack from "./CommunityStack";
 import SearchScreen from "@features/search/screens/SearchScreen";
-import { bootstrapSession } from "../../shared/services/sessionBootstrap";
+import {
+  bootstrapSession,
+  getBootstrapAuthSignupStartFallback,
+} from "../../shared/services/sessionBootstrap";
 
 const Stack = createNativeStackNavigator();
 
@@ -27,8 +30,7 @@ const RootNavigator = () => {
         if (!cancelled) setBoot(result);
       } catch (e) {
         console.warn("[bootstrapSession]", e);
-        if (!cancelled)
-          setBoot({ destination: "auth", authErrorMessage: null });
+        if (!cancelled) setBoot(getBootstrapAuthSignupStartFallback());
       }
     })();
     return () => {
@@ -46,13 +48,14 @@ const RootNavigator = () => {
     );
   }
 
-  const initialRouteName = boot.destination === "main" ? "Main" : "Auth";
+  const safeBoot = boot ?? getBootstrapAuthSignupStartFallback();
+  const initialRouteName = safeBoot?.destination === "main" ? "Main" : "Auth";
 
   const authInitialParams =
-    boot.destination === "auth"
+    safeBoot?.destination === "auth"
       ? {
-          resume: boot.resume ?? null,
-          authErrorMessage: boot.authErrorMessage ?? null,
+          resume: safeBoot?.resume ?? null,
+          authErrorMessage: safeBoot?.authErrorMessage ?? null,
         }
       : undefined;
 
