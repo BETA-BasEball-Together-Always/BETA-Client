@@ -1,6 +1,31 @@
 import { CommonActions } from "@react-navigation/native";
 import { useSignupDraftStore } from "@features/auth/stores/useSignupDraftStore";
 
+/**
+ * 네비게이션 reset에 넣을 params를 JSON 직렬화 가능한 순수 데이터로만!
+ */
+function sanitizeRouteParams(params) {
+  if (params == null || typeof params !== "object") return undefined;
+  try {
+    const parsed = JSON.parse(
+      JSON.stringify(params, (_, v) => {
+        if (typeof v === "function" || typeof v === "symbol") return undefined;
+        if (typeof v === "number" && !Number.isFinite(v)) return undefined;
+        return v;
+      }),
+    );
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function mergeSignupForNavigation(draftSignup, resumeSignup) {
+  const d = draftSignup && typeof draftSignup === "object" ? draftSignup : {};
+  const r = resumeSignup && typeof resumeSignup === "object" ? resumeSignup : {};
+  return sanitizeRouteParams({ ...d, ...r }) ?? {};
+}
+
 function buildInnerAuthRoutes(resume) {
   if (!resume?.name || typeof resume.name !== "string") return null;
 
@@ -14,16 +39,21 @@ function buildInnerAuthRoutes(resume) {
     case "TermsDetail":
       push("TermsDetail");
       break;
-    case "SocialSignup":
+    case "SocialSignup": {
+      const mergedSignup = mergeSignupForNavigation(
+        useSignupDraftStore.getState().buildSignupParams?.() ?? {},
+        resume.params?.signup,
+      );
       push("TermsDetail");
-      push("SocialSignup", {
-        ...(resume.params ?? {}),
-        signup: {
-          ...(useSignupDraftStore.getState().buildSignupParams?.() ?? {}),
-          ...(resume.params?.signup ?? {}),
-        },
-      });
+      push(
+        "SocialSignup",
+        sanitizeRouteParams({
+          ...(resume.params ?? {}),
+          signup: mergedSignup,
+        }),
+      );
       break;
+    }
     case "SignupFavoriteTeam": {
       const email = resume.params?.signup?.email ?? null;
       const draftSignup =
@@ -32,17 +62,23 @@ function buildInnerAuthRoutes(resume) {
         resume.params?.signup && typeof resume.params.signup === "object"
           ? resume.params.signup
           : {};
-      const mergedSignup = { ...draftSignup, ...resumeSignup };
+      const mergedSignup = mergeSignupForNavigation(draftSignup, resumeSignup);
       push("TermsDetail");
-      push("SocialSignup", {
-        signup: {
-          ...mergedSignup,
-          email: email ?? mergedSignup.email ?? "",
-        },
-      });
-      push("SignupFavoriteTeam", {
-        signup: mergedSignup,
-      });
+      push(
+        "SocialSignup",
+        sanitizeRouteParams({
+          signup: {
+            ...mergedSignup,
+            email: email ?? mergedSignup.email ?? "",
+          },
+        }),
+      );
+      push(
+        "SignupFavoriteTeam",
+        sanitizeRouteParams({
+          signup: mergedSignup,
+        }),
+      );
       break;
     }
     case "SignupGenderAge": {
@@ -53,21 +89,30 @@ function buildInnerAuthRoutes(resume) {
         resume.params?.signup && typeof resume.params.signup === "object"
           ? resume.params.signup
           : {};
-      const mergedSignup = { ...draftSignup, ...resumeSignup };
+      const mergedSignup = mergeSignupForNavigation(draftSignup, resumeSignup);
       push("TermsDetail");
-      push("SocialSignup", {
-        signup: {
-          ...mergedSignup,
-          email: email ?? mergedSignup.email ?? "",
-        },
-      });
-      push("SignupFavoriteTeam", {
-        signup: mergedSignup,
-      });
+      push(
+        "SocialSignup",
+        sanitizeRouteParams({
+          signup: {
+            ...mergedSignup,
+            email: email ?? mergedSignup.email ?? "",
+          },
+        }),
+      );
+      push(
+        "SignupFavoriteTeam",
+        sanitizeRouteParams({
+          signup: mergedSignup,
+        }),
+      );
       const raw =
         resume.params && typeof resume.params === "object" ? resume.params : {};
       const { teamList: _omitTeamList, ...genderAgeParams } = raw;
-      push("SignupGenderAge", genderAgeParams);
+      push(
+        "SignupGenderAge",
+        sanitizeRouteParams(genderAgeParams),
+      );
       break;
     }
     default:
@@ -96,6 +141,8 @@ export function buildRootResetForAuthNestedResume(resume) {
       {
         name: "Auth",
         state: {
+          type: "stack",
+          stale: true,
           index: inner.index,
           routes: inner.routes,
         },

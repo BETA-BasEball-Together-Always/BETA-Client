@@ -16,6 +16,7 @@ import { getDeviceId } from "../../libs/Login/deviceUtils";
 import { useUserStore } from "../../../../shared/store/userStore";
 
 import api from "../../../../shared/libs/api";
+import { normalizeSignupStep } from "../../../../shared/services/sessionBootstrap";
 import { cancelWithdrawAccountApi } from "../../services/authSessionService";
 
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
@@ -154,7 +155,7 @@ const LoginScreen = ({ navigation, route }) => {
     // - SOCIAL_AUTHENTICATED 또는 단계 미표시: 약관만 필요 -> GET /signup/status 생략 가능
     // - 그 외(CONSENT_AGREED, PROFILE_COMPLETED, TEAM_SELECTED 등): 해당 화면 구성용
     //   email 등은 반드시 GET /api/v1/auth/signup/status 로 조회 (팀 목록은 각 화면에서 status 재조회)
-    let signupStep = userResponse.signupStep;
+    let signupStep = normalizeSignupStep(userResponse.signupStep);
     let emailFromServer = null;
 
     const canSkipSignupStatus =
@@ -165,8 +166,11 @@ const LoginScreen = ({ navigation, route }) => {
         const status = await fetchSignupStatusWithToken(
           userResponse.accessToken,
         );
-        if (status?.signupStep) {
-          signupStep = status.signupStep;
+        if (status?.signupStep != null) {
+          const normalized = normalizeSignupStep(status.signupStep);
+          if (normalized) {
+            signupStep = normalized;
+          }
         }
         emailFromServer = status?.email ?? null;
       } catch (e) {
@@ -337,6 +341,7 @@ const LoginScreen = ({ navigation, route }) => {
             console.log("요청 URL:", error.config?.baseURL + error.config?.url);
 
             const payload = getSocialLoginErrorPayload(error);
+            const code = payload.code;
             if (
               error?.response?.status === 409 &&
               (payload.code === "USER006" || !!payload.message)

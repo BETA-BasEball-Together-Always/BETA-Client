@@ -55,13 +55,16 @@ export const useSignupDraftStore = create(
       /** navigation params로 내려보낼 signup payload */
       buildSignupParams: () => {
         const s = get();
+        const rawAge = s.age ? Number(s.age) : NaN;
+        const age =
+          Number.isFinite(rawAge) && rawAge > 0 ? rawAge : undefined;
         return {
           email: s.email ?? "",
           nickname: s.nickname ?? "",
           favoriteTeamCode: s.favoriteTeamCode ?? undefined,
           favoriteTeamLabel: s.favoriteTeamLabel ?? undefined,
           gender: s.gender ?? undefined,
-          age: s.age ? Number(s.age) : undefined,
+          age,
           terms: s.terms ?? emptyTerms,
         };
       },

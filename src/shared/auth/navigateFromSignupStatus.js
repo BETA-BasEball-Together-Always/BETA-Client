@@ -1,5 +1,6 @@
 import { useSignupDraftStore } from "@features/auth/stores/useSignupDraftStore";
 import { applySignupStatusToDraft } from "./applySignupStatusToDraft";
+import { normalizeSignupStep } from "../services/sessionBootstrap";
 
 /**
  * GET /auth/signup/status 응답 기준으로 회원가입 다음 화면으로 이동
@@ -8,10 +9,16 @@ import { applySignupStatusToDraft } from "./applySignupStatusToDraft";
 export function navigateFromSignupStatus(status, navigation) {
   applySignupStatusToDraft(status);
 
-  const step = status?.signupStep;
+  const step = normalizeSignupStep(
+    status?.signupStep ?? status?.signup_step ?? null,
+  );
   const email = status?.email ?? null;
   const draftSignup =
     useSignupDraftStore.getState().buildSignupParams?.() ?? {};
+
+  if (!step) {
+    return false;
+  }
 
   switch (step) {
     case "SOCIAL_AUTHENTICATED":

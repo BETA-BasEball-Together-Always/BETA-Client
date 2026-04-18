@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
+import { InteractionManager } from "react-native";
 import LoginScreen from "@features/auth/screens/Login/LoginScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -13,9 +14,9 @@ import SignupCompleteScreen from "../../features/auth/screens/SignupComplete/Sig
 import { consumePendingAuthResume } from "../../shared/auth/pendingAuthResume";
 import { buildRootResetForAuthNestedResume } from "../../shared/auth/signupResumeStack";
 import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSignupDraftStore";
+import { rootNavigationRef } from "./rootNavigation";
 
 const Stack = createNativeStackNavigator();
-
 
 const VALID_AUTH_RESUME_SCREEN_NAMES = new Set([
   "Login",
@@ -39,6 +40,38 @@ function coerceResumeForAuthStack(resume) {
     return { name, params: resume.params };
   }
   return { name };
+}
+
+/**
+ * 레이아웃 직후 바로 reset하면 컨테이너/네이티브 스택이 아직 준비되지 않은 경우가 있어
+ * InteractionManager + rAF로 한 틱 미루고, root ref가 준비된 뒤 dispatch한다.
+ */
+function dispatchResumeWhenReady(navigation, action, onDone) {
+  InteractionManager.runAfterInteractions(() => {
+    requestAnimationFrame(() => {
+      const run = () => {
+        try {
+          navigation.dispatch(action);
+        } catch (e) {
+          console.warn("[AuthStack] resume stack dispatch failed", e);
+        } finally {
+          onDone?.();
+        }
+      };
+
+      if (rootNavigationRef.isReady()) {
+        run();
+        return;
+      }
+      requestAnimationFrame(() => {
+        if (rootNavigationRef.isReady()) {
+          run();
+          return;
+        }
+        run();
+      });
+    });
+  });
 }
 
 const AuthStack = () => {
@@ -65,11 +98,16 @@ const AuthStack = () => {
         if (cancelled) return;
         const action = buildRootResetForAuthNestedResume(resume);
         if (!action) return;
-        didApplyResumeStack.current = true;
-        navigation.dispatch(action);
+        dispatchResumeWhenReady(navigation, action, () => {
+          if (!cancelled) {
+            didApplyResumeStack.current = true;
+          }
+        });
       } catch (e) {
         console.warn("[AuthStack] resume stack apply failed", e);
-        didApplyResumeStack.current = true;
+        if (!cancelled) {
+          didApplyResumeStack.current = true;
+        }
       }
     })();
     return () => {
