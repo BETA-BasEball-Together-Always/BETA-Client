@@ -1,5 +1,6 @@
 // src/features/auth/screens/SignupGenderAge/SignupGenderAgeScreen.jsx
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   StyleSheet,
@@ -36,6 +37,20 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
   const [signupData, setSignupData] = useState({});
 
   const handleBack = useStepBack("SignupFavoriteTeam");
+
+  useFocusEffect(
+    useCallback(() => {
+      const d = useSignupDraftStore.getState();
+      setGender(d.gender ?? null);
+      setAge(
+        typeof d.age === "string"
+          ? d.age
+          : d.age != null
+            ? String(d.age)
+            : "",
+      );
+    }, []),
+  );
 
   const isNextEnabled = useMemo(() => {
     return !!age && Number(age) > 0;

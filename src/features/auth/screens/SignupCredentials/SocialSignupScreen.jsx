@@ -26,7 +26,7 @@ import SignupCheckedInput from "../../components/SignupCheckedInput";
 import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
-import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
+import { checkNicknameDuplicateRequest } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
@@ -104,7 +104,6 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
     (s) => s.setNicknameChecked,
   );
 
-  const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const signupProfileMutation = useSignupProfileMutation();
   const signupStatusMutation = useSignupStatusMutation();
 
@@ -132,7 +131,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
     initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
-      const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
+      const isDuplicate = await checkNicknameDuplicateRequest(trimmedNickname);
       const available = !isDuplicate;
       setDraftNicknameChecked(available);
       return available;

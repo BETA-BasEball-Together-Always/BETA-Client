@@ -26,7 +26,9 @@ import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useCheckedField } from "../../hooks/useCheckedField";
 import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNicknameCheckMutation } from "../../services/nicknameCheckMutation";
+import { useFocusEffect } from "@react-navigation/native";
+import { checkNicknameDuplicateRequest } from "../../services/nicknameCheckMutation";
+import { AppText } from "../../../../shared/theme/components/AppText";
 import { useStepBack } from "../../hooks/useStepBack";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
@@ -57,13 +59,25 @@ const FROZEN_EMPTY_CHECKED_FIELD = {
   handleCheck: async () => {},
 };
 
+function normalizeSignupParams(signup) {
+  if (signup == null || typeof signup !== "object" || Array.isArray(signup)) {
+    return {};
+  }
+  return signup;
+}
+
+function emailStringFromSignup(signup) {
+  const s = normalizeSignupParams(signup);
+  const e = s?.email;
+  return typeof e === "string" && e.trim().length > 0 ? e.trim() : "";
+}
+
 /**
  * persist rehydrate 완료 후에만 mount — useCheckedField 초기값이 복원된 draft와 일치
  */
 function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   const routeParams = route?.params ?? {};
 
-  const { mutateAsync: checkNicknameDuplicate } = useNicknameCheckMutation();
   const mountedRef = useRef(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,12 +88,21 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
     };
   }, []);
 
+  const signup = normalizeSignupParams(routeParams?.signup);
+  const draftEmail = useSignupDraftStore((s) => s.email);
+  const draftEmailTrim =
+    typeof draftEmail === "string" ? draftEmail.trim() : "";
+  const paramEmailTrim = emailStringFromSignup(signup);
+  const readonlyEmail = paramEmailTrim || draftEmailTrim;
+
   const draftNickname = useSignupDraftStore((s) => s.nickname);
   const draftNicknameChecked = useSignupDraftStore((s) => s.nicknameChecked);
   const setDraftNickname = useSignupDraftStore((s) => s.setNickname);
   const setDraftNicknameChecked = useSignupDraftStore(
     (s) => s.setNicknameChecked,
   );
+  const hydrateDraftNickname = useSignupDraftStore((s) => s.hydrateNickname);
+  const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -105,12 +128,57 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
     initialIsAvailable: !!draftNicknameChecked,
     validate: validateNickname,
     checkAvailability: async (trimmedNickname) => {
-      const isDuplicate = await checkNicknameDuplicate(trimmedNickname);
+      const isDuplicate = await checkNicknameDuplicateRequest(trimmedNickname);
       const available = !isDuplicate;
       setDraftNicknameChecked(available);
       return available;
     },
   });
+
+  const nicknameFieldRef = useRef(nicknameField);
+  nicknameFieldRef.current = nicknameField;
+
+  useFocusEffect(
+    useCallback(() => {
+      const d = useSignupDraftStore.getState();
+      const rawSignup = routeParams?.signup;
+      const signupObj =
+        rawSignup != null && typeof rawSignup === "object" && !Array.isArray(rawSignup)
+          ? rawSignup
+          : {};
+
+      const paramEmail =
+        typeof signupObj.email === "string" ? signupObj.email.trim() : "";
+      if (paramEmail) {
+        d.setEmail(paramEmail);
+      }
+
+      const paramNick =
+        typeof signupObj.nickname === "string" ? signupObj.nickname.trim() : "";
+      const draftNick = String(d.nickname ?? "").trim();
+      const restored = draftNick || paramNick;
+
+      const verified =
+        !!restored &&
+        ((draftNick === restored && !!d.nicknameChecked) ||
+          (!!paramNick && restored === paramNick && !draftNick));
+
+      if (restored) {
+        hydrateDraftNickname(restored, !!verified);
+      }
+
+      const dAfter = useSignupDraftStore.getState();
+      const f = nicknameFieldRef.current;
+      f.setValue(restored);
+      f.setTouched(!!restored);
+      f.setError("");
+      f.setIsAvailable(!!restored && !!dAfter.nicknameChecked);
+    }, [routeParams, hydrateDraftNickname]),
+  );
+
+  useEffect(() => {
+    if (readonlyEmail) setDraftEmail(readonlyEmail);
+  }, [readonlyEmail, setDraftEmail]);
 
   useEffect(() => {
     const next = nicknameField.value;
@@ -182,7 +250,23 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
         <View style={styles.inner}>
           <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
-          <Text style={styles.title}>닉네임을 입력해주세요</Text>
+          <View style={styles.section}>
+            <AppText variant="displayTitle" style={styles.sectionTitle}>
+              회원가입 이메일
+            </AppText>
+            <AppText variant="smallRegular" style={styles.sectionDescription}>
+              * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해 사용됩니다.
+            </AppText>
+            <View style={styles.readonlyEmailBox}>
+              <AppText variant="middle" style={styles.readonlyEmailText}>
+                {readonlyEmail || "-"}
+              </AppText>
+            </View>
+          </View>
+
+          <View style={[styles.section, { marginTop: 24 }]}>
+            <Text style={styles.title}>닉네임을 입력해주세요</Text>
+          </View>
 
           <View style={styles.formWrapper}>
             <SignupCheckedInput
@@ -227,6 +311,12 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
 const SignupNicknameScreen = ({ navigation, route }) => {
   const draftHydrated = useSignupDraftPersistHydrated();
   const handleBack = useStepBack("Login");
+  const draftEmailShell = useSignupDraftStore((s) => s.email);
+  const signupFromRoute = normalizeSignupParams(route?.params?.signup);
+  const paramShell = emailStringFromSignup(signupFromRoute);
+  const draftShellTrim =
+    typeof draftEmailShell === "string" ? draftEmailShell.trim() : "";
+  const shellEmail = paramShell || draftShellTrim;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -246,7 +336,27 @@ const SignupNicknameScreen = ({ navigation, route }) => {
                 <View style={styles.inner}>
                   <SignupProgressHeader currentStep={1} onBack={handleBack} />
 
-                  <Text style={styles.title}>닉네임을 입력해주세요</Text>
+                  <View style={styles.section}>
+                    <AppText variant="displayTitle" style={styles.sectionTitle}>
+                      회원가입 이메일
+                    </AppText>
+                    <AppText
+                      variant="smallRegular"
+                      style={styles.sectionDescription}
+                    >
+                      * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
+                      사용됩니다.
+                    </AppText>
+                    <View style={styles.readonlyEmailBox}>
+                      <AppText variant="middle" style={styles.readonlyEmailText}>
+                        {shellEmail || "-"}
+                      </AppText>
+                    </View>
+                  </View>
+
+                  <View style={[styles.section, { marginTop: 24 }]}>
+                    <Text style={styles.title}>닉네임을 입력해주세요</Text>
+                  </View>
 
                   <View style={styles.formWrapper}>
                     <SignupCheckedInput
@@ -313,6 +423,30 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 390,
     alignSelf: "center",
+  },
+  section: {
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    color: "#FFFFFF",
+    lineHeight: 32.7,
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    marginBottom: 12,
+  },
+  readonlyEmailBox: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(206, 206, 206, 0.34)",
+    paddingHorizontal: 14,
+    paddingVertical: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  readonlyEmailText: {
+    color: "rgba(255,255,255,0.6)",
   },
   title: {
     fontSize: 22,

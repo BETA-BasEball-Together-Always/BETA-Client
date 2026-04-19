@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
@@ -39,14 +39,44 @@ function normalizeTeamCode(code) {
   return s.toUpperCase();
 }
 
-/** useMemo 실패/빈 배열 대비 — 항상 로컬 10개 구단으로 폴백 */
-function buildDefaultSignupRows() {
-  return TEAM_LIST.map((t) => ({
-    rowKey: t.key,
-    label: t.label,
-    MainIcon: t.MainIcon,
-    apiTeamCode: t.key,
-  }));
+function getTeamCodeFromStatusDto(team) {
+  if (!team || typeof team !== "object") return "";
+  const c = team.code ?? team.teamCode ?? team.team_code;
+  if (c == null) return "";
+  const s = String(c).trim();
+  return s.length > 0 ? s : "";
+}
+
+function pickTeamDisplayLabel(team, apiTeamCode) {
+  if (!team || typeof team !== "object") return apiTeamCode;
+  const kr =
+    typeof team.team_name_kr === "string" ? team.team_name_kr.trim() : "";
+  if (kr) return kr;
+  const en =
+    typeof team.team_name_en === "string" ? team.team_name_en.trim() : "";
+  if (en) return en;
+  const legacyKr =
+    typeof team.teamNameKr === "string" ? team.teamNameKr.trim() : "";
+  if (legacyKr) return legacyKr;
+  const legacyEn =
+    typeof team.teamNameEn === "string" ? team.teamNameEn.trim() : "";
+  if (legacyEn) return legacyEn;
+  return apiTeamCode;
+}
+
+function mapStatusTeamListItemToRow(team) {
+  const apiTeamCode = getTeamCodeFromStatusDto(team);
+  if (!apiTeamCode) return null;
+  const label = pickTeamDisplayLabel(team, apiTeamCode);
+  const match = TEAM_LIST.find(
+    (t) => normalizeTeamCode(t.key) === normalizeTeamCode(apiTeamCode),
+  );
+  return {
+    rowKey: apiTeamCode,
+    label,
+    MainIcon: match?.MainIcon ?? null,
+    apiTeamCode,
+  };
 }
 
 function SignupFavoriteTeamScreenBody({ navigation, route }) {
@@ -66,97 +96,128 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
   );
 
   const signup = signupParam;
-  const [serverTeamList, setServerTeamList] = useState(null);
+  const paramFavoriteTeamCodeRaw = signupParam?.favoriteTeamCode;
+  const paramFavoriteTeamCode =
+    paramFavoriteTeamCodeRaw != null &&
+    String(paramFavoriteTeamCodeRaw).trim() !== ""
+      ? String(paramFavoriteTeamCodeRaw).trim()
+      : null;
 
-  /** 팀 목록은 params가 아니라 GET /signup/status(포커스 시) 또는 로컬 TEAM_LIST 폴백 */
-  const externalTeamList = useMemo(() => {
-    if (Array.isArray(serverTeamList) && serverTeamList.length > 0) {
-      return serverTeamList;
-    }
-    return null;
-  }, [serverTeamList]);
+  const [teamListPhase, setTeamListPhase] = useState("loading");
+  const [teamListError, setTeamListError] = useState(null);
+  const [teamRows, setTeamRows] = useState([]);
+
+  const teamRowsRef = useRef(teamRows);
+  const teamListPhaseRef = useRef(teamListPhase);
+  teamRowsRef.current = teamRows;
+  teamListPhaseRef.current = teamListPhase;
 
   const signupTeamMutation = useSignupTeamMutation();
   const signupStatusMutation = useSignupStatusMutation();
 
   const signupStatusMutateAsync = signupStatusMutation.mutateAsync;
 
+  const loadTeamListFromStatus = useCallback(
+    async (isCancelled) => {
+      if (isCancelled?.()) return;
+      setTeamListPhase("loading");
+      setTeamListError(null);
+      try {
+        const status = await signupStatusMutateAsync();
+        if (isCancelled?.()) return;
+        applySignupStatusToDraft(status);
+        const list = status?.teamList;
+        if (!Array.isArray(list) || list.length === 0) {
+          setTeamRows([]);
+          setTeamListPhase("error");
+          setTeamListError(
+            "구단 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+          return;
+        }
+        const rows = [];
+        for (const item of list) {
+          const row = mapStatusTeamListItemToRow(item);
+          if (row) rows.push(row);
+        }
+        if (rows.length === 0) {
+          setTeamRows([]);
+          setTeamListPhase("error");
+          setTeamListError(
+            "구단 정보를 인식하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+          return;
+        }
+        setTeamRows(rows);
+        setTeamListPhase("success");
+      } catch (e) {
+        if (isCancelled?.()) return;
+        console.warn("[signup/status]", e);
+        setTeamRows([]);
+        setTeamListPhase("error");
+        const raw = e?.response?.data;
+        let msg =
+          typeof raw === "string"
+            ? raw
+            : typeof raw?.message === "string"
+              ? raw.message
+              : null;
+        if (!msg && e?.message === "NO_ACCESS_TOKEN") {
+          msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+        }
+        setTeamListError(
+          msg ??
+            "구단 목록을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+        );
+      }
+    },
+    [signupStatusMutateAsync],
+  );
+
   useFocusEffect(
     useCallback(() => {
+      const d = useSignupDraftStore.getState();
+      const fromDraft =
+        d.favoriteTeamCode != null &&
+        String(d.favoriteTeamCode).trim() !== ""
+          ? String(d.favoriteTeamCode).trim()
+          : null;
+      const restored = fromDraft ?? paramFavoriteTeamCode;
+      setSelectedTeam(restored ?? null);
+
+      const alreadyHaveList =
+        teamListPhaseRef.current === "success" &&
+        teamRowsRef.current.length > 0;
+      if (alreadyHaveList) {
+        return () => {};
+      }
+
       let cancelled = false;
-      (async () => {
-        try {
-          const status = await signupStatusMutateAsync();
-          if (cancelled) return;
-          applySignupStatusToDraft(status);
-          if (Array.isArray(status?.teamList) && status.teamList.length > 0) {
-            setServerTeamList(status.teamList);
-          }
-        } catch {
-          /* ignore */
-        }
-      })();
+      loadTeamListFromStatus(() => cancelled);
       return () => {
         cancelled = true;
       };
-    }, [signupStatusMutateAsync]),
+    }, [loadTeamListFromStatus, paramFavoriteTeamCode]),
   );
 
-  const isNextEnabled = useMemo(() => !!selectedTeam, [selectedTeam]);
+  const isNextEnabled = useMemo(
+    () => !!selectedTeam && teamListPhase === "success",
+    [selectedTeam, teamListPhase],
+  );
 
   const handleBack = useStepBack("SocialSignup");
 
-  const teams = useMemo(() => {
-    const raw =
-      Array.isArray(externalTeamList) && externalTeamList.length > 0
-        ? externalTeamList
-        : [];
-
-    const fromLocalList = () =>
-      TEAM_LIST.map((t) => ({
-        rowKey: t.key,
-        label: t.label,
-        MainIcon: t.MainIcon,
-        apiTeamCode: t.key,
-      }));
-
-    if (raw.length === 0) {
-      return fromLocalList();
-    }
-
-    const rows = [];
-    for (const ext of raw) {
-      const codeRaw = ext?.teamCode ?? ext?.code;
-      if (codeRaw == null || String(codeRaw).trim() === "") continue;
-
-      const apiTeamCode = String(codeRaw).trim();
-      const match = TEAM_LIST.find(
-        (t) => normalizeTeamCode(t.key) === normalizeTeamCode(apiTeamCode),
-      );
-
-      rows.push({
-        rowKey: apiTeamCode,
-        label: ext.teamNameKr ?? match?.label ?? apiTeamCode,
-        MainIcon: match?.MainIcon ?? null,
-        apiTeamCode,
-      });
-    }
-
-    return rows.length > 0 ? rows : fromLocalList();
-  }, [externalTeamList]);
-
-  const displayTeams = useMemo(() => {
-    if (teams.length > 0) return teams;
-    return buildDefaultSignupRows();
-  }, [teams]);
-
   const goToGenderAge = async (teamCode) => {
-    const list = displayTeams;
+    const list = teamRows;
     const selectedTeamLabel =
-      list.find((t) => t.apiTeamCode === teamCode)?.label ??
+      list.find(
+        (t) =>
+          normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(teamCode),
+      )?.label ??
       TEAM_LIST.find(
         (t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode),
-      )?.label;
+      )?.label ??
+      String(teamCode ?? "");
 
     await SecureStore.setItemAsync(
       "favoriteTeamLabel",
@@ -212,30 +273,34 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
     }
   };
 
-  /** 이전 단계에서 온 코드가 로컬 키만 맞는 경우 -> 현재 rows의 apiTeamCode로 맞춤 */
+  /** 이전 단계에서 온 코드가 서버 목록 키만 맞는 경우 -> 현재 rows의 apiTeamCode로 맞춤 */
   useEffect(() => {
-    if (!selectedTeam || displayTeams.length === 0) return;
-    if (displayTeams.some((t) => t.apiTeamCode === selectedTeam)) return;
-    const row = displayTeams.find(
+    if (!selectedTeam || teamRows.length === 0) return;
+    if (teamRows.some((t) => t.apiTeamCode === selectedTeam)) return;
+    const row = teamRows.find(
       (t) =>
         normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(selectedTeam),
     );
     if (row) setSelectedTeam(row.apiTeamCode);
-  }, [displayTeams, selectedTeam]);
+  }, [teamRows, selectedTeam]);
 
   useEffect(() => {
     if (!selectedTeam) return;
     const selectedTeamLabel =
-      displayTeams.find((t) => t.apiTeamCode === selectedTeam)?.label ??
+      teamRows.find(
+        (t) =>
+          normalizeTeamCode(t.apiTeamCode) ===
+          normalizeTeamCode(selectedTeam),
+      )?.label ??
       TEAM_LIST.find((t) => t.key === selectedTeam)?.label ??
       TEAM_LIST.find(
         (t) => normalizeTeamCode(t.key) === normalizeTeamCode(selectedTeam),
       )?.label;
     setDraftFavoriteTeam({
       code: selectedTeam,
-      label: selectedTeamLabel,
+      label: selectedTeamLabel ?? "",
     });
-  }, [selectedTeam, displayTeams, setDraftFavoriteTeam]);
+  }, [selectedTeam, teamRows, setDraftFavoriteTeam]);
 
   return (
     <View style={styles.root}>
@@ -261,64 +326,94 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                   회원님의 팬심을 보여줄 구단을 선택해주세요!
                 </AppText>
 
-                {/* 팀 선택 */}
-                <View style={styles.grid}>
-                  {displayTeams.map(({ rowKey, label, apiTeamCode }) => {
-                    const selected =
-                      selectedTeam != null &&
-                      normalizeTeamCode(selectedTeam) ===
-                        normalizeTeamCode(apiTeamCode);
-                    const teamKey = normalizeTeamCode(apiTeamCode);
-                    const RabbitIcon = getKboRankCardRabbitIcon(teamKey);
-                    const fallbackInitial =
-                      typeof label === "string" && label.trim().length > 0
-                        ? label.trim().slice(0, 2)
-                        : teamKey.slice(0, 2);
+                {teamListPhase === "loading" ? (
+                  <View style={styles.teamListStateBlock}>
+                    <ActivityIndicator color="#FFFFFF" size="large" />
+                    <AppText
+                      variant="smallRegular"
+                      style={styles.teamListStateSubtext}
+                    >
+                      구단 목록을 불러오는 중입니다…
+                    </AppText>
+                  </View>
+                ) : teamListPhase === "error" ? (
+                  <View style={styles.teamListStateBlock}>
+                    <AppText
+                      variant="bodyMedium"
+                      style={styles.teamListErrorText}
+                    >
+                      {teamListError ??
+                        "구단 목록을 불러오지 못했습니다. 다시 시도해 주세요."}
+                    </AppText>
+                    <TouchableOpacity
+                      style={styles.teamListRetryButton}
+                      activeOpacity={0.85}
+                      onPress={() => loadTeamListFromStatus(() => false)}
+                    >
+                      <AppText variant="heading" style={styles.teamListRetryText}>
+                        다시 시도
+                      </AppText>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.grid}>
+                    {teamRows.map(({ rowKey, label, apiTeamCode }) => {
+                      const selected =
+                        selectedTeam != null &&
+                        normalizeTeamCode(selectedTeam) ===
+                          normalizeTeamCode(apiTeamCode);
+                      const teamKey = normalizeTeamCode(apiTeamCode);
+                      const RabbitIcon = getKboRankCardRabbitIcon(teamKey);
+                      const fallbackInitial =
+                        typeof label === "string" && label.trim().length > 0
+                          ? label.trim().slice(0, 2)
+                          : teamKey.slice(0, 2);
 
-                    return (
-                      <TouchableOpacity
-                        key={rowKey}
-                        style={styles.item}
-                        activeOpacity={0.85}
-                        onPress={() => setSelectedTeam(apiTeamCode)}
-                      >
-                        <View
-                          style={[
-                            styles.iconBox,
-                            selected && styles.iconBoxSelected,
-                          ]}
+                      return (
+                        <TouchableOpacity
+                          key={rowKey}
+                          style={styles.item}
+                          activeOpacity={0.85}
+                          onPress={() => setSelectedTeam(apiTeamCode)}
                         >
-                          {RabbitIcon ? (
-                            <RabbitIcon
-                              width={RABBIT_ICON_SIZE}
-                              height={RABBIT_ICON_SIZE}
-                            />
-                          ) : (
-                            <AppText
-                              variant="bodyMedium"
-                              style={[
-                                styles.fallbackTeamInitials,
-                                selected && styles.fallbackTeamInitialsOnLight,
-                              ]}
-                            >
-                              {fallbackInitial}
-                            </AppText>
-                          )}
-                        </View>
+                          <View
+                            style={[
+                              styles.iconBox,
+                              selected && styles.iconBoxSelected,
+                            ]}
+                          >
+                            {RabbitIcon ? (
+                              <RabbitIcon
+                                width={RABBIT_ICON_SIZE}
+                                height={RABBIT_ICON_SIZE}
+                              />
+                            ) : (
+                              <AppText
+                                variant="bodyMedium"
+                                style={[
+                                  styles.fallbackTeamInitials,
+                                  selected && styles.fallbackTeamInitialsOnLight,
+                                ]}
+                              >
+                                {fallbackInitial}
+                              </AppText>
+                            )}
+                          </View>
 
-                        <AppText
-                          variant="bodyMedium"
-                          style={[
-                            styles.teamLabel,
-                            selected && styles.teamLabelSelected,
-                          ]}
-                        >
-                          {label}
-                        </AppText>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                          <AppText
+                            variant="bodyMedium"
+                            style={[
+                              styles.teamLabel,
+                              selected && styles.teamLabelSelected,
+                            ]}
+                          >
+                            {label}
+                          </AppText>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             </ScrollView>
 
@@ -327,17 +422,17 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
               <TouchableOpacity
                 style={[
                   styles.completeButton,
-                  !selectedTeam && styles.completeButtonDisabled,
+                  !isNextEnabled && styles.completeButtonDisabled,
                 ]}
-                disabled={!selectedTeam}
-                activeOpacity={selectedTeam ? 0.85 : 1}
+                disabled={!isNextEnabled}
+                activeOpacity={isNextEnabled ? 0.85 : 1}
                 onPress={handleNext}
               >
                 <AppText
                   variant="heading"
                   style={[
                     styles.completeButtonText,
-                    !selectedTeam && styles.completeButtonTextDisabled,
+                    !isNextEnabled && styles.completeButtonTextDisabled,
                   ]}
                 >
                   선택완료
@@ -406,6 +501,34 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     lineHeight: 32.7,
     marginBottom: 24,
+  },
+
+  teamListStateBlock: {
+    minHeight: 220,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  teamListStateSubtext: {
+    marginTop: 8,
+    color: "rgba(255,255,255,0.65)",
+    textAlign: "center",
+  },
+  teamListErrorText: {
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  teamListRetryButton: {
+    marginTop: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  teamListRetryText: {
+    color: "#111111",
   },
 
   grid: {
