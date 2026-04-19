@@ -41,14 +41,21 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
   useFocusEffect(
     useCallback(() => {
       const d = useSignupDraftStore.getState();
-      setGender(d.gender ?? null);
-      setAge(
+      const draftG = d.gender ?? null;
+      const draftAgeRaw =
         typeof d.age === "string"
           ? d.age
           : d.age != null
             ? String(d.age)
-            : "",
-      );
+            : "";
+      const draftAgeTrim = draftAgeRaw.trim();
+
+      setGender((prev) => (draftG != null ? draftG : prev));
+      setAge((prev) => {
+        const prevStr = typeof prev === "string" ? prev : "";
+        if (draftAgeTrim) return draftAgeRaw;
+        return prevStr.trim() ? prevStr : "";
+      });
     }, []),
   );
 

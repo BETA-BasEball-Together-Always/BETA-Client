@@ -154,9 +154,14 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
           const f = nicknameFieldRef.current;
           const beforeTrim = String(f.value ?? "").trim();
           const beforeAvailable = f.isAvailable;
-          f.setValue(d.nickname ?? "");
-          f.setTouched(!!(d.nickname ?? "").trim());
           const draftNick = String(d.nickname ?? "").trim();
+          if (draftNick) {
+            f.setValue(d.nickname ?? "");
+            f.setTouched(!!(d.nickname ?? "").trim());
+          } else if (!beforeTrim) {
+            f.setValue("");
+            f.setTouched(false);
+          }
           const nickAligned =
             draftNick !== "" &&
             draftNick === beforeTrim &&
@@ -164,7 +169,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
             !d.nicknameChecked;
           if (nickAligned) {
             setDraftNicknameChecked(true);
-          } else {
+          } else if (draftNick || !beforeTrim) {
             f.setIsAvailable(!!d.nicknameChecked);
           }
         } catch {

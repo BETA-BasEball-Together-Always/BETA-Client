@@ -183,7 +183,15 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
           ? String(d.favoriteTeamCode).trim()
           : null;
       const restored = fromDraft ?? paramFavoriteTeamCode;
-      setSelectedTeam(restored ?? null);
+      const hasRestored =
+        restored != null && String(restored).trim() !== "";
+      if (hasRestored) {
+        setSelectedTeam(restored);
+      } else {
+        setSelectedTeam((prev) =>
+          prev != null && String(prev).trim() !== "" ? prev : null,
+        );
+      }
 
       const alreadyHaveList =
         teamListPhaseRef.current === "success" &&

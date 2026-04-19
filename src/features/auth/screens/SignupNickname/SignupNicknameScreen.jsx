@@ -163,12 +163,22 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
         ((draftNick === restored && !!d.nicknameChecked) ||
           (!!paramNick && restored === paramNick && !draftNick));
 
-      if (restored) {
-        hydrateDraftNickname(restored, !!verified);
+      const f = nicknameFieldRef.current;
+      if (!restored) {
+        const current = String(f.value ?? "").trim();
+        if (current) {
+          return;
+        }
+        f.setValue("");
+        f.setTouched(false);
+        f.setError("");
+        f.setIsAvailable(false);
+        return;
       }
 
+      hydrateDraftNickname(restored, !!verified);
+
       const dAfter = useSignupDraftStore.getState();
-      const f = nicknameFieldRef.current;
       f.setValue(restored);
       f.setTouched(!!restored);
       f.setError("");
