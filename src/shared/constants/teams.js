@@ -25,7 +25,7 @@ export const TEAM_DATA = {
     label: "KT위즈",
     MainIcon: KT,
     ProfileIcon: PROFILE_KT,
-    iconScale: 1.35,
+    iconScale: 1.25,
     gradient: {
       colors: ["#4A4A4A", "#2A2A2A", "#141414", "#050505"],
       locations: [0, 0.3, 0.65, 1],
@@ -58,7 +58,7 @@ export const TEAM_DATA = {
     label: "삼성라이온즈",
     MainIcon: SAMSUNG,
     ProfileIcon: PROFILE_SAMSUNG,
-    iconScale: 1.35,
+    iconScale: 1.25,
     gradient: {
       colors: ["#7ABFFF", "#1A6FCC", "#003A80", "#001A40"],
       locations: [0, 0.3, 0.65, 1],
@@ -74,7 +74,7 @@ export const TEAM_DATA = {
     label: "KIA타이거즈",
     MainIcon: KIA,
     ProfileIcon: PROFILE_KIA,
-    iconScale: 1.35,
+    iconScale: 1.25,
     gradient: {
       colors: ["#FF5050", "#CC1020", "#7A0010", "#380005"],
       locations: [0, 0.35, 0.7, 1],
@@ -138,7 +138,7 @@ export const TEAM_DATA = {
     label: "롯데자이언츠",
     MainIcon: LOTTE,
     ProfileIcon: PROFILE_LOTTE,
-    iconScale: 1.35,
+    iconScale: 1.25,
     gradient: {
       colors: ["#C05070", "#8B1A35", "#4A0D1C", "#1A0008"],
       locations: [0, 0.35, 0.7, 1],
@@ -154,7 +154,7 @@ export const TEAM_DATA = {
     label: "NC다이노스",
     MainIcon: NC,
     ProfileIcon: PROFILE_NC,
-    iconScale: 1.35,
+    iconScale: 1.25,
     gradient: {
       colors: ["#5A8FCC", "#1A3B6E", "#0D1F3C", "#060F1E"],
       locations: [0, 0.35, 0.7, 1],
@@ -170,7 +170,7 @@ export const TEAM_DATA = {
     label: "SSG랜더스",
     MainIcon: SSG,
     ProfileIcon: PROFILE_SSG,
-    iconScale: 1.35,
+    iconScale: 1.25,
     gradient: {
       colors: ["#FF7A3D", "#D42B2B", "#8B0000", "#5A0000"],
       locations: [0, 0.35, 0.7, 1],
