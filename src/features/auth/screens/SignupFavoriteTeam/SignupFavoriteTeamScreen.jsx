@@ -10,6 +10,7 @@ import {
   Keyboard,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -25,6 +26,7 @@ import { getKboRankCardRabbitIcon } from "../../../../shared/constants/kboRankCa
 
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
+import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 
 const RABBIT_ICON_SIZE = 74.14;
@@ -47,7 +49,7 @@ function buildDefaultSignupRows() {
   }));
 }
 
-const SignupFavoriteTeamScreen = ({ navigation, route }) => {
+function SignupFavoriteTeamScreenBody({ navigation, route }) {
   const routeParams = route?.params ?? {};
   const signupParam =
     routeParams?.signup != null &&
@@ -347,9 +349,25 @@ const SignupFavoriteTeamScreen = ({ navigation, route }) => {
       </SafeAreaView>
     </View>
   );
-};
+}
 
-export default SignupFavoriteTeamScreen;
+export default function SignupFavoriteTeamScreen(props) {
+  const draftHydrated = useSignupDraftPersistHydrated();
+  if (!draftHydrated) {
+    return (
+      <View style={styles.root}>
+        <SelectTeamBackground />
+        <SafeAreaView
+          style={[styles.safeArea, styles.loadingFill]}
+          edges={["top", "left", "right"]}
+        >
+          <ActivityIndicator color="#FFFFFF" size="large" />
+        </SafeAreaView>
+      </View>
+    );
+  }
+  return <SignupFavoriteTeamScreenBody {...props} />;
+}
 
 const styles = StyleSheet.create({
   root: {
@@ -359,6 +377,10 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  loadingFill: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   touchableFill: {
     flex: 1,

@@ -10,6 +10,7 @@ import {
   Keyboard,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,8 +23,9 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 import { useUserStore } from "../../../../shared/store/userStore";
 import api from "../../../../shared/libs/api";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
+import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 
-const SignupGenderAgeScreen = ({ navigation, route }) => {
+function SignupGenderAgeScreenBody({ navigation, route }) {
   const draftGender = useSignupDraftStore((s) => s.gender);
   const draftAge = useSignupDraftStore((s) => s.age);
   const setDraftGender = useSignupDraftStore((s) => s.setGender);
@@ -236,13 +238,33 @@ const SignupGenderAgeScreen = ({ navigation, route }) => {
       </SafeAreaView>
     </View>
   );
-};
+}
 
-export default SignupGenderAgeScreen;
+export default function SignupGenderAgeScreen(props) {
+  const draftHydrated = useSignupDraftPersistHydrated();
+  if (!draftHydrated) {
+    return (
+      <View style={styles.root}>
+        <AuthBackground />
+        <SafeAreaView
+          style={[styles.safeArea, styles.loadingFill]}
+          edges={["top", "left", "right"]}
+        >
+          <ActivityIndicator color="#FFFFFF" size="large" />
+        </SafeAreaView>
+      </View>
+    );
+  }
+  return <SignupGenderAgeScreenBody {...props} />;
+}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000000" },
   safeArea: { flex: 1, backgroundColor: "transparent" },
+  loadingFill: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: {
     flex: 1,
   },
