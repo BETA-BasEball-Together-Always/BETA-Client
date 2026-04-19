@@ -5,10 +5,11 @@ import api from "../../../shared/libs/api";
 import { getAccessTokenFromStoreOrMemory } from "../../../shared/libs/getAccessToken";
 
 /**
- * 닉네임 중복 확인 API
+ * 닉네임 중복 확인 API (React Query 없이 바로 호출 — 버튼 탭 시 지연 최소화)
  * @param {string} nickname
+ * @returns {Promise<boolean>} true
  */
-const nicknameCheckApi = async (nickname) => {
+export async function checkNicknameDuplicateRequest(nickname) {
   const accessToken = await getAccessTokenFromStoreOrMemory();
 
   if (!accessToken) {
@@ -27,18 +28,12 @@ const nicknameCheckApi = async (nickname) => {
     throw new Error("INVALID_NICKNAME_CHECK_RESPONSE");
   }
   return raw;
-};
+}
 
 // useCheckedField에서 mutateAsync로 직접 호출하는 용도
 export const useNicknameCheckMutation = () => {
   return useMutation({
     mutationKey: authKeys.nicknameDuplicate("GLOBAL"),
-    mutationFn: (nickname) => nicknameCheckApi(nickname),
-    onSuccess: (data) => {
-      console.log("Nickname check success:", data);
-    },
-    onError: (error) => {
-      console.log("Nickname check error:", error);
-    },
+    mutationFn: (nickname) => checkNicknameDuplicateRequest(nickname),
   });
 };
