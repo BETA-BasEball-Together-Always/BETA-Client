@@ -41,7 +41,7 @@ export const TEAM_DATA = {
     label: "LG 트윈스",
     MainIcon: LG,
     ProfileIcon: PROFILE_LG,
-    iconScale: 1.25,
+    iconScale: 1.15,
     gradient: {
       colors: ["#231F20", "#B0293C", "#EA465D", "#FF866A", "#FFB5C0"],
       locations: [0, 0.5, 0.8, 1, 1],
@@ -90,7 +90,7 @@ export const TEAM_DATA = {
     label: "두산베어스",
     MainIcon: DOOSAN,
     ProfileIcon: PROFILE_DOOSAN,
-    iconScale: 1.25,
+    iconScale: 1.15,
     gradient: {
       colors: ["#4B6FA5", "#1A2E6E", "#0A1540", "#05091F"],
       locations: [0, 0.3, 0.65, 1],
@@ -106,7 +106,7 @@ export const TEAM_DATA = {
     label: "한화이글스",
     MainIcon: HANWHA,
     ProfileIcon: PROFILE_HANWHA,
-    iconScale: 1.25,
+    iconScale: 1.15,
     gradient: {
       colors: ["#FFAA50", "#E85C00", "#C24B00", "#7A2800"],
       locations: [0, 0.3, 0.65, 1],
@@ -122,7 +122,7 @@ export const TEAM_DATA = {
     label: "키움히어로즈",
     MainIcon: KIWOOM,
     ProfileIcon: PROFILE_KIWOOM,
-    iconScale: 1.25,
+    iconScale: 1.15,
     gradient: {
       colors: ["#C03050", "#8C1A2E", "#4A0818", "#1A0008"],
       locations: [0, 0.35, 0.7, 1],
