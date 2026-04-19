@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { InteractionManager } from "react-native";
 import LoginScreen from "@features/auth/screens/Login/LoginScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -45,12 +45,23 @@ function coerceResumeForAuthStack(resume) {
 /**
  * 레이아웃 직후 바로 reset하면 컨테이너/네이티브 스택이 아직 준비되지 않은 경우가 있어
  * InteractionManager + rAF로 한 틱 미루고, root ref가 준비된 뒤 dispatch한다.
+ *
+ * @param {object} [options]
+ * @param {() => void} [options.onBeforeDispatch] — navigation.dispatch 직전
+ * @param {() => void} [options.onDone] — dispatch 이후 finally
+ * @param {() => boolean} [options.shouldSkip] — true면 dispatch 생략 (이펙트 cleanup 등)
  */
-function dispatchResumeWhenReady(navigation, action, onDone) {
+function dispatchResumeWhenReady(navigation, action, options) {
+  const { onBeforeDispatch, onDone, shouldSkip } = options ?? {};
   InteractionManager.runAfterInteractions(() => {
     requestAnimationFrame(() => {
+      let didRun = false;
       const run = () => {
+        if (didRun) return;
+        if (shouldSkip?.()) return;
+        didRun = true;
         try {
+          onBeforeDispatch?.();
           navigation.dispatch(action);
         } catch (e) {
           console.warn("[AuthStack] resume stack dispatch failed", e);
@@ -64,10 +75,6 @@ function dispatchResumeWhenReady(navigation, action, onDone) {
         return;
       }
       requestAnimationFrame(() => {
-        if (rootNavigationRef.isReady()) {
-          run();
-          return;
-        }
         run();
       });
     });
@@ -78,8 +85,10 @@ const AuthStack = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const rawResume = route.params?.resume ?? null;
-  const resume =
-    rawResume == null ? null : coerceResumeForAuthStack(rawResume);
+  const resume = useMemo(
+    () => (rawResume == null ? null : coerceResumeForAuthStack(rawResume)),
+    [rawResume],
+  );
   const authErrorMessage = route.params?.authErrorMessage ?? null;
 
   const didApplyResumeStack = useRef(false);
@@ -98,10 +107,13 @@ const AuthStack = () => {
         if (cancelled) return;
         const action = buildRootResetForAuthNestedResume(resume);
         if (!action) return;
-        dispatchResumeWhenReady(navigation, action, () => {
-          if (!cancelled) {
-            didApplyResumeStack.current = true;
-          }
+        dispatchResumeWhenReady(navigation, action, {
+          shouldSkip: () => cancelled,
+          onBeforeDispatch: () => {
+            if (!cancelled) {
+              didApplyResumeStack.current = true;
+            }
+          },
         });
       } catch (e) {
         console.warn("[AuthStack] resume stack apply failed", e);
