@@ -1,10 +1,10 @@
 /**
- * AuthStack 루트 reset은 동일 resume에 대해 한 번만 적용한다.
+ * AuthStack 루트 reset은 동일 resume에 대해 한 번만 적용
  * 루트 CommonActions.reset 후 AuthStack이 remount되면 컴포넌트 ref가 초기화되어
- * reset이 반복될 수 있어, 모듈 스코프로 "이미 적용한 resume"을 기억한다.
+ * reset이 반복될 수 있어 모듈 스코프로 이미 적용한 resume을 기억할 것!
  *
- * - clearAuthResumeResetGuard: 로그아웃·세션 초기화·앱 부트스트랩 시작 시 호출해
- *   다음 로그인/재진입에서 다시 reset이 허용되게 한다.
+ * - clearAuthResumeResetGuard: 로그아웃/세션 초기화/앱 부트스트랩 시작 시 호출해
+ *   다음 로그인/재진입에서 다시 reset이 허용되게 함
  */
 
 let lastAppliedAuthResumeKey = null;

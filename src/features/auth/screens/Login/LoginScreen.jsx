@@ -53,6 +53,34 @@ function getSocialLoginErrorPayload(error) {
   };
 }
 
+function trimSignupEmail(value) {
+  if (typeof value !== "string") return "";
+  const t = value.trim();
+  return t.length > 0 ? t : "";
+}
+
+/**
+ * 회원가입 이어하기 시 네비게이션용 이메일.
+ * - OpenAPI: SignupStatusResponse.email (CONSENT_AGREED 이후) — getSignupStatus
+ * - OpenAPI: UserDto.email — 소셜 로그인 응답의 user 객체에 정의 (UserResponse 스키마는 비어 있음)
+ * @param {object | null | undefined} userResponse — POST /api/v1/auth/login/{provider} 의 userResponse
+ * @param {unknown} emailFromServer — GET /api/v1/auth/signup/status 의 email
+ */
+function resolveSignupFlowEmailFromLogin(userResponse, emailFromServer) {
+  const fromStatus = trimSignupEmail(
+    emailFromServer == null ? "" : String(emailFromServer),
+  );
+  if (fromStatus) return fromStatus;
+  const top = trimSignupEmail(userResponse?.email);
+  if (top) return top;
+  const nested = userResponse?.user;
+  if (nested && typeof nested === "object") {
+    const fromUser = trimSignupEmail(nested.email);
+    if (fromUser) return fromUser;
+  }
+  return "";
+}
+
 const LoginScreen = ({ navigation, route }) => {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const socialLoginMutation = useSocialLoginMutation();
@@ -192,7 +220,7 @@ const LoginScreen = ({ navigation, route }) => {
         // 1단계: 이메일(읽기 전용) + 닉네임
         navigation.navigate("SocialSignup", {
           signup: {
-            email: emailFromServer || userResponse.email,
+            email: resolveSignupFlowEmailFromLogin(userResponse, emailFromServer),
           },
         });
         break;
@@ -201,14 +229,18 @@ const LoginScreen = ({ navigation, route }) => {
         // 2단계: 팀 선택 — 목록은 SignupFavoriteTeam에서 GET /signup/status 로 로드
         navigation.navigate("SignupFavoriteTeam", {
           signup: {
-            email: emailFromServer ?? userResponse?.email ?? "",
+            email: resolveSignupFlowEmailFromLogin(userResponse, emailFromServer),
           },
         });
         break;
 
       case "TEAM_SELECTED":
-        // 3단계: 성별/나이 입력
-        navigation.navigate("SignupGenderAge", { signup: {} });
+        // 3단계: 성별/나이 입력 — getSignupResumeRoute 와 동일하게 email 전달
+        navigation.navigate("SignupGenderAge", {
+          signup: {
+            email: resolveSignupFlowEmailFromLogin(userResponse, emailFromServer),
+          },
+        });
         break;
 
       default:
