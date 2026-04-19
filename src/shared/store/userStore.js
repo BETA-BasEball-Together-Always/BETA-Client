@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 import { clearPersistedUserEmotionSelections } from "../../features/community/store/userEmotionSelectionStore";
+import { clearAuthResumeResetGuard } from "../auth/authResumeResetGuard";
 
 const USER_JSON_KEY = "userJson";
 
@@ -51,6 +52,7 @@ export const useUserStore = create((set) => ({
    * 전체 인증 정보 초기화
    */
   clearAuth: async () => {
+    clearAuthResumeResetGuard();
     set({ user: null, accessToken: null, refreshToken: null });
     await safeDeleteSecureStoreKey("accessToken");
     await safeDeleteSecureStoreKey("refreshToken");

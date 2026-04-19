@@ -8,6 +8,7 @@ import {
   setPendingAuthResume,
 } from "../auth/pendingAuthResume";
 import { applySignupStatusToDraft } from "../auth/applySignupStatusToDraft";
+import { clearAuthResumeResetGuard } from "../auth/authResumeResetGuard";
 
 //api.js와 sessionBootstrap.js에서 중복된 base url 환경변수 정의!!
 //api.js에서 baseURL 가져오는 것으로 수정
@@ -183,6 +184,7 @@ export async function bootstrapSession() {
 }
 
 async function bootstrapSessionInner() {
+  clearAuthResumeResetGuard();
   const storedAccess = await SecureStore.getItemAsync("accessToken");
   const storedRefresh = await SecureStore.getItemAsync("refreshToken");
 

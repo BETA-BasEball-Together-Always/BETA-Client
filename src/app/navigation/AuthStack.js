@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useMemo } from "react";
 import { InteractionManager } from "react-native";
 import LoginScreen from "@features/auth/screens/Login/LoginScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -12,6 +12,10 @@ import TermsTosDetailScreen from "../../features/auth/screens/TermsDetail/TermsT
 import TermsPrivacyRequiredDetailScreen from "../../features/auth/screens/TermsDetail/TermsPrivacyRequiredDetailScreen";
 import SignupCompleteScreen from "../../features/auth/screens/SignupComplete/SignupCompleteScreen";
 import { consumePendingAuthResume } from "../../shared/auth/pendingAuthResume";
+import {
+  hasAuthResumeResetAlreadyApplied,
+  markAuthResumeResetApplied,
+} from "../../shared/auth/authResumeResetGuard";
 import { buildRootResetForAuthNestedResume } from "../../shared/auth/signupResumeStack";
 import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSignupDraftStore";
 import { rootNavigationRef } from "./rootNavigation";
@@ -44,7 +48,7 @@ function coerceResumeForAuthStack(resume) {
 
 /**
  * 레이아웃 직후 바로 reset하면 컨테이너/네이티브 스택이 아직 준비되지 않은 경우가 있어
- * InteractionManager + rAF로 한 틱 미루고, root ref가 준비된 뒤 dispatch한다.
+ * InteractionManager + rAF로 한 틱 미루고, root ref가 준비된 뒤 dispatch
  *
  * @param {object} [options]
  * @param {() => void} [options.onBeforeDispatch] — navigation.dispatch 직전
@@ -91,15 +95,14 @@ const AuthStack = () => {
   );
   const authErrorMessage = route.params?.authErrorMessage ?? null;
 
-  const didApplyResumeStack = useRef(false);
-
   useEffect(() => {
     consumePendingAuthResume();
     hydrateSignupDraftFromStorage();
   }, []);
 
   useLayoutEffect(() => {
-    if (didApplyResumeStack.current || !resume) return;
+    if (!resume) return;
+    if (hasAuthResumeResetAlreadyApplied(resume)) return;
     let cancelled = false;
     (async () => {
       try {
@@ -107,18 +110,18 @@ const AuthStack = () => {
         if (cancelled) return;
         const action = buildRootResetForAuthNestedResume(resume);
         if (!action) return;
+        // remount 레이스로 동일 resume에 대해 dispatch가 두 번 예약되는 것을 막기 위해
+        // InteractionManager 이전에 동기적으로 표시
+        if (!cancelled) {
+          markAuthResumeResetApplied(resume);
+        }
         dispatchResumeWhenReady(navigation, action, {
           shouldSkip: () => cancelled,
-          onBeforeDispatch: () => {
-            if (!cancelled) {
-              didApplyResumeStack.current = true;
-            }
-          },
         });
       } catch (e) {
         console.warn("[AuthStack] resume stack apply failed", e);
         if (!cancelled) {
-          didApplyResumeStack.current = true;
+          markAuthResumeResetApplied(resume);
         }
       }
     })();
