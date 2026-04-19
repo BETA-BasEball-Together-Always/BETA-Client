@@ -880,6 +880,9 @@ const CreatePostScreen = () => {
     if (isEditMode) {
       const formData = new FormData();
       formData.append("content", contentForUpload);
+      acceptedHashTags.forEach((tag) => {
+        formData.append("hashtags", tag);
+      });
 
       deletedImageIds.forEach((id) => {
         formData.append("deletedImageIds", String(id));
