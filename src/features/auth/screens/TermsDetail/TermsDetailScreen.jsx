@@ -10,6 +10,7 @@ import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+import { normalizeSignupStep } from "../../../../shared/services/sessionBootstrap";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const TermsDetailScreen = ({ navigation }) => {
@@ -125,10 +126,10 @@ const TermsDetailScreen = ({ navigation }) => {
 
             try {
               const status = await signupStatusMutation.mutateAsync();
-              if (
-                status?.signupStep &&
-                status.signupStep !== "SOCIAL_AUTHENTICATED"
-              ) {
+              const step = normalizeSignupStep(
+                status?.signupStep ?? status?.signup_step ?? null,
+              );
+              if (step === "CONSENT_AGREED") {
                 navigateFromSignupStatus(status, navigation);
                 return;
               }
