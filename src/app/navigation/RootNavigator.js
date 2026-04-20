@@ -19,14 +19,9 @@ const RootNavigator = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const MIN_SPLASH_MS = 1200;
-
     (async () => {
       try {
-        const [result] = await Promise.all([
-          bootstrapSession(),
-          new Promise((r) => setTimeout(r, MIN_SPLASH_MS)),
-        ]);
+        const result = await bootstrapSession();
         if (!cancelled) setBoot(result);
       } catch (e) {
         console.warn("[bootstrapSession]", e);

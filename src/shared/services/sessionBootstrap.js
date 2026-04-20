@@ -9,6 +9,9 @@ import {
 } from "../auth/pendingAuthResume";
 import { applySignupStatusToDraft } from "../auth/applySignupStatusToDraft";
 import { clearAuthResumeResetGuard } from "../auth/authResumeResetGuard";
+import { appQueryClient } from "../libs/appQueryClient";
+import { SIGNUP_STATUS_QUERY_KEY } from "../../features/auth/services/signupStatusMutation";
+import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSignupDraftStore";
 
 //api.js와 sessionBootstrap.js에서 중복된 base url 환경변수 정의!!
 //api.js에서 baseURL 가져오는 것으로 수정
@@ -137,6 +140,19 @@ async function fetchSignupStatus() {
   return res.data;
 }
 
+async function fetchSignupStatusWithAccessToken(accessToken) {
+  const token = typeof accessToken === "string" ? accessToken.trim() : "";
+  if (!token) {
+    return await fetchSignupStatus();
+  }
+  const res = await api.get("/api/v1/auth/signup/status", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return res.data;
+}
+
 async function loadCachedUser() {
   try {
     const raw = await SecureStore.getItemAsync("userJson");
@@ -170,6 +186,157 @@ function extractApiMessage(error, fallback) {
 }
 
 /**
+ * SecureStore userJson — 보통 완료 가입·메인 진입 후 setUser로만 저장됨(미완료 가입 플로우는 대부분 미기록).
+ */
+function isCachedUserEligibleForSignupStatusSkip(user) {
+  if (!user || typeof user !== "object") return false;
+  return Boolean(user.id ?? user.userId ?? user.email);
+}
+
+/**
+ * @returns {Promise<
+ *   | { outcome: "no_tokens" }
+ *   | { outcome: "auth_return"; value: { destination: "auth"; authErrorMessage: string | null } }
+ *   | { outcome: "ok"; statusPayload: ReturnType<typeof sanitizeSignupStatusPayload>; statusData: object }
+ * >}
+ */
+async function fetchSignupStatusPipeline() {
+  const [storedAccess, storedRefresh] = await Promise.all([
+    SecureStore.getItemAsync("accessToken"),
+    SecureStore.getItemAsync("refreshToken"),
+  ]);
+
+  if (!storedAccess && !storedRefresh) {
+    return { outcome: "no_tokens" };
+  }
+
+  setPendingAuthErrorMessage(null);
+
+  let accessToken = storedAccess;
+  const refreshToken = storedRefresh;
+  const cachedUserPromise = loadCachedUser();
+  /** accessToken이 이미 있으면 토큰 적용을 미리 시작(네트워크와 병렬) */
+  let applyTokensPromise = null;
+
+  /** accessToken이 이미 있으면 refresh API를 부르지 않음(만료 시 추후 /signup/status 401에서 재시도) */
+  if (!accessToken && refreshToken) {
+    try {
+      const data = await refreshTokensApi(refreshToken);
+      accessToken = data?.accessToken;
+      if (!accessToken) {
+        await clearSession();
+        const msg = "로그인이 필요합니다. 다시 로그인해 주세요.";
+        setPendingAuthErrorMessage(msg);
+        return {
+          outcome: "auth_return",
+          value: { destination: "auth", authErrorMessage: msg },
+        };
+      }
+      await applyTokens(accessToken, data?.refreshToken ?? refreshToken);
+    } catch (e) {
+      await clearSession();
+      const msg = extractApiMessage(
+        e,
+        "로그인이 필요합니다. 다시 로그인해 주세요.",
+      );
+      setPendingAuthErrorMessage(msg);
+      return {
+        outcome: "auth_return",
+        value: { destination: "auth", authErrorMessage: msg },
+      };
+    }
+  } else {
+    // accessToken이 있을 때는 /signup/status를 헤더 주입으로 먼저 치고,
+    // 토큰 적용(store + axios default)은 병렬로 진행할 수 있다.
+    applyTokensPromise = applyTokens(accessToken, refreshToken);
+  }
+
+  /**
+   * 로그인 완료/메인 이용 이력 존재 시 userJson이 있으면 /signup/status 없이 바로 main
+   */
+  try {
+    const cachedUser = await cachedUserPromise;
+    if (
+      accessToken &&
+      isCachedUserEligibleForSignupStatusSkip(cachedUser)
+    ) {
+      if (applyTokensPromise) {
+        await applyTokensPromise;
+      }
+      // main 진입 직전에는 Authorization 헤더가 필요하므로 토큰 적용은 반드시 완료돼야 한다.
+      const statusPayload = sanitizeSignupStatusPayload({
+        user: cachedUser,
+        signupStep: null,
+      });
+      return {
+        outcome: "ok",
+        statusPayload,
+        statusData: { user: cachedUser },
+        skippedSignupStatusApi: true,
+      };
+    }
+  } catch (e) {
+    console.warn("[bootstrapSession] loadCachedUser (fast path)", e);
+  }
+
+  let statusData;
+  try {
+    // accessToken이 있으면 axios default header 세팅을 기다릴 필요 없이 헤더 주입으로 바로 호출
+    const statusPromise = fetchSignupStatusWithAccessToken(accessToken);
+    if (applyTokensPromise) {
+      const [, data] = await Promise.all([applyTokensPromise, statusPromise]);
+      statusData = data;
+    } else {
+      statusData = await statusPromise;
+    }
+  } catch (e) {
+    const status = e?.response?.status;
+    if ((status === 401 || status === 403) && refreshToken) {
+      try {
+        const data = await refreshTokensApi(refreshToken);
+        accessToken = data?.accessToken;
+        if (!accessToken) {
+          await clearSession();
+          const msg = "로그인이 필요합니다. 다시 로그인해 주세요.";
+          setPendingAuthErrorMessage(msg);
+          return {
+            outcome: "auth_return",
+            value: { destination: "auth", authErrorMessage: msg },
+          };
+        }
+        await applyTokens(accessToken, data?.refreshToken ?? refreshToken);
+        statusData = await fetchSignupStatusWithAccessToken(accessToken);
+      } catch (e2) {
+        await clearSession();
+        const msg = extractApiMessage(
+          e2,
+          "로그인이 필요합니다. 다시 로그인해 주세요.",
+        );
+        setPendingAuthErrorMessage(msg);
+        return {
+          outcome: "auth_return",
+          value: { destination: "auth", authErrorMessage: msg },
+        };
+      }
+    } else {
+      await clearSession();
+      const msg = extractApiMessage(
+        e,
+        "로그인이 필요합니다. 다시 로그인해 주세요.",
+      );
+      setPendingAuthErrorMessage(msg);
+      return {
+        outcome: "auth_return",
+        value: { destination: "auth", authErrorMessage: msg },
+      };
+    }
+  }
+
+  const statusPayload = sanitizeSignupStatusPayload(statusData);
+  return { outcome: "ok", statusPayload, statusData };
+}
+
+/**
  * 앱 재실행 시 SecureStore 토큰으로 세션 복구 (로그인한 사용자는 메인으로 이동할 수 있도록)
  */
 export async function bootstrapSession() {
@@ -185,80 +352,23 @@ export async function bootstrapSession() {
 
 async function bootstrapSessionInner() {
   clearAuthResumeResetGuard();
-  const storedAccess = await SecureStore.getItemAsync("accessToken");
-  const storedRefresh = await SecureStore.getItemAsync("refreshToken");
 
-  if (!storedAccess && !storedRefresh) {
+  const [, pipeline] = await Promise.all([
+    hydrateSignupDraftFromStorage().catch((e) => {
+      console.warn("[bootstrapSession] hydrateSignupDraftFromStorage failed", e);
+    }),
+    fetchSignupStatusPipeline(),
+  ]);
+
+  if (pipeline.outcome === "no_tokens") {
     return { destination: "auth", authErrorMessage: null };
   }
-
-  setPendingAuthErrorMessage(null);
-
-  let accessToken = storedAccess;
-  const refreshToken = storedRefresh;
-
-  if (!accessToken && refreshToken) {
-    try {
-      const data = await refreshTokensApi(refreshToken);
-      accessToken = data?.accessToken;
-      if (!accessToken) {
-        await clearSession();
-        const msg = "로그인이 필요합니다. 다시 로그인해 주세요.";
-        setPendingAuthErrorMessage(msg);
-        return { destination: "auth", authErrorMessage: msg };
-      }
-      await applyTokens(accessToken, data?.refreshToken ?? refreshToken);
-    } catch (e) {
-      await clearSession();
-      const msg = extractApiMessage(
-        e,
-        "로그인이 필요합니다. 다시 로그인해 주세요.",
-      );
-      setPendingAuthErrorMessage(msg);
-      return { destination: "auth", authErrorMessage: msg };
-    }
-  } else {
-    await applyTokens(accessToken, refreshToken);
+  if (pipeline.outcome === "auth_return") {
+    return pipeline.value;
   }
 
-  let statusData;
-  try {
-    statusData = await fetchSignupStatus();
-  } catch (e) {
-    const status = e?.response?.status;
-    if ((status === 401 || status === 403) && refreshToken) {
-      try {
-        const data = await refreshTokensApi(refreshToken);
-        accessToken = data?.accessToken;
-        if (!accessToken) {
-          await clearSession();
-          const msg = "로그인이 필요합니다. 다시 로그인해 주세요.";
-          setPendingAuthErrorMessage(msg);
-          return { destination: "auth", authErrorMessage: msg };
-        }
-        await applyTokens(accessToken, data?.refreshToken ?? refreshToken);
-        statusData = await fetchSignupStatus();
-      } catch (e2) {
-        await clearSession();
-        const msg = extractApiMessage(
-          e2,
-          "로그인이 필요합니다. 다시 로그인해 주세요.",
-        );
-        setPendingAuthErrorMessage(msg);
-        return { destination: "auth", authErrorMessage: msg };
-      }
-    } else {
-      await clearSession();
-      const msg = extractApiMessage(
-        e,
-        "로그인이 필요합니다. 다시 로그인해 주세요.",
-      );
-      setPendingAuthErrorMessage(msg);
-      return { destination: "auth", authErrorMessage: msg };
-    }
-  }
+  const { statusPayload } = pipeline;
 
-  const statusPayload = sanitizeSignupStatusPayload(statusData);
   const step = normalizeSignupStep(statusPayload?.signupStep);
 
   /**
@@ -271,6 +381,11 @@ async function bootstrapSessionInner() {
       applySignupStatusToDraft(statusPayload);
     } catch (e) {
       console.warn("[bootstrapSession] applySignupStatusToDraft failed", e);
+    }
+    try {
+      appQueryClient.setQueryData(SIGNUP_STATUS_QUERY_KEY, statusPayload);
+    } catch (e) {
+      console.warn("[bootstrapSession] signup status query seed failed", e);
     }
     let resume;
     try {
