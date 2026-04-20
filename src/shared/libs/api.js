@@ -5,6 +5,7 @@ import NetInfo from "@react-native-community/netinfo";
 import * as SecureStore from "expo-secure-store";
 import { useUserStore } from "../store/userStore";
 import { refreshTokensApi } from "./authTokenRefresh";
+import { notifyDatabaseMaintenanceIfNeeded } from "../utils/networkErrors";
 // import * as SecureStore from "expo-secure-store";
 // import {useAuthStore} from "../store/authStore"; // 경로는 프로젝트에 맞게 수정해줘
 
@@ -131,6 +132,8 @@ async function getStoredRefreshToken() {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    notifyDatabaseMaintenanceIfNeeded(error);
+
     const originalRequest = error.config;
     const status = error.response?.status;
 
