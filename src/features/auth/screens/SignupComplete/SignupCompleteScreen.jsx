@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -15,11 +15,20 @@ import AuthBackground from "../../components/AuthBackground";
 import CompleteIcon from "../../assets/common/svg/signupComplete.svg";
 import { runSignupPushPermissionFlow } from "../../../../shared/services/pushDeviceService";
 import { clearPersistedSignupDraft } from "../../stores/useSignupDraftStore";
+import { useUserStore } from "../../../../shared/store/userStore";
+
+const AUTH_READY_WAIT_TIMEOUT_MS = 3000;
 
 const SignupCompleteScreen = ({ navigation, route }) => {
   const [favoriteTeamLabel, setFavoriteTeamLabel] = useState("팬");
   const [permissionModalVisible, setPermissionModalVisible] = useState(false);
   const [permissionBusy, setPermissionBusy] = useState(false);
+
+  const user = useUserStore((s) => s.user);
+  const accessToken = useUserStore((s) => s.accessToken);
+  const authReady = !!user && !!accessToken;
+  const [authReadyTimedOut, setAuthReadyTimedOut] = useState(false);
+  const didOpenPermissionModalRef = useRef(false);
 
   useEffect(() => {
     const labelFromParams = route?.params?.signup?.favoriteTeamLabel;
@@ -35,8 +44,23 @@ const SignupCompleteScreen = ({ navigation, route }) => {
   }, [route?.params]);
 
   useEffect(() => {
-    setPermissionModalVisible(true);
+    let mounted = true;
+    const t = setTimeout(() => {
+      if (!mounted) return;
+      setAuthReadyTimedOut(true);
+    }, AUTH_READY_WAIT_TIMEOUT_MS);
+    return () => {
+      mounted = false;
+      clearTimeout(t);
+    };
   }, []);
+
+  useEffect(() => {
+    if (didOpenPermissionModalRef.current) return;
+    if (!authReady && !authReadyTimedOut) return;
+    didOpenPermissionModalRef.current = true;
+    setPermissionModalVisible(true);
+  }, [authReady, authReadyTimedOut]);
 
   const moveToMain = () => {
     clearPersistedSignupDraft();
@@ -93,6 +117,17 @@ const SignupCompleteScreen = ({ navigation, route }) => {
           </View>
         </View>
       </SafeAreaView>
+
+      {!authReady && !authReadyTimedOut && (
+        <View style={styles.authReadyOverlay} pointerEvents="none">
+          <View style={styles.authReadyCard}>
+            <ActivityIndicator color="#FFFFFF" />
+            <AppText variant="bodyMedium" style={styles.authReadyText}>
+              처리 중…
+            </AppText>
+          </View>
+        </View>
+      )}
 
       <Modal
         transparent
@@ -242,5 +277,23 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  authReadyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  authReadyCard: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "rgba(32, 35, 37, 0.92)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  authReadyText: {
+    color: "rgba(255,255,255,0.85)",
   },
 });
