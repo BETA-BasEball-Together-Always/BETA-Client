@@ -375,7 +375,8 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
 }
 
 const SignupNicknameScreen = ({ navigation, route }) => {
-  const draftHydrated = useSignupDraftPersistHydrated();
+  // hydrate는 백그라운드에서 진행 — 입력 자체를 막지 않기 위해 UI gating은 하지 않음
+  useSignupDraftPersistHydrated();
   const handleBack = useStepBack("Login");
   const draftEmailShell = useSignupDraftStore((s) => s.email);
   const signupFromRoute = normalizeSignupParams(route?.params?.signup);
@@ -392,79 +393,11 @@ const SignupNicknameScreen = ({ navigation, route }) => {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <AuthBackground />
-
-          {!draftHydrated ? (
-            <>
-              <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.inner}>
-                  <SignupProgressHeader currentStep={1} onBack={handleBack} />
-
-                  <View style={styles.section}>
-                    <AppText variant="displayTitle" style={styles.sectionTitle}>
-                      회원가입 이메일
-                    </AppText>
-                    <AppText
-                      variant="smallRegular"
-                      style={styles.sectionDescription}
-                    >
-                      * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
-                      사용됩니다.
-                    </AppText>
-                    <View style={styles.readonlyEmailBox}>
-                      <AppText
-                        variant="middle"
-                        style={styles.readonlyEmailText}
-                      >
-                        {shellEmail || "-"}
-                      </AppText>
-                    </View>
-                  </View>
-
-                  <View style={[styles.section, { marginTop: 24 }]}>
-                    <Text style={styles.title}>닉네임을 입력해주세요</Text>
-                  </View>
-
-                  <View style={styles.formWrapper}>
-                    <SignupCheckedInput
-                      label={null}
-                      placeholder="닉네임을 입력해주세요."
-                      maxLength={13}
-                      field={FROZEN_EMPTY_CHECKED_FIELD}
-                      buttonLabel="중복확인"
-                      editable={false}
-                    />
-                    <Text style={styles.lengthText}>0/13</Text>
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View style={styles.floatingBottomArea}>
-                <TouchableOpacity
-                  style={[styles.nextButton, styles.nextButtonDisabled]}
-                  activeOpacity={1}
-                  disabled
-                >
-                  <Text
-                    style={[
-                      styles.nextButtonText,
-                      styles.nextButtonTextDisabled,
-                    ]}
-                  >
-                    다음
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <SignupNicknameHydratedBody
-              navigation={navigation}
-              route={route}
-              handleBack={handleBack}
-            />
-          )}
+          <SignupNicknameHydratedBody
+            navigation={navigation}
+            route={route}
+            handleBack={handleBack}
+          />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
