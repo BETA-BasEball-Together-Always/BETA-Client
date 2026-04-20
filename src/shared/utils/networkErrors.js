@@ -25,7 +25,7 @@ export function isOfflineError(error) {
 }
 
 let lastOfflineAlertAt = 0;
-const THROTTLE_MS = 2800;
+const THROTTLE_MS = 8000;
 
 /** @returns {boolean} true면 오프라인으로 처리됨(알림 표시 시도) */
 export function notifyOfflineIfNeeded(error) {

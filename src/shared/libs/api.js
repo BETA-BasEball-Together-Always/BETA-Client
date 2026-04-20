@@ -66,10 +66,39 @@ function canSendRequest(state) {
   return true;
 }
 
+const NETINFO_CACHE_TTL_MS = 1500;
+let lastNetInfoFetchAt = 0;
+let lastNetInfoState = null;
+let netInfoInFlightPromise = null;
+
+async function getNetInfoStateCached() {
+  const now = Date.now();
+
+  if (lastNetInfoState && now - lastNetInfoFetchAt < NETINFO_CACHE_TTL_MS) {
+    return lastNetInfoState;
+  }
+
+  if (netInfoInFlightPromise) {
+    return await netInfoInFlightPromise;
+  }
+
+  netInfoInFlightPromise = NetInfo.fetch()
+    .then((state) => {
+      lastNetInfoState = state;
+      lastNetInfoFetchAt = Date.now();
+      return state;
+    })
+    .finally(() => {
+      netInfoInFlightPromise = null;
+    });
+
+  return await netInfoInFlightPromise;
+}
+
 api.interceptors.request.use(
   async (config) => {
     try {
-      const state = await NetInfo.fetch();
+      const state = await getNetInfoStateCached();
       if (!canSendRequest(state)) {
         const err = new Error("NETWORK_UNAVAILABLE");
         err.code = "CLIENT_OFFLINE";
