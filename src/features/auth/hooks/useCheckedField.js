@@ -14,6 +14,7 @@ export const useCheckedField = ({
   const [touched, setTouched] = useState(initialTouched);
   const [isAvailable, setIsAvailable] = useState(initialIsAvailable);
   const [isChecking, setIsChecking] = useState(false);
+  const checkInFlightRef = useRef(false);
   const mountedRef = useRef(true);
   const valueRef = useRef(value);
 
@@ -55,6 +56,7 @@ export const useCheckedField = ({
   };
 
   const handleCheck = async () => {
+    if (checkInFlightRef.current) return;
     try {
       const trimmed = value.trim();
       setTouched(true);
@@ -71,6 +73,7 @@ export const useCheckedField = ({
         return;
       }
 
+      checkInFlightRef.current = true;
       setIsChecking(true);
       setError("");
 
@@ -92,6 +95,7 @@ export const useCheckedField = ({
       setIsAvailable(false);
       setError("중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
+      checkInFlightRef.current = false;
       if (mountedRef.current) {
         setIsChecking(false);
       }

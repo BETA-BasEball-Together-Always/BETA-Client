@@ -1,13 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useSignupDraftStore } from "../stores/useSignupDraftStore";
 
-const HYDRATE_RETRY_CHECK_MS = 1500;
+const HYDRATE_RETRY_CHECK_MS = 500;
 
 export function useSignupDraftPersistHydrated() {
   const [hydrated, setHydrated] = useState(() =>
     useSignupDraftStore.persist.hasHydrated(),
   );
   const didAnnounceRef = useRef(false);
+
+  /** sessionBootstrap에서 이미 rehydrate 된 경우, 다음 프레임에서 곧바로 true */
+  useLayoutEffect(() => {
+    if (useSignupDraftStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+  }, []);
 
   useEffect(() => {
     didAnnounceRef.current = false;
@@ -29,6 +36,13 @@ export function useSignupDraftPersistHydrated() {
       };
     }
 
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      if (useSignupDraftStore.persist.hasHydrated()) {
+        announce();
+      }
+    });
+
     const unsub = useSignupDraftStore.persist.onFinishHydration(() => {
       announce();
     });
@@ -42,6 +56,7 @@ export function useSignupDraftPersistHydrated() {
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(raf);
       unsub();
       clearTimeout(retryTimer);
     };

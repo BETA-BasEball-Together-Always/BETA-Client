@@ -17,7 +17,6 @@ import {
   markAuthResumeResetApplied,
 } from "../../shared/auth/authResumeResetGuard";
 import { buildRootResetForAuthNestedResume } from "../../shared/auth/signupResumeStack";
-import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSignupDraftStore";
 import { rootNavigationRef } from "./rootNavigation";
 
 const Stack = createNativeStackNavigator();
@@ -97,34 +96,18 @@ const AuthStack = () => {
 
   useEffect(() => {
     consumePendingAuthResume();
-    hydrateSignupDraftFromStorage();
   }, []);
 
   useLayoutEffect(() => {
     if (!resume) return;
     if (hasAuthResumeResetAlreadyApplied(resume)) return;
+    const action = buildRootResetForAuthNestedResume(resume);
+    if (!action) return;
+    markAuthResumeResetApplied(resume);
     let cancelled = false;
-    (async () => {
-      try {
-        await hydrateSignupDraftFromStorage();
-        if (cancelled) return;
-        const action = buildRootResetForAuthNestedResume(resume);
-        if (!action) return;
-        // remount 레이스로 동일 resume에 대해 dispatch가 두 번 예약되는 것을 막기 위해
-        // InteractionManager 이전에 동기적으로 표시
-        if (!cancelled) {
-          markAuthResumeResetApplied(resume);
-        }
-        dispatchResumeWhenReady(navigation, action, {
-          shouldSkip: () => cancelled,
-        });
-      } catch (e) {
-        console.warn("[AuthStack] resume stack apply failed", e);
-        if (!cancelled) {
-          markAuthResumeResetApplied(resume);
-        }
-      }
-    })();
+    dispatchResumeWhenReady(navigation, action, {
+      shouldSkip: () => cancelled,
+    });
     return () => {
       cancelled = true;
     };

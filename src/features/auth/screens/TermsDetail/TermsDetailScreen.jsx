@@ -18,6 +18,8 @@ const TermsDetailScreen = ({ navigation }) => {
   const setDraftTerms = useSignupDraftStore((s) => s.setTerms);
   const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
 
+  const [nextActionBusy, setNextActionBusy] = useState(false);
+
   const [terms, setTerms] = useState({
     all: false,
     over14: false,
@@ -69,6 +71,8 @@ const TermsDetailScreen = ({ navigation }) => {
     [terms],
   );
 
+  const canPressNext = isRequiredAgreed && !nextActionBusy;
+
   const handlePressDetail = useCallback(
     (key) => {
       if (!key) return;
@@ -117,50 +121,59 @@ const TermsDetailScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.nextButton,
-            !isRequiredAgreed && styles.nextButtonDisabled,
+            !canPressNext && styles.nextButtonDisabled,
           ]}
-          activeOpacity={isRequiredAgreed ? 0.85 : 1}
-          disabled={!isRequiredAgreed}
+          activeOpacity={canPressNext ? 0.85 : 1}
+          disabled={!canPressNext}
           onPress={async () => {
-            if (!isRequiredAgreed) return;
+            if (!canPressNext) return;
 
+            setNextActionBusy(true);
             try {
-              const status = await signupStatusMutation.mutateAsync();
-              const step = normalizeSignupStep(
-                status?.signupStep ?? status?.signup_step ?? null,
-              );
-              if (step === "CONSENT_AGREED") {
-                navigateFromSignupStatus(status, navigation);
-                return;
+              try {
+                const status = await signupStatusMutation.mutateAsync();
+                const step = normalizeSignupStep(
+                  status?.signupStep ?? status?.signup_step ?? null,
+                );
+                if (step === "CONSENT_AGREED") {
+                  navigateFromSignupStatus(status, navigation);
+                  setNextActionBusy(false);
+                  return;
+                }
+              } catch (e) {
+                console.warn("[signup/status]", e);
               }
-            } catch (e) {
-              console.warn("[signup/status]", e);
-            }
 
-            signupConsentMutation.mutate(
-              {
-                personalInfoRequired: true,
-                agreeMarketing: terms.privacyMarketing,
-              },
-              {
-                onSuccess: (data) => {
-                  setDraftEmail(data?.email ?? "");
-                  navigation.navigate("SocialSignup", {
-                    signup: { email: data?.email ?? "" },
-                  });
+              signupConsentMutation.mutate(
+                {
+                  personalInfoRequired: true,
+                  agreeMarketing: terms.privacyMarketing,
                 },
-              },
-            );
+                {
+                  onSuccess: (data) => {
+                    setDraftEmail(data?.email ?? "");
+                    navigation.navigate("SocialSignup", {
+                      signup: { email: data?.email ?? "" },
+                    });
+                  },
+                  onSettled: () => {
+                    setNextActionBusy(false);
+                  },
+                },
+              );
+            } catch {
+              setNextActionBusy(false);
+            }
           }}
         >
           <AppText
             variant="heading"
             style={[
               styles.nextButtonText,
-              !isRequiredAgreed && styles.nextButtonTextDisabled,
+              !canPressNext && styles.nextButtonTextDisabled,
             ]}
           >
-            다음
+            {nextActionBusy ? "처리 중..." : "다음"}
           </AppText>
         </TouchableOpacity>
       </View>

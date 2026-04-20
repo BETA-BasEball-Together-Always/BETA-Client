@@ -1,5 +1,13 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { useFocusEffect } from "@react-navigation/native";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   View,
   StyleSheet,
@@ -19,7 +27,10 @@ import * as SecureStore from "expo-secure-store";
 import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
-import { useSignupStatusMutation } from "../../services/signupStatusMutation";
+import {
+  fetchSignupStatus,
+  SIGNUP_STATUS_QUERY_KEY,
+} from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_LIST } from "../../../../shared/constants/teams";
 import { getKboRankCardRabbitIcon } from "../../../../shared/constants/kboRankCardRabbitIcons";
@@ -80,6 +91,14 @@ function mapStatusTeamListItemToRow(team) {
 }
 
 function SignupFavoriteTeamScreenBody({ navigation, route }) {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const routeParams = route?.params ?? {};
   const signupParam =
     routeParams?.signup != null &&
@@ -103,115 +122,114 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
       ? String(paramFavoriteTeamCodeRaw).trim()
       : null;
 
-  const [teamListPhase, setTeamListPhase] = useState("loading");
-  const [teamListError, setTeamListError] = useState(null);
-  const [teamRows, setTeamRows] = useState([]);
-
-  const teamRowsRef = useRef(teamRows);
-  const teamListPhaseRef = useRef(teamListPhase);
-  teamRowsRef.current = teamRows;
-  teamListPhaseRef.current = teamListPhase;
-
   const signupTeamMutation = useSignupTeamMutation();
-  const signupStatusMutation = useSignupStatusMutation();
+  const queryClient = useQueryClient();
 
-  const signupStatusMutateAsync = signupStatusMutation.mutateAsync;
+  const {
+    data: signupStatus,
+    isPending,
+    isError,
+    error: signupStatusError,
+    refetch: refetchSignupStatus,
+  } = useQuery({
+    queryKey: SIGNUP_STATUS_QUERY_KEY,
+    queryFn: fetchSignupStatus,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
-  const loadTeamListFromStatus = useCallback(
-    async (isCancelled) => {
-      if (isCancelled?.()) return;
-      setTeamListPhase("loading");
-      setTeamListError(null);
-      try {
-        const status = await signupStatusMutateAsync();
-        if (isCancelled?.()) return;
-        applySignupStatusToDraft(status);
-        const list = status?.teamList;
-        if (!Array.isArray(list) || list.length === 0) {
-          setTeamRows([]);
-          setTeamListPhase("error");
-          setTeamListError(
-            "구단 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-          );
-          return;
-        }
-        const rows = [];
-        for (const item of list) {
-          const row = mapStatusTeamListItemToRow(item);
-          if (row) rows.push(row);
-        }
-        if (rows.length === 0) {
-          setTeamRows([]);
-          setTeamListPhase("error");
-          setTeamListError(
-            "구단 정보를 인식하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-          );
-          return;
-        }
-        setTeamRows(rows);
-        setTeamListPhase("success");
-      } catch (e) {
-        if (isCancelled?.()) return;
-        console.warn("[signup/status]", e);
-        setTeamRows([]);
-        setTeamListPhase("error");
-        const raw = e?.response?.data;
-        let msg =
-          typeof raw === "string"
-            ? raw
-            : typeof raw?.message === "string"
-              ? raw.message
-              : null;
-        if (!msg && e?.message === "NO_ACCESS_TOKEN") {
-          msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
-        }
-        setTeamListError(
-          msg ??
-            "구단 목록을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
-        );
+  useEffect(() => {
+    if (signupStatus) {
+      applySignupStatusToDraft(signupStatus);
+    }
+  }, [signupStatus]);
+
+  const teamRows = useMemo(() => {
+    const list = signupStatus?.teamList;
+    if (!Array.isArray(list) || list.length === 0) return [];
+    const rows = [];
+    for (const item of list) {
+      const row = mapStatusTeamListItemToRow(item);
+      if (row) rows.push(row);
+    }
+    return rows;
+  }, [signupStatus]);
+
+  const { teamListPhase, teamListError } = useMemo(() => {
+    if (teamRows.length > 0) {
+      return { teamListPhase: "success", teamListError: null };
+    }
+    if (isPending && !signupStatus) {
+      return { teamListPhase: "loading", teamListError: null };
+    }
+    if (isError && !signupStatus) {
+      const e = signupStatusError;
+      const raw = e?.response?.data;
+      let msg =
+        typeof raw === "string"
+          ? raw
+          : typeof raw?.message === "string"
+            ? raw.message
+            : null;
+      if (!msg && e?.message === "NO_ACCESS_TOKEN") {
+        msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
       }
-    },
-    [signupStatusMutateAsync],
-  );
+      return {
+        teamListPhase: "error",
+        teamListError:
+          msg ??
+          "구단 목록을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+      };
+    }
+    if (signupStatus && teamRows.length === 0 && !isPending) {
+      return {
+        teamListPhase: "error",
+        teamListError:
+          "구단 정보를 인식하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      };
+    }
+    return { teamListPhase: "loading", teamListError: null };
+  }, [isError, isPending, signupStatus, signupStatusError, teamRows.length]);
+
+  const restoreFavoriteTeamSelectionFromDraft = useCallback(() => {
+    const d = useSignupDraftStore.getState();
+    const fromDraft =
+      d.favoriteTeamCode != null && String(d.favoriteTeamCode).trim() !== ""
+        ? String(d.favoriteTeamCode).trim()
+        : null;
+    const restored = fromDraft ?? paramFavoriteTeamCode;
+    const hasRestored = restored != null && String(restored).trim() !== "";
+    if (hasRestored) {
+      setSelectedTeam(restored);
+    } else {
+      setSelectedTeam((prev) =>
+        prev != null && String(prev).trim() !== "" ? prev : null,
+      );
+    }
+  }, [paramFavoriteTeamCode]);
+
+  useLayoutEffect(() => {
+    restoreFavoriteTeamSelectionFromDraft();
+  }, [restoreFavoriteTeamSelectionFromDraft]);
+
+  useEffect(() => {
+    restoreFavoriteTeamSelectionFromDraft();
+  }, [draftFavoriteTeamCode, restoreFavoriteTeamSelectionFromDraft]);
 
   useFocusEffect(
     useCallback(() => {
-      const d = useSignupDraftStore.getState();
-      const fromDraft =
-        d.favoriteTeamCode != null &&
-        String(d.favoriteTeamCode).trim() !== ""
-          ? String(d.favoriteTeamCode).trim()
-          : null;
-      const restored = fromDraft ?? paramFavoriteTeamCode;
-      const hasRestored =
-        restored != null && String(restored).trim() !== "";
-      if (hasRestored) {
-        setSelectedTeam(restored);
-      } else {
-        setSelectedTeam((prev) =>
-          prev != null && String(prev).trim() !== "" ? prev : null,
-        );
-      }
-
-      const alreadyHaveList =
-        teamListPhaseRef.current === "success" &&
-        teamRowsRef.current.length > 0;
-      if (alreadyHaveList) {
-        return () => {};
-      }
-
-      let cancelled = false;
-      loadTeamListFromStatus(() => cancelled);
-      return () => {
-        cancelled = true;
-      };
-    }, [loadTeamListFromStatus, paramFavoriteTeamCode]),
+      restoreFavoriteTeamSelectionFromDraft();
+    }, [restoreFavoriteTeamSelectionFromDraft]),
   );
+
+  const [nextActionBusy, setNextActionBusy] = useState(false);
 
   const isNextEnabled = useMemo(
     () => !!selectedTeam && teamListPhase === "success",
     [selectedTeam, teamListPhase],
   );
+
+  const canPressNext = isNextEnabled && !nextActionBusy;
 
   const handleBack = useStepBack("SocialSignup");
 
@@ -219,8 +237,7 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
     const list = teamRows;
     const selectedTeamLabel =
       list.find(
-        (t) =>
-          normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(teamCode),
+        (t) => normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(teamCode),
       )?.label ??
       TEAM_LIST.find(
         (t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode),
@@ -247,37 +264,45 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
   };
 
   const handleNext = async () => {
-    if (!isNextEnabled) return;
+    if (!canPressNext) return;
 
+    setNextActionBusy(true);
     try {
-      const status = await signupStatusMutateAsync();
-      if (status?.signupStep === "TEAM_SELECTED") {
+      try {
+        const status = await fetchSignupStatus();
+        queryClient.setQueryData(SIGNUP_STATUS_QUERY_KEY, status);
+        if (status?.signupStep === "TEAM_SELECTED") {
+          await goToGenderAge(selectedTeam);
+          return;
+        }
+      } catch (e) {
+        console.warn("[signup/status]", e);
+      }
+
+      try {
+        await signupTeamMutation.mutateAsync({ teamCode: selectedTeam });
         await goToGenderAge(selectedTeam);
-        return;
+      } catch (e) {
+        console.warn("[signup/team]", e);
+        const raw = e?.response?.data;
+        let msg =
+          typeof raw === "string"
+            ? raw
+            : typeof raw?.message === "string"
+              ? raw.message
+              : null;
+        if (!msg && e?.message === "NO_ACCESS_TOKEN") {
+          msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+        }
+        if (!msg) {
+          msg = "구단 선택을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+        }
+        Alert.alert("안내", msg);
       }
-    } catch (e) {
-      console.warn("[signup/status]", e);
-    }
-
-    try {
-      await signupTeamMutation.mutateAsync({ teamCode: selectedTeam });
-      await goToGenderAge(selectedTeam);
-    } catch (e) {
-      console.warn("[signup/team]", e);
-      const raw = e?.response?.data;
-      let msg =
-        typeof raw === "string"
-          ? raw
-          : typeof raw?.message === "string"
-            ? raw.message
-            : null;
-      if (!msg && e?.message === "NO_ACCESS_TOKEN") {
-        msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+    } finally {
+      if (mountedRef.current) {
+        setNextActionBusy(false);
       }
-      if (!msg) {
-        msg = "구단 선택을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
-      }
-      Alert.alert("안내", msg);
     }
   };
 
@@ -297,8 +322,7 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
     const selectedTeamLabel =
       teamRows.find(
         (t) =>
-          normalizeTeamCode(t.apiTeamCode) ===
-          normalizeTeamCode(selectedTeam),
+          normalizeTeamCode(t.apiTeamCode) === normalizeTeamCode(selectedTeam),
       )?.label ??
       TEAM_LIST.find((t) => t.key === selectedTeam)?.label ??
       TEAM_LIST.find(
@@ -356,9 +380,12 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                     <TouchableOpacity
                       style={styles.teamListRetryButton}
                       activeOpacity={0.85}
-                      onPress={() => loadTeamListFromStatus(() => false)}
+                      onPress={() => refetchSignupStatus()}
                     >
-                      <AppText variant="heading" style={styles.teamListRetryText}>
+                      <AppText
+                        variant="heading"
+                        style={styles.teamListRetryText}
+                      >
                         다시 시도
                       </AppText>
                     </TouchableOpacity>
@@ -400,7 +427,8 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                                 variant="bodyMedium"
                                 style={[
                                   styles.fallbackTeamInitials,
-                                  selected && styles.fallbackTeamInitialsOnLight,
+                                  selected &&
+                                    styles.fallbackTeamInitialsOnLight,
                                 ]}
                               >
                                 {fallbackInitial}
@@ -430,20 +458,20 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
               <TouchableOpacity
                 style={[
                   styles.completeButton,
-                  !isNextEnabled && styles.completeButtonDisabled,
+                  !canPressNext && styles.completeButtonDisabled,
                 ]}
-                disabled={!isNextEnabled}
-                activeOpacity={isNextEnabled ? 0.85 : 1}
+                disabled={!canPressNext}
+                activeOpacity={canPressNext ? 0.85 : 1}
                 onPress={handleNext}
               >
                 <AppText
                   variant="heading"
                   style={[
                     styles.completeButtonText,
-                    !isNextEnabled && styles.completeButtonTextDisabled,
+                    !canPressNext && styles.completeButtonTextDisabled,
                   ]}
                 >
-                  선택완료
+                  {nextActionBusy ? "처리 중..." : "선택완료"}
                 </AppText>
               </TouchableOpacity>
             </View>

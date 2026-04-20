@@ -2,10 +2,12 @@
 import React, {
   useMemo,
   useEffect,
+  useLayoutEffect,
   useState,
   useRef,
   useCallback,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   View,
   Text,
@@ -31,6 +33,10 @@ import { checkNicknameDuplicateRequest } from "../../services/nicknameCheckMutat
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useStepBack } from "../../hooks/useStepBack";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
+import {
+  fetchSignupStatus,
+  SIGNUP_STATUS_QUERY_KEY,
+} from "../../services/signupStatusMutation";
 
 const { height } = Dimensions.get("window");
 
@@ -104,6 +110,8 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   const hydrateDraftNickname = useSignupDraftStore((s) => s.hydrateNickname);
   const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
 
+  const queryClient = useQueryClient();
+
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
   const validateNickname = useCallback((value) => {
@@ -138,59 +146,76 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   const nicknameFieldRef = useRef(nicknameField);
   nicknameFieldRef.current = nicknameField;
 
-  useFocusEffect(
-    useCallback(() => {
-      const d = useSignupDraftStore.getState();
-      const rawSignup = routeParams?.signup;
-      const signupObj =
-        rawSignup != null && typeof rawSignup === "object" && !Array.isArray(rawSignup)
-          ? rawSignup
-          : {};
+  const restoreNicknameFromDraftAndRoute = useCallback(() => {
+    const d = useSignupDraftStore.getState();
+    const rawSignup = routeParams?.signup;
+    const signupObj =
+      rawSignup != null &&
+      typeof rawSignup === "object" &&
+      !Array.isArray(rawSignup)
+        ? rawSignup
+        : {};
 
-      const paramEmail =
-        typeof signupObj.email === "string" ? signupObj.email.trim() : "";
-      if (paramEmail) {
-        d.setEmail(paramEmail);
-      }
+    const paramEmail =
+      typeof signupObj.email === "string" ? signupObj.email.trim() : "";
+    if (paramEmail) {
+      d.setEmail(paramEmail);
+    }
 
-      const paramNick =
-        typeof signupObj.nickname === "string" ? signupObj.nickname.trim() : "";
-      const draftNick = String(d.nickname ?? "").trim();
-      const restored = draftNick || paramNick;
+    const paramNick =
+      typeof signupObj.nickname === "string" ? signupObj.nickname.trim() : "";
+    const draftNick = String(d.nickname ?? "").trim();
+    const restored = draftNick || paramNick;
 
-      const verified =
-        !!restored &&
-        ((draftNick === restored && !!d.nicknameChecked) ||
-          (!!paramNick && restored === paramNick && !draftNick));
+    const verified =
+      !!restored &&
+      ((draftNick === restored && !!d.nicknameChecked) ||
+        (!!paramNick && restored === paramNick && !draftNick));
 
-      const f = nicknameFieldRef.current;
-      if (!restored) {
-        const current = String(f.value ?? "").trim();
-        if (current) {
-          return;
-        }
-        f.setValue("");
-        f.setTouched(false);
-        f.setError("");
-        f.setIsAvailable(false);
+    const f = nicknameFieldRef.current;
+    if (!restored) {
+      const current = String(f.value ?? "").trim();
+      if (current) {
         return;
       }
-
-      hydrateDraftNickname(restored, !!verified);
-
-      const dAfter = useSignupDraftStore.getState();
-      f.setValue(restored);
-      f.setTouched(!!restored);
+      f.setValue("");
+      f.setTouched(false);
       f.setError("");
-      f.setIsAvailable(!!restored && !!dAfter.nicknameChecked);
-    }, [routeParams, hydrateDraftNickname]),
+      f.setIsAvailable(false);
+      return;
+    }
+
+    hydrateDraftNickname(restored, !!verified);
+
+    const dAfter = useSignupDraftStore.getState();
+    f.setValue(restored);
+    f.setTouched(!!restored);
+    f.setError("");
+    f.setIsAvailable(!!restored && !!dAfter.nicknameChecked);
+  }, [routeParams, hydrateDraftNickname]);
+
+  const didNicknameLayoutSyncRef = useRef(false);
+  useLayoutEffect(() => {
+    restoreNicknameFromDraftAndRoute();
+    didNicknameLayoutSyncRef.current = true;
+  }, [restoreNicknameFromDraftAndRoute]);
+
+  useFocusEffect(
+    useCallback(() => {
+      restoreNicknameFromDraftAndRoute();
+    }, [restoreNicknameFromDraftAndRoute]),
   );
+
+  useEffect(() => {
+    restoreNicknameFromDraftAndRoute();
+  }, [draftNickname, draftNicknameChecked, restoreNicknameFromDraftAndRoute]);
 
   useEffect(() => {
     if (readonlyEmail) setDraftEmail(readonlyEmail);
   }, [readonlyEmail, setDraftEmail]);
 
   useEffect(() => {
+    if (!didNicknameLayoutSyncRef.current) return;
     const next = nicknameField.value;
     if (useSignupDraftStore.getState().nickname !== next) {
       setDraftNickname(next);
@@ -223,6 +248,16 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
     try {
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
+
+      try {
+        await queryClient.prefetchQuery({
+          queryKey: SIGNUP_STATUS_QUERY_KEY,
+          queryFn: fetchSignupStatus,
+          staleTime: 10 * 60 * 1000,
+        });
+      } catch (e) {
+        console.warn("[signup] prefetch signup status for team screen", e);
+      }
 
       const rawSignup = routeParams?.signup;
       const baseSignup =
@@ -358,7 +393,10 @@ const SignupNicknameScreen = ({ navigation, route }) => {
                       사용됩니다.
                     </AppText>
                     <View style={styles.readonlyEmailBox}>
-                      <AppText variant="middle" style={styles.readonlyEmailText}>
+                      <AppText
+                        variant="middle"
+                        style={styles.readonlyEmailText}
+                      >
                         {shellEmail || "-"}
                       </AppText>
                     </View>

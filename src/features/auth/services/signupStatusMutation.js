@@ -23,8 +23,13 @@ export const fetchSignupStatusWithToken = async (accessToken) => {
   return response.data;
 };
 
-// 현재 회원가입 단계 + 필요 데이터 조회
-const fetchSignupStatus = async () => {
+/** React Query / prefetch / mutation 공통 키 */
+export const SIGNUP_STATUS_QUERY_KEY = ["auth", "signup", "status"];
+
+/**
+ * 현재 회원가입 단계 + 필요 데이터 조회
+ */
+export const fetchSignupStatus = async () => {
   const accessToken = await getAccessTokenFromStoreOrMemory();
 
   if (!accessToken) {

@@ -1,5 +1,11 @@
 // src/features/auth/screens/SignupGenderAge/SignupGenderAgeScreen.jsx
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useLayoutEffect,
+} from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
@@ -38,36 +44,41 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
 
   const handleBack = useStepBack("SignupFavoriteTeam");
 
+  const restoreGenderAgeFromDraft = useCallback(() => {
+    const d = useSignupDraftStore.getState();
+    const draftG = d.gender ?? null;
+    const draftAgeRaw =
+      typeof d.age === "string" ? d.age : d.age != null ? String(d.age) : "";
+    const draftAgeTrim = draftAgeRaw.trim();
+
+    setGender((prev) => (draftG != null ? draftG : prev));
+    setAge((prev) => {
+      const prevStr = typeof prev === "string" ? prev : "";
+      if (draftAgeTrim) return draftAgeRaw;
+      return prevStr.trim() ? prevStr : "";
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    restoreGenderAgeFromDraft();
+  }, [restoreGenderAgeFromDraft]);
+
   useFocusEffect(
     useCallback(() => {
-      const d = useSignupDraftStore.getState();
-      const draftG = d.gender ?? null;
-      const draftAgeRaw =
-        typeof d.age === "string"
-          ? d.age
-          : d.age != null
-            ? String(d.age)
-            : "";
-      const draftAgeTrim = draftAgeRaw.trim();
-
-      setGender((prev) => (draftG != null ? draftG : prev));
-      setAge((prev) => {
-        const prevStr = typeof prev === "string" ? prev : "";
-        if (draftAgeTrim) return draftAgeRaw;
-        return prevStr.trim() ? prevStr : "";
-      });
-    }, []),
+      restoreGenderAgeFromDraft();
+    }, [restoreGenderAgeFromDraft]),
   );
+
+  useEffect(() => {
+    restoreGenderAgeFromDraft();
+  }, [draftGender, draftAge, restoreGenderAgeFromDraft]);
 
   const isNextEnabled = useMemo(() => {
     return !!age && Number(age) > 0;
   }, [age]);
 
-  useEffect(() => {
-    console.log("gender", gender);
-  }, [gender]);
-
   const signupCompleteMutation = useSignupCompleteMutation();
+  const isSubmitPending = signupCompleteMutation.isPending;
   const setUser = useUserStore((state) => state.setUser);
   const setTokens = useUserStore((state) => state.setTokens);
 
@@ -87,6 +98,7 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
 
   // 호출 시 signupData 포함하도록 수정
   const submitSignup = ({ genderValue, ageValue }) => {
+    if (signupCompleteMutation.isPending) return;
     signupCompleteMutation.mutate(
       {
         ...(signupData || {}),
@@ -125,16 +137,18 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
   };
 
   const handleNext = async () => {
+    if (isSubmitPending) return;
     // 다음 버튼(나이 입력 완료) 눌렀을 때
-    await submitSignup({
+    submitSignup({
       genderValue: gender, // 선택
       ageValue: age ? Number(age) : null, // 선택
     });
   };
 
   const handleSkip = async () => {
+    if (isSubmitPending) return;
     // 건너뛰기 눌렀을 때 (성별/나이 둘 다 null로 처리)
-    await submitSignup({
+    submitSignup({
       genderValue: null,
       ageValue: null,
     });
@@ -235,23 +249,31 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
             <View style={styles.floatingBottomArea}>
               {isNextEnabled && (
                 <TouchableOpacity
-                  style={styles.nextButton}
-                  activeOpacity={0.85}
+                  style={[
+                    styles.nextButton,
+                    isSubmitPending && styles.nextButtonDisabled,
+                  ]}
+                  activeOpacity={isSubmitPending ? 1 : 0.85}
+                  disabled={isSubmitPending}
                   onPress={handleNext}
                 >
                   <AppText variant="heading" className="text-[#111111]">
-                    다음
+                    {isSubmitPending ? "처리 중..." : "다음"}
                   </AppText>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={styles.skipButton}
-                activeOpacity={0.8}
+                style={[
+                  styles.skipButton,
+                  isSubmitPending && styles.skipButtonDisabled,
+                ]}
+                activeOpacity={isSubmitPending ? 1 : 0.8}
+                disabled={isSubmitPending}
                 onPress={handleSkip}
               >
                 <AppText variant="heading" className="text-[#FFFFFF]">
-                  건너뛰기
+                  {isSubmitPending ? "처리 중..." : "건너뛰기"}
                 </AppText>
               </TouchableOpacity>
             </View>
@@ -380,11 +402,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
+  nextButtonDisabled: {
+    opacity: 0.65,
+  },
   skipButton: {
     height: 52,
     borderRadius: 12,
     backgroundColor: "#232323",
     justifyContent: "center",
     alignItems: "center",
+  },
+  skipButtonDisabled: {
+    opacity: 0.65,
   },
 });

@@ -3,10 +3,12 @@ import React, {
   useMemo,
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useRef,
 } from "react";
 import { useFocusEffect } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   View,
   StyleSheet,
@@ -28,7 +30,11 @@ import { useCheckedField } from "../../hooks/useCheckedField";
 import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { checkNicknameDuplicateRequest } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
-import { useSignupStatusMutation } from "../../services/signupStatusMutation";
+import {
+  fetchSignupStatus,
+  SIGNUP_STATUS_QUERY_KEY,
+  useSignupStatusMutation,
+} from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
@@ -51,6 +57,42 @@ function emailStringFromSignup(signup) {
 function normalizeSignupStepFromStatus(status) {
   const raw = status?.signupStep ?? status?.signup_step;
   return typeof raw === "string" ? raw.trim() : "";
+}
+
+/** 마운트 직후 등: 스토어 draft를 필드에 그대로 반영 (재실행 복원용) */
+function syncSignupDraftToNicknameField(fieldRef) {
+  const f = fieldRef.current;
+  if (!f) return;
+  const d = useSignupDraftStore.getState();
+  f.setValue(d.nickname ?? "");
+  f.setTouched(!!String(d.nickname ?? "").trim());
+  f.setError("");
+  f.setIsAvailable(!!d.nicknameChecked);
+}
+
+/**
+ * 포커스 직후 / 서버 동기화 전: 닉네임 필드 복원 규칙
+ * 1 복원할 draft 닉네임이 있으면: setValue / setTouched 등으로 덮어쓰기
+ * 2 복원할 값 없고, 현재 필드 입력도 없으면: 빈 값으로 초기화
+ * 3 복원할 값 없고, 현재 필드에 입력만 있는 경우: 아무 것도 하지 않음(인메모리 입력 유지)
+ */
+function syncSignupDraftToNicknameFieldRespectingLocalInput(fieldRef) {
+  const f = fieldRef.current;
+  if (!f) return;
+  const d = useSignupDraftStore.getState();
+  const beforeTrim = String(f.value ?? "").trim();
+  const draftNick = String(d.nickname ?? "").trim();
+  if (draftNick) {
+    f.setValue(d.nickname ?? "");
+    f.setTouched(!!(d.nickname ?? "").trim());
+    f.setError("");
+    f.setIsAvailable(!!d.nicknameChecked);
+  } else if (!beforeTrim) {
+    f.setValue("");
+    f.setTouched(false);
+    f.setError("");
+    f.setIsAvailable(false);
+  }
 }
 
 function signupFlowErrorMessage(e, fallback) {
@@ -104,6 +146,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
     (s) => s.setNicknameChecked,
   );
 
+  const queryClient = useQueryClient();
   const signupProfileMutation = useSignupProfileMutation();
   const signupStatusMutation = useSignupStatusMutation();
 
@@ -141,9 +184,20 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   const nicknameFieldRef = useRef(nicknameField);
   nicknameFieldRef.current = nicknameField;
 
-  /** 뒤로가기/재진입: 이메일/닉네임 draft + 서버 signup/status 동기화 (params에 email 없을 때 폴백) */
+  const didNicknameFieldLayoutSyncRef = useRef(false);
+  useLayoutEffect(() => {
+    syncSignupDraftToNicknameField(nicknameFieldRef);
+    didNicknameFieldLayoutSyncRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    syncSignupDraftToNicknameFieldRespectingLocalInput(nicknameFieldRef);
+  }, [draftNickname, draftNicknameChecked]);
+
+  /** 뒤로가기/재진입: draft 즉시 복원 후 서버 signup/status 동기화 */
   useFocusEffect(
     useCallback(() => {
+      syncSignupDraftToNicknameFieldRespectingLocalInput(nicknameFieldRef);
       let cancelled = false;
       (async () => {
         try {
@@ -155,6 +209,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
           const beforeTrim = String(f.value ?? "").trim();
           const beforeAvailable = f.isAvailable;
           const draftNick = String(d.nickname ?? "").trim();
+          /* 서버 반영 후에도 1/2/3 동일: draft 있을 때만 덮어쓰기, 둘 다 비었을 때만 클리어, draft 없고 입력만 있으면 유지 */
           if (draftNick) {
             f.setValue(d.nickname ?? "");
             f.setTouched(!!(d.nickname ?? "").trim());
@@ -187,6 +242,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   }, [readonlyEmail, setDraftEmail]);
 
   useEffect(() => {
+    if (!didNicknameFieldLayoutSyncRef.current) return;
     const next = nicknameField.value;
     if (useSignupDraftStore.getState().nickname !== next) {
       setDraftNickname(next);
@@ -210,19 +266,30 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
     setNextActionBusy(true);
 
     try {
+      const snap = useSignupDraftStore.getState();
+      const skipStatusPrecheck =
+        snap.nicknameChecked && String(snap.nickname ?? "").trim() === nickname;
+
       let status;
-      try {
-        status = await signupStatusMutation.mutateAsync();
-      } catch (e) {
-        console.warn("[signup/status]", e);
-        Alert.alert(
-          "안내",
-          signupFlowErrorMessage(
-            e,
-            "회원가입 상태를 확인하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
-          ),
-        );
-        return;
+      if (skipStatusPrecheck) {
+        status = {
+          signupStep: "CONSENT_AGREED",
+          email: readonlyEmail || snap.email || undefined,
+        };
+      } else {
+        try {
+          status = await signupStatusMutation.mutateAsync();
+        } catch (e) {
+          console.warn("[signup/status]", e);
+          Alert.alert(
+            "안내",
+            signupFlowErrorMessage(
+              e,
+              "회원가입 상태를 확인하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
+            ),
+          );
+          return;
+        }
       }
 
       const step = normalizeSignupStepFromStatus(status);
@@ -247,6 +314,15 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
       await signupProfileMutation.mutateAsync({ nickname });
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
+      try {
+        await queryClient.prefetchQuery({
+          queryKey: SIGNUP_STATUS_QUERY_KEY,
+          queryFn: fetchSignupStatus,
+          staleTime: 10 * 60 * 1000,
+        });
+      } catch (e) {
+        console.warn("[signup] prefetch signup status for team screen", e);
+      }
       navigation.navigate("SignupFavoriteTeam", {
         signup: {
           ...signup,
