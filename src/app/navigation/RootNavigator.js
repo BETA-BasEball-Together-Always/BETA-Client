@@ -9,13 +9,26 @@ import {
   bootstrapSession,
   getBootstrapAuthSignupStartFallback,
 } from "../../shared/services/sessionBootstrap";
+import { useSignupDraftStore } from "../../features/auth/stores/useSignupDraftStore";
 
 const Stack = createNativeStackNavigator();
+
+const SIGNUP_DRAFT_HYDRATION_WAIT_RESUME_ROUTES = new Set([
+  "SocialSignup",
+  "SignupFavoriteTeam",
+  "SignupGenderAge",
+  "TermsDetail",
+]);
 
 const RootNavigator = () => {
   const [boot, setBoot] = useState(null);
   /** 세션 준비 후 SplashScreen에서 BETA 로고 페이드아웃이 끝나면 true */
   const [splashDismissed, setSplashDismissed] = useState(false);
+
+  const [draftHydrated, setDraftHydrated] = useState(() =>
+    useSignupDraftStore.persist.hasHydrated(),
+  );
+  const [hydrationWaitTimedOut, setHydrationWaitTimedOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,13 +46,57 @@ const RootNavigator = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (draftHydrated) return;
+    let cancelled = false;
+    const unsub = useSignupDraftStore.persist.onFinishHydration(() => {
+      if (!cancelled) setDraftHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
+  }, [draftHydrated]);
+
+  const shouldWaitSignupDraftHydration =
+    boot?.destination === "auth" &&
+    boot?.resume != null &&
+    typeof boot.resume?.name === "string" &&
+    SIGNUP_DRAFT_HYDRATION_WAIT_RESUME_ROUTES.has(boot.resume.name);
+
+  useEffect(() => {
+    if (!shouldWaitSignupDraftHydration) {
+      setHydrationWaitTimedOut(false);
+      return;
+    }
+    if (draftHydrated) {
+      setHydrationWaitTimedOut(false);
+      return;
+    }
+    setHydrationWaitTimedOut(false);
+    const t = setTimeout(() => {
+      setHydrationWaitTimedOut(true);
+    }, 3000);
+    return () => {
+      clearTimeout(t);
+    };
+  }, [shouldWaitSignupDraftHydration, draftHydrated]);
+
   const onSplashExitComplete = useCallback(() => {
     setSplashDismissed(true);
   }, []);
 
   if (!splashDismissed) {
+    const canExitSplash =
+      boot != null &&
+      (!shouldWaitSignupDraftHydration ||
+        draftHydrated ||
+        hydrationWaitTimedOut);
     return (
-      <SplashScreen bootResult={boot} onExitComplete={onSplashExitComplete} />
+      <SplashScreen
+        bootResult={canExitSplash ? boot : null}
+        onExitComplete={onSplashExitComplete}
+      />
     );
   }
 
