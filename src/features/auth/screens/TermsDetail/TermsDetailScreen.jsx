@@ -1,16 +1,20 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
 import AuthBackground from "../../components/AuthBackground";
 import TermsAgreementCard from "../../components/TermsAgreementCard";
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupConsentMutation } from "../../services/signupConsentMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
-import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
-import { normalizeSignupStep } from "../../../../shared/services/sessionBootstrap";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 
 const TermsDetailScreen = ({ navigation }) => {
@@ -130,37 +134,31 @@ const TermsDetailScreen = ({ navigation }) => {
 
             setNextActionBusy(true);
             try {
-              try {
-                const status = await signupStatusMutation.mutateAsync();
-                const step = normalizeSignupStep(
-                  status?.signupStep ?? status?.signup_step ?? null,
+              requestAnimationFrame(() => {
+                signupConsentMutation.mutate(
+                  {
+                    personalInfoRequired: true,
+                    agreeMarketing: terms.privacyMarketing,
+                  },
+                  {
+                    onSuccess: (data) => {
+                      setDraftEmail(data?.email ?? "");
+                      navigation.navigate("SocialSignup", {
+                        signup: { email: data?.email ?? "" },
+                      });
+                    },
+                    onError: () => {
+                      Alert.alert(
+                        "안내",
+                        "처리 중 오류가 발생했습니다. 다시 시도해주세요.",
+                      );
+                    },
+                    onSettled: () => {
+                      setNextActionBusy(false);
+                    },
+                  },
                 );
-                if (step === "CONSENT_AGREED") {
-                  navigateFromSignupStatus(status, navigation);
-                  setNextActionBusy(false);
-                  return;
-                }
-              } catch (e) {
-                console.warn("[signup/status]", e);
-              }
-
-              signupConsentMutation.mutate(
-                {
-                  personalInfoRequired: true,
-                  agreeMarketing: terms.privacyMarketing,
-                },
-                {
-                  onSuccess: (data) => {
-                    setDraftEmail(data?.email ?? "");
-                    navigation.navigate("SocialSignup", {
-                      signup: { email: data?.email ?? "" },
-                    });
-                  },
-                  onSettled: () => {
-                    setNextActionBusy(false);
-                  },
-                },
-              );
+              });
             } catch {
               setNextActionBusy(false);
             }
