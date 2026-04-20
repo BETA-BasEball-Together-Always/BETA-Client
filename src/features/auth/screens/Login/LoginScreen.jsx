@@ -60,9 +60,7 @@ function trimSignupEmail(value) {
 }
 
 /**
- * 회원가입 이어하기 시 네비게이션용 이메일.
- * - OpenAPI: SignupStatusResponse.email (CONSENT_AGREED 이후) — getSignupStatus
- * - OpenAPI: UserDto.email — 소셜 로그인 응답의 user 객체에 정의 (UserResponse 스키마는 비어 있음)
+ * 회원가입 이어하기 시 네비게이션용 이메일
  * @param {object | null | undefined} userResponse — POST /api/v1/auth/login/{provider} 의 userResponse
  * @param {unknown} emailFromServer — GET /api/v1/auth/signup/status 의 email
  */
@@ -166,7 +164,7 @@ const LoginScreen = ({ navigation, route }) => {
         }
       }
 
-      // 기존 회원 → 유저 정보 전역 저장 후 메인으로
+      // 기존 회원 -> 유저 정보 전역 저장 후 메인으로
       if (baseUser) {
         // 탈퇴 취소가 성공했더라도 응답이 업데이트되지 않는 케이스가 있어, 클라이언트 표시는 정상 상태로 보정
         const normalizedUser =
@@ -220,7 +218,10 @@ const LoginScreen = ({ navigation, route }) => {
         // 1단계: 이메일(읽기 전용) + 닉네임
         navigation.navigate("SocialSignup", {
           signup: {
-            email: resolveSignupFlowEmailFromLogin(userResponse, emailFromServer),
+            email: resolveSignupFlowEmailFromLogin(
+              userResponse,
+              emailFromServer,
+            ),
           },
         });
         break;
@@ -229,7 +230,10 @@ const LoginScreen = ({ navigation, route }) => {
         // 2단계: 팀 선택 — 목록은 SignupFavoriteTeam에서 GET /signup/status 로 로드
         navigation.navigate("SignupFavoriteTeam", {
           signup: {
-            email: resolveSignupFlowEmailFromLogin(userResponse, emailFromServer),
+            email: resolveSignupFlowEmailFromLogin(
+              userResponse,
+              emailFromServer,
+            ),
           },
         });
         break;
@@ -238,7 +242,10 @@ const LoginScreen = ({ navigation, route }) => {
         // 3단계: 성별/나이 입력 — getSignupResumeRoute 와 동일하게 email 전달
         navigation.navigate("SignupGenderAge", {
           signup: {
-            email: resolveSignupFlowEmailFromLogin(userResponse, emailFromServer),
+            email: resolveSignupFlowEmailFromLogin(
+              userResponse,
+              emailFromServer,
+            ),
           },
         });
         break;
