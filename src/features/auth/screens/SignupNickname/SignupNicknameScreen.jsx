@@ -36,7 +36,9 @@ import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 import {
   fetchSignupStatus,
   SIGNUP_STATUS_QUERY_KEY,
+  useSignupStatusMutation,
 } from "../../services/signupStatusMutation";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 
 const { height } = Dimensions.get("window");
 
@@ -111,6 +113,7 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
 
   const queryClient = useQueryClient();
+  const signupStatusMutation = useSignupStatusMutation();
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -204,6 +207,25 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
     useCallback(() => {
       restoreNicknameFromDraftAndRoute();
     }, [restoreNicknameFromDraftAndRoute]),
+  );
+
+  /** 재진입/뒤로가기(특히 replace) 시: 서버 상태로 draft 보정 (오프라인이면 무시) */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const status = await signupStatusMutation.mutateAsync();
+          if (cancelled) return;
+          applySignupStatusToDraft(status);
+        } catch {
+          /* 오프라인 등 — 로컬 draft만 유지 */
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [signupStatusMutation]),
   );
 
   useEffect(() => {

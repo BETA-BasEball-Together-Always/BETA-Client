@@ -440,96 +440,18 @@ const SocialSignupScreen = ({ navigation, route }) => {
     typeof draftEmailShell === "string" ? draftEmailShell.trim() : "";
   const shellEmail = paramShell || draftShellTrim;
 
+  void draftHydrated;
+  void shellEmail;
+
   return (
     <View style={styles.root}>
       <AuthBackground />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        {!draftHydrated ? (
-          <>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
-              >
-                <ScrollView
-                  contentContainerStyle={styles.scrollContent}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  <View style={styles.inner}>
-                    <SignupProgressHeader currentStep={1} onBack={handleBack} />
-
-                    <View style={styles.section}>
-                      <AppText
-                        variant="displayTitle"
-                        style={styles.sectionTitle}
-                      >
-                        회원가입 이메일
-                      </AppText>
-                      <AppText
-                        variant="smallRegular"
-                        style={styles.sectionDescription}
-                      >
-                        * 계정 안내 및 개인정보 처리방침 변경 시 안내를 위해
-                        사용됩니다.
-                      </AppText>
-
-                      <View style={styles.readonlyEmailBox}>
-                        <AppText
-                          variant="middle"
-                          style={styles.readonlyEmailText}
-                        >
-                          {shellEmail || "-"}
-                        </AppText>
-                      </View>
-                    </View>
-
-                    <View style={[styles.section, { marginTop: 32 }]}>
-                      <AppText
-                        variant="displayTitle"
-                        style={styles.sectionTitle}
-                      >
-                        닉네임을 입력해주세요
-                      </AppText>
-
-                      <View style={styles.nicknameInputWrapper}>
-                        <SignupCheckedInput
-                          label={null}
-                          placeholder="닉네임을 입력해주세요."
-                          placeholderTextColor="#E4E4E4"
-                          maxLength={13}
-                          field={FROZEN_EMPTY_CHECKED_FIELD}
-                          buttonLabel="중복확인"
-                          editable={false}
-                        />
-                        <AppText variant="labelSmall" style={styles.lengthText}>
-                          0/13
-                        </AppText>
-                      </View>
-                    </View>
-                  </View>
-                </ScrollView>
-              </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
-
-            <View style={styles.bottomButtonArea}>
-              <TouchableOpacity
-                style={[styles.nextButton, styles.nextButtonDisabled]}
-                activeOpacity={1}
-                disabled
-              >
-                <AppText variant="heading" style={styles.nextButtonText}>
-                  다음
-                </AppText>
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          <SocialSignupHydratedBody
-            navigation={navigation}
-            route={route}
-            handleBack={handleBack}
-          />
-        )}
+        <SocialSignupHydratedBody
+          navigation={navigation}
+          route={route}
+          handleBack={handleBack}
+        />
       </SafeAreaView>
     </View>
   );
