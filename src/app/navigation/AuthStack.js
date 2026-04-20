@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useMemo } from "react";
-import { InteractionManager } from "react-native";
 import LoginScreen from "@features/auth/screens/Login/LoginScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -56,31 +55,30 @@ function coerceResumeForAuthStack(resume) {
  */
 function dispatchResumeWhenReady(navigation, action, options) {
   const { onBeforeDispatch, onDone, shouldSkip } = options ?? {};
-  InteractionManager.runAfterInteractions(() => {
-    requestAnimationFrame(() => {
-      let didRun = false;
-      const run = () => {
-        if (didRun) return;
-        if (shouldSkip?.()) return;
-        didRun = true;
-        try {
-          onBeforeDispatch?.();
-          navigation.dispatch(action);
-        } catch (e) {
-          console.warn("[AuthStack] resume stack dispatch failed", e);
-        } finally {
-          onDone?.();
-        }
-      };
+  let didRun = false;
+  const run = () => {
+    if (didRun) return;
+    if (shouldSkip?.()) return;
+    didRun = true;
+    try {
+      onBeforeDispatch?.();
+      navigation.dispatch(action);
+    } catch (e) {
+      console.warn("[AuthStack] resume stack dispatch failed", e);
+    } finally {
+      onDone?.();
+    }
+  };
 
-      if (rootNavigationRef.isReady()) {
-        run();
-        return;
-      }
-      requestAnimationFrame(() => {
-        run();
-      });
-    });
+  // 준비되어 있으면 즉시 dispatch (깜빡임 최소화)
+  if (rootNavigationRef.isReady()) {
+    run();
+    return;
+  }
+
+  // 준비되지 않았으면 rAF로 한 번만 미룸
+  requestAnimationFrame(() => {
+    run();
   });
 }
 
@@ -100,6 +98,8 @@ const AuthStack = () => {
 
   useLayoutEffect(() => {
     if (!resume) return;
+    // TermsDetail은 reset 없이 initialRouteName으로 충분 (불필요한 전환 방지)
+    if (resume?.name === "TermsDetail") return;
     if (hasAuthResumeResetAlreadyApplied(resume)) return;
     const action = buildRootResetForAuthNestedResume(resume);
     if (!action) return;
