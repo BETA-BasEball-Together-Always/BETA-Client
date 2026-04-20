@@ -107,20 +107,7 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
       },
       {
         onSuccess: async (data) => {
-          if (data?.accessToken) {
-            await setTokens({
-              accessToken: data.accessToken,
-              refreshToken: data.refreshToken,
-            });
-            api.defaults.headers.Authorization = `Bearer ${data.accessToken}`;
-          }
-
-          // 백엔드에서 최종 UserDto를 내려준다고 가정하고 전역 상태에 저장
           const userDto = data?.user ?? data;
-          if (userDto) {
-            await setUser(userDto);
-          }
-
           navigation.navigate("SignupComplete", {
             signup: {
               ...(signupData || {}),
@@ -128,6 +115,19 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
                 userDto?.favoriteTeamName ?? route?.params?.favoriteTeamLabel,
             },
           });
+
+          if (data?.accessToken) {
+            setTokens({
+              accessToken: data.accessToken,
+              refreshToken: data.refreshToken,
+            });
+            api.defaults.headers.Authorization = `Bearer ${data.accessToken}`;
+          }
+
+          // 백엔드에서 최종 UserDto를 내려준다고 가정하고 전역 상태에 저장
+          if (userDto) {
+            setUser(userDto);
+          }
         },
         onError: (err) => {
           console.log("회원가입 완료 mutation 에러: ", err);

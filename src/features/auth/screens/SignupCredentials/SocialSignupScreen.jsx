@@ -314,15 +314,6 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
       await signupProfileMutation.mutateAsync({ nickname });
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
-      try {
-        await queryClient.prefetchQuery({
-          queryKey: SIGNUP_STATUS_QUERY_KEY,
-          queryFn: fetchSignupStatus,
-          staleTime: 10 * 60 * 1000,
-        });
-      } catch (e) {
-        console.warn("[signup] prefetch signup status for team screen", e);
-      }
       navigation.navigate("SignupFavoriteTeam", {
         signup: {
           ...signup,
@@ -330,6 +321,15 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
           nickname,
         },
       });
+      queryClient
+        .prefetchQuery({
+          queryKey: SIGNUP_STATUS_QUERY_KEY,
+          queryFn: fetchSignupStatus,
+          staleTime: 10 * 60 * 1000,
+        })
+        .catch((e) => {
+          console.warn("[signup] prefetch signup status for team screen", e);
+        });
     } catch (e) {
       console.warn("[signup/profile]", e);
       let msg = signupFlowErrorMessage(

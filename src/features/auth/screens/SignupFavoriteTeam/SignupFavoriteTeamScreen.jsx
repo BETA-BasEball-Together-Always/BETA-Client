@@ -233,7 +233,7 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
 
   const handleBack = useStepBack("SocialSignup");
 
-  const goToGenderAge = async (teamCode) => {
+  const goToGenderAge = (teamCode) => {
     const list = teamRows;
     const selectedTeamLabel =
       list.find(
@@ -243,11 +243,6 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
         (t) => normalizeTeamCode(t.key) === normalizeTeamCode(teamCode),
       )?.label ??
       String(teamCode ?? "");
-
-    await SecureStore.setItemAsync(
-      "favoriteTeamLabel",
-      selectedTeamLabel ?? "",
-    );
 
     setDraftFavoriteTeam({
       code: teamCode,
@@ -261,6 +256,12 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
       },
       favoriteTeamLabel: selectedTeamLabel,
     });
+
+    SecureStore.setItemAsync("favoriteTeamLabel", selectedTeamLabel ?? "").catch(
+      (e) => {
+        console.warn("[signup] store favoriteTeamLabel failed", e);
+      },
+    );
   };
 
   const handleNext = async () => {
@@ -269,19 +270,8 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
     setNextActionBusy(true);
     try {
       try {
-        const status = await fetchSignupStatus();
-        queryClient.setQueryData(SIGNUP_STATUS_QUERY_KEY, status);
-        if (status?.signupStep === "TEAM_SELECTED") {
-          await goToGenderAge(selectedTeam);
-          return;
-        }
-      } catch (e) {
-        console.warn("[signup/status]", e);
-      }
-
-      try {
         await signupTeamMutation.mutateAsync({ teamCode: selectedTeam });
-        await goToGenderAge(selectedTeam);
+        goToGenderAge(selectedTeam);
       } catch (e) {
         console.warn("[signup/team]", e);
         const raw = e?.response?.data;

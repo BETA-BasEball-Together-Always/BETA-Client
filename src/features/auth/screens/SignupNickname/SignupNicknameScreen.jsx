@@ -249,16 +249,6 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
 
-      try {
-        await queryClient.prefetchQuery({
-          queryKey: SIGNUP_STATUS_QUERY_KEY,
-          queryFn: fetchSignupStatus,
-          staleTime: 10 * 60 * 1000,
-        });
-      } catch (e) {
-        console.warn("[signup] prefetch signup status for team screen", e);
-      }
-
       const rawSignup = routeParams?.signup;
       const baseSignup =
         rawSignup != null &&
@@ -276,6 +266,15 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
           nickname,
         },
       });
+      queryClient
+        .prefetchQuery({
+          queryKey: SIGNUP_STATUS_QUERY_KEY,
+          queryFn: fetchSignupStatus,
+          staleTime: 10 * 60 * 1000,
+        })
+        .catch((e) => {
+          console.warn("[signup] prefetch signup status for team screen", e);
+        });
     } catch (e) {
       if (!mountedRef.current) return;
       Alert.alert("안내", signupNicknameCheckErrorMessage(e));
