@@ -7,10 +7,27 @@ export const useDeleteSearchLogMutation = () => {
 
   return useMutation({
     mutationFn: deleteMySearchLog,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: searchKeys.logs(),
+    onMutate: async (logId) => {
+      await queryClient.cancelQueries({ queryKey: searchKeys.logs() });
+
+      const previous = queryClient.getQueryData(searchKeys.logs());
+
+      queryClient.setQueryData(searchKeys.logs(), (old) => {
+        const nextLogs = (old?.logs ?? []).filter(
+          (log) => String(log?.id) !== String(logId),
+        );
+        return { ...(old ?? {}), logs: nextLogs };
       });
+
+      return { previous };
+    },
+    onError: (_error, _logId, context) => {
+      if (context?.previous != null) {
+        queryClient.setQueryData(searchKeys.logs(), context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: searchKeys.logs() });
     },
   });
 };
