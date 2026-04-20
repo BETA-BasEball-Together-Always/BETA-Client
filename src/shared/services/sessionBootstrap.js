@@ -353,12 +353,12 @@ export async function bootstrapSession() {
 async function bootstrapSessionInner() {
   clearAuthResumeResetGuard();
 
-  const [, pipeline] = await Promise.all([
-    hydrateSignupDraftFromStorage().catch((e) => {
-      console.warn("[bootstrapSession] hydrateSignupDraftFromStorage failed", e);
-    }),
-    fetchSignupStatusPipeline(),
-  ]);
+  // draft rehydrate는 부트스트랩을 불필요하게 붙잡지 않도록 백그라운드 실행
+  hydrateSignupDraftFromStorage().catch((e) => {
+    console.warn("[bootstrapSession] hydrateSignupDraftFromStorage failed", e);
+  });
+
+  const pipeline = await fetchSignupStatusPipeline();
 
   if (pipeline.outcome === "no_tokens") {
     return { destination: "auth", authErrorMessage: null };

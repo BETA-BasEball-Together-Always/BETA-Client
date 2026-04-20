@@ -6,6 +6,9 @@ const FILE_NAME = "auth_signup_draft_v1.json";
 const URI_RETRY_INTERVAL_MS = 50;
 const URI_RETRY_MAX_ATTEMPTS = 80;
 
+let cachedUri = null;
+let cachedUriPromise = null;
+
 function getUri() {
   const base = FileSystem.documentDirectory;
   return base ? `${base}${FILE_NAME}` : null;
@@ -23,13 +26,27 @@ async function resolveUriWithRetry() {
   return getUri();
 }
 
+async function getResolvedUriCached() {
+  if (cachedUri) return cachedUri;
+  if (cachedUriPromise) return await cachedUriPromise;
+  cachedUriPromise = resolveUriWithRetry()
+    .then((uri) => {
+      cachedUri = uri;
+      return uri;
+    })
+    .finally(() => {
+      cachedUriPromise = null;
+    });
+  return await cachedUriPromise;
+}
+
 /**
  * 회원가입 draft persist용 스토리지
  * documentDirectory는 모듈 로드 직후 null일 수 있어 읽기/쓰기 전 URI를 재시도로 확보
  */
 export const signupDraftJSONStorage = createJSONStorage(() => ({
   getItem: async (_name) => {
-    const uri = await resolveUriWithRetry();
+    const uri = await getResolvedUriCached();
     if (!uri) return null;
     try {
       const info = await FileSystem.getInfoAsync(uri);
@@ -40,7 +57,7 @@ export const signupDraftJSONStorage = createJSONStorage(() => ({
     }
   },
   setItem: async (_name, value) => {
-    const uri = await resolveUriWithRetry();
+    const uri = await getResolvedUriCached();
     if (!uri) return;
     try {
       await FileSystem.writeAsStringAsync(uri, value);
@@ -49,7 +66,7 @@ export const signupDraftJSONStorage = createJSONStorage(() => ({
     }
   },
   removeItem: async (_name) => {
-    const uri = await resolveUriWithRetry();
+    const uri = await getResolvedUriCached();
     if (!uri) return;
     try {
       await FileSystem.deleteAsync(uri, { idempotent: true });
