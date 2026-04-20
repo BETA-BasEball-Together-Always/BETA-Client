@@ -15,6 +15,7 @@ const BORDER_DISABLED = "rgba(106, 106, 106, 0.34)";
 
 export default function CommentInput({
   onSubmit,
+  submitBusy = false,
   replyTarget,
   cancelReply,
   editTarget,
@@ -104,10 +105,11 @@ export default function CommentInput({
     };
   }, [focusRequestKey, editTarget?.commentId]);
 
-  const isSubmitEnabled = text.trim().length > 0;
+  const isSubmitEnabled = text.trim().length > 0 && !submitBusy;
   const shouldShowSubmitButton = isEditing || isFocused || isKeyboardVisible;
 
   const handleSubmit = () => {
+    if (submitBusy) return;
     if (!isSubmitEnabled) return;
     onSubmit(text);
     setText("");

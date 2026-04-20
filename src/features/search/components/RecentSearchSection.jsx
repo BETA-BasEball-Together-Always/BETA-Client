@@ -10,6 +10,7 @@ import CommunityLoadingSpinner from "@shared/components/CommunityLoadingSpinner"
 const RecentSearchSection = ({
   logs,
   isLoading,
+  deletingLogId,
   isError,
   errorMessage,
   onDeletePress,
@@ -55,7 +56,16 @@ const RecentSearchSection = ({
               <TouchableOpacity
                 activeOpacity={0.75}
                 onPress={() => onDeletePress(log.id)}
-                style={styles.deleteButton}
+                disabled={
+                  deletingLogId != null &&
+                  String(deletingLogId) === String(log.id)
+                }
+                style={[
+                  styles.deleteButton,
+                  deletingLogId != null &&
+                    String(deletingLogId) === String(log.id) &&
+                    styles.deleteButtonDisabled,
+                ]}
               >
                 <Text style={styles.deleteText}>×</Text>
               </TouchableOpacity>
@@ -101,6 +111,9 @@ const styles = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
+  },
+  deleteButtonDisabled: {
+    opacity: 0.35,
   },
   deleteText: {
     color: "#7A7A80",

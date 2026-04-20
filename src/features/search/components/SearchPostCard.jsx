@@ -178,6 +178,7 @@ const SearchPostCard = ({ post }) => {
             if (!reaction?.id) {
               return;
             }
+            if (toggleEmotionMutation.isPending) return;
 
             toggleEmotionMutation.mutate({
               emotionType: reaction.id,
@@ -187,6 +188,7 @@ const SearchPostCard = ({ post }) => {
             if (!emotionType) {
               return;
             }
+            if (toggleEmotionMutation.isPending) return;
 
             toggleEmotionMutation.mutate({
               emotionType,

@@ -124,6 +124,7 @@ const SearchScreen = () => {
   });
 
   const deleteSearchLogMutation = useDeleteSearchLogMutation();
+  const [deletingLogId, setDeletingLogId] = useState(null);
 
   const resultQueries = {
     users: usersQuery,
@@ -198,7 +199,18 @@ const SearchScreen = () => {
   };
 
   const handleDeleteLog = (logId) => {
-    deleteSearchLogMutation.mutate(logId);
+    if (!logId) return;
+    if (deletingLogId != null && String(deletingLogId) === String(logId)) {
+      return;
+    }
+    setDeletingLogId(logId);
+    deleteSearchLogMutation.mutate(logId, {
+      onSettled: () => {
+        setDeletingLogId((prev) =>
+          prev != null && String(prev) === String(logId) ? null : prev,
+        );
+      },
+    });
   };
 
   const handlePressSuggestedUser = (user) => {
@@ -360,6 +372,7 @@ const SearchScreen = () => {
               )}
               isError={recentLogsQuery.isError}
               isLoading={recentLogsQuery.isPending}
+              deletingLogId={deletingLogId}
               logs={recentLogsQuery.data?.logs ?? []}
               onDeletePress={handleDeleteLog}
               onKeywordPress={(value) => submitSearch(value)}

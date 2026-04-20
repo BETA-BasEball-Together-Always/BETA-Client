@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   Platform,
-  // Alert,
 } from "react-native";
 // 다음 버전 링크 클립보드 복사
 // import * as Clipboard from "expo-clipboard";

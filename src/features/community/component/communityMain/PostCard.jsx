@@ -72,12 +72,14 @@ const PostCard = ({
             });
           },
           onDelete: () => {
+            if (deletePostMutation.isPending) return;
             Alert.alert("게시글 삭제", "이 게시글을 삭제할까요?", [
               { text: "취소", style: "cancel" },
               {
                 text: "삭제",
                 style: "destructive",
                 onPress: () => {
+                  if (deletePostMutation.isPending) return;
                   deletePostMutation.mutate(resolvedPostId, {
                     onError: (e) => {
                       if (isOfflineError(e)) return;
@@ -281,6 +283,7 @@ const PostCard = ({
 
   const handleSelectReaction = (_postId, reaction) => {
     if (!reaction) return;
+    if (toggleEmotionMutation.isPending) return;
 
     toggleEmotionMutation.mutate({
       emotionType: reaction.id,
@@ -406,6 +409,7 @@ const PostCard = ({
             isEmotionPending={toggleEmotionMutation.isPending}
             onToggleEmotion={(_postId, emotionType) => {
               if (!emotionType) return;
+              if (toggleEmotionMutation.isPending) return;
               toggleEmotionMutation.mutate({ emotionType });
             }}
             onSelectReaction={handleSelectReaction}
