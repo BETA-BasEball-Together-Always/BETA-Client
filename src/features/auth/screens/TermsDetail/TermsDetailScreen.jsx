@@ -1,5 +1,5 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
@@ -23,6 +23,14 @@ const TermsDetailScreen = ({ navigation }) => {
   const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
 
   const [nextActionBusy, setNextActionBusy] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const [terms, setTerms] = useState({
     all: false,
@@ -98,6 +106,35 @@ const TermsDetailScreen = ({ navigation }) => {
     [navigation],
   );
 
+  const handlePressNext = useCallback(async () => {
+    if (!canPressNext) return;
+
+    setNextActionBusy(true);
+    try {
+      const data = await signupConsentMutation.mutateAsync({
+        personalInfoRequired: true,
+        agreeMarketing: terms.privacyMarketing,
+      });
+      const email = data?.email ?? "";
+      setDraftEmail(email);
+      navigation.navigate("SocialSignup", {
+        signup: { email },
+      });
+    } catch {
+      Alert.alert("안내", "처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      if (mountedRef.current) {
+        setNextActionBusy(false);
+      }
+    }
+  }, [
+    canPressNext,
+    navigation,
+    setDraftEmail,
+    signupConsentMutation,
+    terms.privacyMarketing,
+  ]);
+
   return (
     <View style={styles.root}>
       <AuthBackground />
@@ -129,40 +166,7 @@ const TermsDetailScreen = ({ navigation }) => {
           ]}
           activeOpacity={canPressNext ? 0.85 : 1}
           disabled={!canPressNext}
-          onPress={async () => {
-            if (!canPressNext) return;
-
-            setNextActionBusy(true);
-            try {
-              requestAnimationFrame(() => {
-                signupConsentMutation.mutate(
-                  {
-                    personalInfoRequired: true,
-                    agreeMarketing: terms.privacyMarketing,
-                  },
-                  {
-                    onSuccess: (data) => {
-                      setDraftEmail(data?.email ?? "");
-                      navigation.navigate("SocialSignup", {
-                        signup: { email: data?.email ?? "" },
-                      });
-                    },
-                    onError: () => {
-                      Alert.alert(
-                        "안내",
-                        "처리 중 오류가 발생했습니다. 다시 시도해주세요.",
-                      );
-                    },
-                    onSettled: () => {
-                      setNextActionBusy(false);
-                    },
-                  },
-                );
-              });
-            } catch {
-              setNextActionBusy(false);
-            }
-          }}
+          onPress={handlePressNext}
         >
           <AppText
             variant="heading"

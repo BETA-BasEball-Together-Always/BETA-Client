@@ -18,6 +18,7 @@ const SIGNUP_DRAFT_HYDRATION_WAIT_RESUME_ROUTES = new Set([
   "SignupFavoriteTeam",
   "SignupGenderAge",
   "TermsDetail",
+  "SignupNickname",
 ]);
 
 const RootNavigator = () => {

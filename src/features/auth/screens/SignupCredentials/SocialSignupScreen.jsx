@@ -3,7 +3,6 @@ import React, {
   useMemo,
   useState,
   useEffect,
-  useLayoutEffect,
   useCallback,
   useRef,
 } from "react";
@@ -19,6 +18,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -59,17 +59,6 @@ function normalizeSignupStepFromStatus(status) {
   return typeof raw === "string" ? raw.trim() : "";
 }
 
-/** 마운트 직후 등: 스토어 draft를 필드에 그대로 반영 (재실행 복원용) */
-function syncSignupDraftToNicknameField(fieldRef) {
-  const f = fieldRef.current;
-  if (!f) return;
-  const d = useSignupDraftStore.getState();
-  f.setValue(d.nickname ?? "");
-  f.setTouched(!!String(d.nickname ?? "").trim());
-  f.setError("");
-  f.setIsAvailable(!!d.nicknameChecked);
-}
-
 /**
  * 포커스 직후 / 서버 동기화 전: 닉네임 필드 복원 규칙
  * 1 복원할 draft 닉네임이 있으면: setValue / setTouched 등으로 덮어쓰기
@@ -108,18 +97,6 @@ function signupFlowErrorMessage(e, fallback) {
   }
   return msg ?? fallback;
 }
-
-const FROZEN_EMPTY_CHECKED_FIELD = {
-  value: "",
-  error: "",
-  touched: false,
-  isAvailable: false,
-  isChecking: false,
-  status: "idle",
-  handleChange: () => {},
-  handleBlur: () => {},
-  handleCheck: async () => {},
-};
 
 /** draft persist rehydrate 이후에만 mount — 닉네임 필드 초기값이 스토어와 일치 */
 function SocialSignupHydratedBody({ navigation, route, handleBack }) {
@@ -184,14 +161,16 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   const nicknameFieldRef = useRef(nicknameField);
   nicknameFieldRef.current = nicknameField;
 
-  const didNicknameFieldLayoutSyncRef = useRef(false);
-  useLayoutEffect(() => {
-    syncSignupDraftToNicknameField(nicknameFieldRef);
-    didNicknameFieldLayoutSyncRef.current = true;
-  }, []);
-
   useEffect(() => {
-    syncSignupDraftToNicknameFieldRespectingLocalInput(nicknameFieldRef);
+    const f = nicknameFieldRef.current;
+    if (!f) return;
+    const draftNick = String(draftNickname ?? "").trim();
+    if (!draftNick) return;
+    if (String(f.value ?? "").trim() === draftNick) return;
+    f.setValue(draftNickname ?? "");
+    f.setTouched(true);
+    f.setError("");
+    f.setIsAvailable(!!draftNicknameChecked);
   }, [draftNickname, draftNicknameChecked]);
 
   /** 뒤로가기/재진입: draft 즉시 복원 후 서버 signup/status 동기화 */
@@ -242,7 +221,6 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   }, [readonlyEmail, setDraftEmail]);
 
   useEffect(() => {
-    if (!didNicknameFieldLayoutSyncRef.current) return;
     const next = nicknameField.value;
     if (useSignupDraftStore.getState().nickname !== next) {
       setDraftNickname(next);
@@ -433,15 +411,21 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
 const SocialSignupScreen = ({ navigation, route }) => {
   const draftHydrated = useSignupDraftPersistHydrated();
   const handleBack = useStepBack("TermsDetail");
-  const draftEmailShell = useSignupDraftStore((s) => s.email);
-  const signupFromRoute = normalizeSignupParams(route?.params?.signup);
-  const paramShell = emailStringFromSignup(signupFromRoute);
-  const draftShellTrim =
-    typeof draftEmailShell === "string" ? draftEmailShell.trim() : "";
-  const shellEmail = paramShell || draftShellTrim;
 
-  void draftHydrated;
-  void shellEmail;
+  if (!draftHydrated) {
+    return (
+      <View style={styles.root}>
+        <AuthBackground />
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+          <ActivityIndicator
+            color="#FFFFFF"
+            size="large"
+            style={{ flex: 1, justifyContent: "center", alignSelf: "center" }}
+          />
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
