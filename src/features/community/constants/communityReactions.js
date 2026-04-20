@@ -42,13 +42,6 @@ export function normalizeCommunityEmotionType(raw) {
   return null;
 }
 
-/**
- * POST .../emotions 토글 응답 해석.
- *
- * - 서버가 toggled를 문자열 "true"/"false", 숫자 1/0으로 주면 `=== true`만으로는 감지 실패 →
- *   스토어에 null이 들어가고(PostCard는 storeEmotion===null이면 post.emotionType 무시) 빈 하트로 고착될 수 있음.
- * - toggled 없이 emotionType만 오는 응답도 추론한다.
- */
 export function parseEmotionToggleServerResponse(data, variables) {
   const t = data?.toggled;
 
