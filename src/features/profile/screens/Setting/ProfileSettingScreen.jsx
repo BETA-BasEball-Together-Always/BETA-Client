@@ -36,6 +36,9 @@ import {
   getApiErrorUserMessage,
   logAxiosError,
 } from "../../../../shared/utils/debugAxiosError";
+import { clearPersistedSignupDraft } from "../../../auth/stores/useSignupDraftStore";
+import { setPendingAuthResume } from "../../../../shared/auth/pendingAuthResume";
+import { setPendingAuthErrorMessage } from "../../../../shared/auth/pendingAuthResume";
 import {
   fetchCurrentDevicePushSettings,
   submitPushDetailSettingsToServer,
@@ -198,6 +201,10 @@ const ProfileSettingScreen = () => {
 
   const resetAppSession = useCallback(async () => {
     await clearAuth();
+    await clearPersistedSignupDraft();
+    // 모듈 스코프 resume/error가 남아있으면 재진입 시 가입 화면으로 튈 수 있어 초기화
+    setPendingAuthResume(null);
+    setPendingAuthErrorMessage(null);
     delete api.defaults.headers.Authorization;
 
     // 모달 닫힘/레이아웃 안정화 후 전환 (iOS 네이티브 스택과의 타이밍 충돌 완화)
