@@ -101,6 +101,7 @@ const AuthStack = () => {
     // TermsDetail은 reset 없이 initialRouteName으로 충분 (불필요한 전환 방지)
     if (resume?.name === "TermsDetail") return;
     if (hasAuthResumeResetAlreadyApplied(resume)) return;
+    if (!route.params?.resume) return;
     const action = buildRootResetForAuthNestedResume(resume);
     if (!action) return;
     markAuthResumeResetApplied(resume);
