@@ -18,6 +18,7 @@ import { useUserStore } from "../../../../shared/store/userStore";
 import api from "../../../../shared/libs/api";
 import { normalizeSignupStep } from "../../../../shared/services/sessionBootstrap";
 import { cancelWithdrawAccountApi } from "../../services/authSessionService";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 
 // 아이콘(svg) - 프로젝트 경로에 맞게 유지
 import BetaLogo from "@shared/assets/svg/logos/BetaLogo.svg";
@@ -180,7 +181,7 @@ const LoginScreen = ({ navigation, route }) => {
     // 회원가입 미완료
     // - SOCIAL_AUTHENTICATED 또는 단계 미표시: 약관만 필요 -> GET /signup/status 생략 가능
     // - 그 외(CONSENT_AGREED, PROFILE_COMPLETED, TEAM_SELECTED 등): 해당 화면 구성용
-    //   email 등은 반드시 GET /api/v1/auth/signup/status 로 조회 (팀 목록은 각 화면에서 status 재조회)
+    //   email/teamList 등은 필요 시 GET /api/v1/auth/signup/status 로 조회 (teamList는 draft에 저장해 화면에서 사용)
     let signupStep = normalizeSignupStep(userResponse.signupStep);
     let emailFromServer = null;
 
@@ -192,6 +193,11 @@ const LoginScreen = ({ navigation, route }) => {
         const status = await fetchSignupStatusWithToken(
           userResponse.accessToken,
         );
+        try {
+          applySignupStatusToDraft(status);
+        } catch (e) {
+          console.warn("[login] applySignupStatusToDraft failed", e);
+        }
         if (status?.signupStep != null) {
           const normalized = normalizeSignupStep(status.signupStep);
           if (normalized) {
@@ -462,8 +468,9 @@ const LoginScreen = ({ navigation, route }) => {
         return;
       }
 
-      console.log("네이버 토큰:", token);
-      console.log("네이버 프로필:", profile);
+      // TODO: 민감정보 로그 - 추후 제거 예정
+      // console.log("네이버 토큰:", token);
+      // console.log("네이버 프로필:", profile);
 
       const deviceId = await getDeviceId();
 
@@ -560,7 +567,8 @@ const LoginScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {/* 네이버 로그인 버튼 — 실기기 테스트 등에서 임시 비활성화 */}
+            {/* <TouchableOpacity
               style={[styles.fullButton, styles.naverButton]}
               onPress={handleNaverLogin}
               activeOpacity={0.85}
@@ -570,7 +578,7 @@ const LoginScreen = ({ navigation, route }) => {
               <Text style={[styles.fullButtonText, styles.naverText]}>
                 네이버 로그인
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* <TouchableOpacity onPress={hardResetKakao}>
             <Text style={{color: "white"}}>카카오 세션 초기화</Text>
