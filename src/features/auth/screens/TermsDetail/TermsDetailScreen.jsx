@@ -1,6 +1,5 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   StyleSheet,
@@ -14,13 +13,15 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupConsentMutation } from "../../services/signupConsentMutation";
 import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
-import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
 const TermsDetailScreen = ({ navigation }) => {
   const draftTerms = useSignupDraftStore((s) => s.terms);
   const setDraftTerms = useSignupDraftStore((s) => s.setTerms);
   const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
+  const setDraftSignupStep = useSignupDraftStore((s) => s.setSignupStep);
 
   const [nextActionBusy, setNextActionBusy] = useState(false);
   const mountedRef = useRef(true);
@@ -49,26 +50,23 @@ const TermsDetailScreen = ({ navigation }) => {
   const signupConsentMutation = useSignupConsentMutation();
   const signupStatusMutation = useSignupStatusMutation();
 
-  /** 뒤로가기/재진입 시 서버 단계 기준으로 약관 체크 + 이메일 draft 복원 */
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        try {
-          const status = await signupStatusMutation.mutateAsync();
-          if (cancelled) return;
-          applySignupStatusToDraft(status);
-          const next = useSignupDraftStore.getState().terms;
-          if (next) setTerms(next);
-        } catch {
-          /* 오프라인 등 — 로컬 draft만 유지 */
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [signupStatusMutation]),
-  );
+  function isSignupStepMismatchError(error) {
+    const raw = error?.response?.data;
+    const code =
+      raw?.code ?? raw?.errorCode ?? raw?.errCode ?? raw?.error?.code ?? null;
+    if (code != null && String(code).trim().toUpperCase() === "USER008") {
+      return true;
+    }
+    const message =
+      typeof raw === "string"
+        ? raw
+        : typeof raw?.message === "string"
+          ? raw.message
+          : typeof error?.message === "string"
+            ? error.message
+            : "";
+    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+  }
 
   const handleChangeTerms = useCallback(
     (next) => {
@@ -117,10 +115,28 @@ const TermsDetailScreen = ({ navigation }) => {
       });
       const email = data?.email ?? "";
       setDraftEmail(email);
+      if (data?.signupStep) {
+        setDraftSignupStep(data.signupStep);
+      }
       navigation.navigate("SocialSignup", {
         signup: { email },
       });
-    } catch {
+    } catch (e) {
+      if (isSignupStepMismatchError(e)) {
+        try {
+          const status = await signupStatusMutation.mutateAsync();
+          applySignupStatusToDraft(status);
+          navigateFromSignupStatus(status, navigation);
+          return;
+        } catch (e2) {
+          console.warn("[signup/status] recovery failed", e2);
+          Alert.alert(
+            "안내",
+            "회원가입 상태를 확인하지 못했습니다. 다시 시도하거나 앱을 재실행해 주세요.",
+          );
+          return;
+        }
+      }
       Alert.alert("안내", "처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       if (mountedRef.current) {

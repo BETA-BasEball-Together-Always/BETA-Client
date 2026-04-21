@@ -18,8 +18,16 @@ export function applySignupStatusToDraft(status) {
   const store = useSignupDraftStore.getState();
   const prevTerms = store.terms ?? {};
 
+  if (step) {
+    store.setSignupStep(step);
+  }
+
   if (typeof status.email === "string" && status.email.trim()) {
     store.setEmail(status.email.trim());
+  }
+
+  if (Array.isArray(status.teamList)) {
+    store.setTeamList(status.teamList);
   }
 
   if (step && step !== "SOCIAL_AUTHENTICATED") {

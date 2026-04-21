@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AuthBackground from "../../components/AuthBackground";
 import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupCompleteMutation } from "../../services/signupCompleteMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 
 import { AppText } from "../../../../shared/theme/components/AppText";
@@ -31,6 +32,8 @@ import { useUserStore } from "../../../../shared/store/userStore";
 import api from "../../../../shared/libs/api";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
+import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
 function SignupGenderAgeScreenBody({ navigation, route }) {
   const draftGender = useSignupDraftStore((s) => s.gender);
@@ -78,9 +81,29 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
   }, [age]);
 
   const signupCompleteMutation = useSignupCompleteMutation();
+  const signupStatusMutation = useSignupStatusMutation();
   const isSubmitPending = signupCompleteMutation.isPending;
   const setUser = useUserStore((state) => state.setUser);
   const setTokens = useUserStore((state) => state.setTokens);
+  const setDraftSignupStep = useSignupDraftStore((s) => s.setSignupStep);
+
+  function isSignupStepMismatchError(error) {
+    const raw = error?.response?.data;
+    const code =
+      raw?.code ?? raw?.errorCode ?? raw?.errCode ?? raw?.error?.code ?? null;
+    if (code != null && String(code).trim().toUpperCase() === "USER008") {
+      return true;
+    }
+    const message =
+      typeof raw === "string"
+        ? raw
+        : typeof raw?.message === "string"
+          ? raw.message
+          : typeof error?.message === "string"
+            ? error.message
+            : "";
+    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+  }
 
   // 재진입 시 route.params.signup만 사용해 데이터 복구
   useEffect(() => {
@@ -128,9 +151,20 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
           if (userDto) {
             setUser(userDto);
           }
+          setDraftSignupStep("COMPLETED");
         },
-        onError: (err) => {
+        onError: async (err) => {
           console.log("회원가입 완료 mutation 에러: ", err);
+          if (!isSignupStepMismatchError(err)) {
+            return;
+          }
+          try {
+            const status = await signupStatusMutation.mutateAsync();
+            applySignupStatusToDraft(status);
+            navigateFromSignupStatus(status, navigation);
+          } catch (e2) {
+            console.warn("[signup/status] recovery failed", e2);
+          }
         },
       },
     );

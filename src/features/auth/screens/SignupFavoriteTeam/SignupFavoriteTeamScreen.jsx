@@ -7,7 +7,6 @@ import React, {
   useRef,
 } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   View,
   StyleSheet,
@@ -27,10 +26,7 @@ import * as SecureStore from "expo-secure-store";
 import SelectTeamBackground from "../../components/SelectTeamBackground";
 import SignupProgressHeader from "../../components/SignupProgressHeader";
 import { useSignupTeamMutation } from "../../services/signupTeamMutation";
-import {
-  fetchSignupStatus,
-  SIGNUP_STATUS_QUERY_KEY,
-} from "../../services/signupStatusMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { TEAM_LIST } from "../../../../shared/constants/teams";
 import { getKboRankCardRabbitIcon } from "../../../../shared/constants/kboRankCardRabbitIcons";
@@ -39,6 +35,7 @@ import { AppText } from "../../../../shared/theme/components/AppText";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
 import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
 const RABBIT_ICON_SIZE = 74.14;
 
@@ -110,6 +107,8 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
 
   const draftFavoriteTeamCode = useSignupDraftStore((s) => s.favoriteTeamCode);
   const setDraftFavoriteTeam = useSignupDraftStore((s) => s.setFavoriteTeam);
+  const draftTeamList = useSignupDraftStore((s) => s.teamList);
+  const setDraftSignupStep = useSignupDraftStore((s) => s.setSignupStep);
 
   const [selectedTeam, setSelectedTeam] = useState(
     signupParam?.favoriteTeamCode ?? draftFavoriteTeamCode ?? null,
@@ -124,81 +123,42 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
       : null;
 
   const signupTeamMutation = useSignupTeamMutation();
-  const queryClient = useQueryClient();
+  const signupStatusMutation = useSignupStatusMutation();
 
-  const {
-    data: signupStatus,
-    isPending,
-    isError,
-    error: signupStatusError,
-    refetch: refetchSignupStatus,
-  } = useQuery({
-    queryKey: SIGNUP_STATUS_QUERY_KEY,
-    queryFn: fetchSignupStatus,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (failureCount >= 2) return false;
-      const status = error?.response?.status;
-      if (status === 401 || status === 403) return true;
-      if (error?.message === "NO_ACCESS_TOKEN") return true;
-      return false;
-    },
-    retryDelay: (attemptIndex) => Math.min(800 * (attemptIndex + 1), 2000),
-  });
-
-  useEffect(() => {
-    if (signupStatus) {
-      applySignupStatusToDraft(signupStatus);
+  function isSignupStepMismatchError(error) {
+    const raw = error?.response?.data;
+    const code =
+      raw?.code ?? raw?.errorCode ?? raw?.errCode ?? raw?.error?.code ?? null;
+    if (code != null && String(code).trim().toUpperCase() === "USER008") {
+      return true;
     }
-  }, [signupStatus]);
+    const message =
+      typeof raw === "string"
+        ? raw
+        : typeof raw?.message === "string"
+          ? raw.message
+          : typeof error?.message === "string"
+            ? error.message
+            : "";
+    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+  }
 
   const teamRows = useMemo(() => {
-    const list = signupStatus?.teamList;
-    if (!Array.isArray(list) || list.length === 0) return [];
+    const apiList = Array.isArray(draftTeamList) ? draftTeamList : [];
     const rows = [];
-    for (const item of list) {
-      const row = mapStatusTeamListItemToRow(item);
-      if (row) rows.push(row);
-    }
-    return rows;
-  }, [signupStatus]);
-
-  const { teamListPhase, teamListError } = useMemo(() => {
-    if (teamRows.length > 0) {
-      return { teamListPhase: "success", teamListError: null };
-    }
-    if (isPending && !signupStatus) {
-      return { teamListPhase: "loading", teamListError: null };
-    }
-    if (isError && !signupStatus) {
-      const e = signupStatusError;
-      const raw = e?.response?.data;
-      let msg =
-        typeof raw === "string"
-          ? raw
-          : typeof raw?.message === "string"
-            ? raw.message
-            : null;
-      if (!msg && e?.message === "NO_ACCESS_TOKEN") {
-        msg = "로그인 정보가 없습니다. 다시 로그인해 주세요.";
+    if (apiList.length > 0) {
+      for (const item of apiList) {
+        const row = mapStatusTeamListItemToRow(item);
+        if (row) rows.push(row);
       }
-      return {
-        teamListPhase: "error",
-        teamListError:
-          msg ??
-          "구단 목록을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
-      };
+      if (rows.length > 0) return rows;
     }
-    if (signupStatus && teamRows.length === 0 && !isPending) {
-      return {
-        teamListPhase: "error",
-        teamListError:
-          "구단 정보를 인식하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      };
-    }
-    return { teamListPhase: "loading", teamListError: null };
-  }, [isError, isPending, signupStatus, signupStatusError, teamRows.length]);
+    return [];
+  }, [draftTeamList]);
+
+  const teamListPhase = useMemo(() => {
+    return teamRows.length > 0 ? "success" : "missing";
+  }, [teamRows.length]);
 
   const restoreFavoriteTeamSelectionFromDraft = useCallback(() => {
     const d = useSignupDraftStore.getState();
@@ -234,8 +194,8 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
   const [nextActionBusy, setNextActionBusy] = useState(false);
 
   const isNextEnabled = useMemo(
-    () => !!selectedTeam && teamListPhase === "success",
-    [selectedTeam, teamListPhase],
+    () => !!selectedTeam && teamRows.length > 0,
+    [selectedTeam, teamRows.length],
   );
 
   const canPressNext = isNextEnabled && !nextActionBusy;
@@ -280,9 +240,25 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
     try {
       try {
         await signupTeamMutation.mutateAsync({ teamCode: selectedTeam });
+        setDraftSignupStep("TEAM_SELECTED");
         goToGenderAge(selectedTeam);
       } catch (e) {
         console.warn("[signup/team]", e);
+        if (isSignupStepMismatchError(e)) {
+          try {
+            const status = await signupStatusMutation.mutateAsync();
+            applySignupStatusToDraft(status);
+            navigateFromSignupStatus(status, navigation);
+            return;
+          } catch (e2) {
+            console.warn("[signup/status] recovery failed", e2);
+            Alert.alert(
+              "안내",
+              "회원가입 상태를 확인하지 못했습니다. 다시 시도하거나 앱을 재실행해 주세요.",
+            );
+            return;
+          }
+        }
         const raw = e?.response?.data;
         let msg =
           typeof raw === "string"
@@ -357,35 +333,19 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                   회원님의 팬심을 보여줄 구단을 선택해주세요!
                 </AppText>
 
-                {teamListPhase === "loading" ? (
+                {teamListPhase === "missing" ? (
                   <View style={styles.teamListStateBlock}>
-                    <ActivityIndicator color="#FFFFFF" size="large" />
-                    <AppText
-                      variant="smallRegular"
-                      style={styles.teamListStateSubtext}
-                    >
-                      구단 목록을 불러오는 중입니다…
-                    </AppText>
-                  </View>
-                ) : teamListPhase === "error" ? (
-                  <View style={styles.teamListStateBlock}>
-                    <AppText
-                      variant="bodyMedium"
-                      style={styles.teamListErrorText}
-                    >
-                      {teamListError ??
-                        "구단 목록을 불러오지 못했습니다. 다시 시도해 주세요."}
+                    <AppText variant="bodyMedium" style={styles.teamListErrorText}>
+                      구단 목록을 불러오지 못했습니다.
+                      {"\n"}이전 단계로 돌아가 다시 시도해 주세요.
                     </AppText>
                     <TouchableOpacity
                       style={styles.teamListRetryButton}
                       activeOpacity={0.85}
-                      onPress={() => refetchSignupStatus()}
+                      onPress={() => navigation.goBack()}
                     >
-                      <AppText
-                        variant="heading"
-                        style={styles.teamListRetryText}
-                      >
-                        다시 시도
+                      <AppText variant="heading" style={styles.teamListRetryText}>
+                        이전으로
                       </AppText>
                     </TouchableOpacity>
                   </View>
@@ -426,8 +386,7 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                                 variant="bodyMedium"
                                 style={[
                                   styles.fallbackTeamInitials,
-                                  selected &&
-                                    styles.fallbackTeamInitialsOnLight,
+                                  selected && styles.fallbackTeamInitialsOnLight,
                                 ]}
                               >
                                 {fallbackInitial}

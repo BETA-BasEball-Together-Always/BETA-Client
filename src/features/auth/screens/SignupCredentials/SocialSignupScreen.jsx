@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   View,
   StyleSheet,
@@ -30,11 +30,7 @@ import { useCheckedField } from "../../hooks/useCheckedField";
 import { useSignupDraftPersistHydrated } from "../../hooks/useSignupDraftPersistHydrated";
 import { checkNicknameDuplicateRequest } from "../../services/nicknameCheckMutation";
 import { useSignupProfileMutation } from "../../services/signupProfileMutation";
-import {
-  fetchSignupStatus,
-  SIGNUP_STATUS_QUERY_KEY,
-  useSignupStatusMutation,
-} from "../../services/signupStatusMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { useStepBack } from "../../hooks/useStepBack";
 import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
@@ -73,6 +69,24 @@ function signupFlowErrorMessage(e, fallback) {
   return msg ?? fallback;
 }
 
+function isSignupStepMismatchError(error) {
+  const raw = error?.response?.data;
+  const code =
+    raw?.code ?? raw?.errorCode ?? raw?.errCode ?? raw?.error?.code ?? null;
+  if (code != null && String(code).trim().toUpperCase() === "USER008") {
+    return true;
+  }
+  const message =
+    typeof raw === "string"
+      ? raw
+      : typeof raw?.message === "string"
+        ? raw.message
+        : typeof error?.message === "string"
+          ? error.message
+          : "";
+  return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+}
+
 /** draft persist rehydrate 이후에만 mount — 닉네임 필드 초기값이 스토어와 일치 */
 function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   const mountedRef = useRef(true);
@@ -97,31 +111,12 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   const setDraftNicknameChecked = useSignupDraftStore(
     (s) => s.setNicknameChecked,
   );
+  const setDraftTeamList = useSignupDraftStore((s) => s.setTeamList);
+  const setDraftSignupStep = useSignupDraftStore((s) => s.setSignupStep);
 
   const queryClient = useQueryClient();
   const signupProfileMutation = useSignupProfileMutation();
   const signupStatusMutation = useSignupStatusMutation();
-
-  const { data: signupStatus, refetch: refetchSignupStatus } = useQuery({
-    queryKey: SIGNUP_STATUS_QUERY_KEY,
-    queryFn: fetchSignupStatus,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (failureCount >= 2) return false;
-      const st = error?.response?.status;
-      if (st === 401 || st === 403) return true;
-      if (error?.message === "NO_ACCESS_TOKEN") return true;
-      return false;
-    },
-    retryDelay: (attemptIndex) => Math.min(800 * (attemptIndex + 1), 2000),
-  });
-
-  useEffect(() => {
-    if (signupStatus) {
-      applySignupStatusToDraft(signupStatus);
-    }
-  }, [signupStatus]);
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
 
@@ -196,8 +191,7 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
           f.setIsAvailable(!!d.nicknameChecked);
         }
       }
-      refetchSignupStatus();
-    }, [refetchSignupStatus]),
+    }, []),
   );
 
   useEffect(() => {
@@ -240,53 +234,24 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
 
     try {
       const snap = useSignupDraftStore.getState();
-      const skipStatusPrecheck =
-        snap.nicknameChecked && String(snap.nickname ?? "").trim() === nickname;
+      const emailForNav =
+        readonlyEmail ||
+        (typeof snap.email === "string" ? snap.email.trim() : "");
 
-      let status;
-      if (skipStatusPrecheck) {
-        status = {
-          signupStep: "CONSENT_AGREED",
-          email: readonlyEmail || snap.email || undefined,
-        };
-      } else {
-        try {
-          status = await signupStatusMutation.mutateAsync();
-        } catch (e) {
-          console.warn("[signup/status]", e);
-          Alert.alert(
-            "안내",
-            signupFlowErrorMessage(
-              e,
-              "회원가입 상태를 확인하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.",
-            ),
-          );
-          return;
-        }
-      }
-
-      const step = normalizeSignupStepFromStatus(status);
-
-      if (!step) {
-        Alert.alert(
-          "안내",
-          "회원가입 단계 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-        );
+      const profileRes = await signupProfileMutation.mutateAsync({ nickname });
+      const nextStep = normalizeSignupStepFromStatus(profileRes);
+      if (nextStep && nextStep !== "PROFILE_COMPLETED") {
+        navigateFromSignupStatus(profileRes, navigation);
         return;
       }
-
-      if (step !== "CONSENT_AGREED") {
-        navigateFromSignupStatus(status, navigation);
-        return;
-      }
-
-      const emailFromStatus =
-        typeof status?.email === "string" ? status.email.trim() : "";
-      const emailForNav = emailFromStatus || readonlyEmail;
-
-      await signupProfileMutation.mutateAsync({ nickname });
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
+      if (profileRes?.teamList && Array.isArray(profileRes.teamList)) {
+        setDraftTeamList(profileRes.teamList);
+      }
+      if (profileRes?.signupStep) {
+        setDraftSignupStep(profileRes.signupStep);
+      }
       navigation.navigate("SignupFavoriteTeam", {
         signup: {
           ...signup,
@@ -294,32 +259,25 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
           nickname,
         },
       });
-      queryClient
-        .prefetchQuery({
-          queryKey: SIGNUP_STATUS_QUERY_KEY,
-          queryFn: fetchSignupStatus,
-          staleTime: 10 * 60 * 1000,
-        })
-        .catch((e) => {
-          console.warn("[signup] prefetch signup status for team screen", e);
-        });
     } catch (e) {
       console.warn("[signup/profile]", e);
       let msg = signupFlowErrorMessage(
         e,
         "프로필 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.",
       );
-      const combined = String(msg);
-      if (/CONSENT_AGREED|PROFILE_COMPLETED|회원가입 단계/i.test(combined)) {
+      if (isSignupStepMismatchError(e)) {
         try {
-          const s = await signupStatusMutation.mutateAsync();
-          const st = normalizeSignupStepFromStatus(s);
-          if (st && st !== "CONSENT_AGREED") {
-            navigateFromSignupStatus(s, navigation);
-            return;
-          }
-        } catch {
-          /* ignore */
+          const status = await signupStatusMutation.mutateAsync();
+          applySignupStatusToDraft(status);
+          navigateFromSignupStatus(status, navigation);
+          return;
+        } catch (e2) {
+          console.warn("[signup/status] recovery failed", e2);
+          Alert.alert(
+            "안내",
+            "회원가입 상태를 확인하지 못했습니다. 다시 시도하거나 앱을 재실행해 주세요.",
+          );
+          return;
         }
       }
       Alert.alert("안내", msg);

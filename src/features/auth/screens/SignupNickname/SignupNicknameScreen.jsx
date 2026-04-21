@@ -7,7 +7,6 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   View,
   Text,
@@ -34,12 +33,10 @@ import { checkNicknameDuplicateRequest } from "../../services/nicknameCheckMutat
 import { AppText } from "../../../../shared/theme/components/AppText";
 import { useStepBack } from "../../hooks/useStepBack";
 import { useSignupDraftStore } from "../../stores/useSignupDraftStore";
-import {
-  fetchSignupStatus,
-  SIGNUP_STATUS_QUERY_KEY,
-  useSignupStatusMutation,
-} from "../../services/signupStatusMutation";
+import { useSignupProfileMutation } from "../../services/signupProfileMutation";
+import { useSignupStatusMutation } from "../../services/signupStatusMutation";
 import { applySignupStatusToDraft } from "../../../../shared/auth/applySignupStatusToDraft";
+import { navigateFromSignupStatus } from "../../../../shared/auth/navigateFromSignupStatus";
 
 const { height } = Dimensions.get("window");
 
@@ -112,9 +109,29 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   );
   const hydrateDraftNickname = useSignupDraftStore((s) => s.hydrateNickname);
   const setDraftEmail = useSignupDraftStore((s) => s.setEmail);
+  const setDraftTeamList = useSignupDraftStore((s) => s.setTeamList);
+  const setDraftSignupStep = useSignupDraftStore((s) => s.setSignupStep);
 
-  const queryClient = useQueryClient();
+  const signupProfileMutation = useSignupProfileMutation();
   const signupStatusMutation = useSignupStatusMutation();
+
+  function isSignupStepMismatchError(error) {
+    const raw = error?.response?.data;
+    const code =
+      raw?.code ?? raw?.errorCode ?? raw?.errCode ?? raw?.error?.code ?? null;
+    if (code != null && String(code).trim().toUpperCase() === "USER008") {
+      return true;
+    }
+    const message =
+      typeof raw === "string"
+        ? raw
+        : typeof raw?.message === "string"
+          ? raw.message
+          : typeof error?.message === "string"
+            ? error.message
+            : "";
+    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+  }
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
 
@@ -212,25 +229,6 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
     }, [restoreNicknameFromDraftAndRoute]),
   );
 
-  /** 재진입/뒤로가기(특히 replace) 시: 서버 상태로 draft 보정 (오프라인이면 무시) */
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        try {
-          const status = await signupStatusMutation.mutateAsync();
-          if (cancelled) return;
-          applySignupStatusToDraft(status);
-        } catch {
-          /* 오프라인 등 — 로컬 draft만 유지 */
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [signupStatusMutation]),
-  );
-
   useEffect(() => {
     restoreNicknameFromDraftAndRoute();
   }, [draftNickname, draftNicknameChecked, restoreNicknameFromDraftAndRoute]);
@@ -285,6 +283,37 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
       setDraftNickname(nickname);
       setDraftNicknameChecked(true);
 
+      let profileRes;
+      try {
+        profileRes = await signupProfileMutation.mutateAsync({ nickname });
+      } catch (e) {
+        if (!mountedRef.current) return;
+        if (isSignupStepMismatchError(e)) {
+          try {
+            const status = await signupStatusMutation.mutateAsync();
+            applySignupStatusToDraft(status);
+            navigateFromSignupStatus(status, navigation);
+            return;
+          } catch (e2) {
+            console.warn("[signup/status] recovery failed", e2);
+            Alert.alert(
+              "안내",
+              "회원가입 상태를 확인하지 못했습니다. 다시 시도하거나 앱을 재실행해 주세요.",
+            );
+            return;
+          }
+        }
+        Alert.alert("안내", signupNicknameCheckErrorMessage(e));
+        return;
+      }
+
+      if (profileRes?.teamList && Array.isArray(profileRes.teamList)) {
+        setDraftTeamList(profileRes.teamList);
+      }
+      if (profileRes?.signupStep) {
+        setDraftSignupStep(profileRes.signupStep);
+      }
+
       const rawSignup = routeParams?.signup;
       const baseSignup =
         rawSignup != null &&
@@ -302,15 +331,6 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
           nickname,
         },
       });
-      queryClient
-        .prefetchQuery({
-          queryKey: SIGNUP_STATUS_QUERY_KEY,
-          queryFn: fetchSignupStatus,
-          staleTime: 10 * 60 * 1000,
-        })
-        .catch((e) => {
-          console.warn("[signup] prefetch signup status for team screen", e);
-        });
     } catch (e) {
       if (!mountedRef.current) return;
       Alert.alert("안내", signupNicknameCheckErrorMessage(e));

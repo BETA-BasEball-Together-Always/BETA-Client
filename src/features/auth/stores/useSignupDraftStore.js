@@ -17,15 +17,20 @@ const emptyTerms = {
 export const useSignupDraftStore = create(
   persist(
     (set, get) => ({
+      /** 회원가입 진행 단계 (이탈/재진입 복원용) */
+      signupStep: null,
       email: "",
       nickname: "",
       nicknameChecked: false,
       terms: emptyTerms,
+      teamList: [],
       favoriteTeamCode: null,
       favoriteTeamLabel: null,
       gender: null, // "F" | "M" | null
       age: "", // string to match input
 
+      setSignupStep: (signupStep) =>
+        set({ signupStep: signupStep != null ? String(signupStep) : null }),
       setEmail: (email) => set({ email: email ?? "" }),
       /** 닉네임 문자열이 바뀔 때만 중복확인 플래그 초기화(동일 문자열 재저장으로 리셋되는 레이스 방지) */
       setNickname: (nickname) =>
@@ -44,6 +49,8 @@ export const useSignupDraftStore = create(
         }),
       setNicknameChecked: (checked) => set({ nicknameChecked: !!checked }),
       setTerms: (terms) => set({ terms: terms ?? emptyTerms }),
+      setTeamList: (teamList) =>
+        set({ teamList: Array.isArray(teamList) ? teamList : [] }),
       setFavoriteTeam: ({ code, label }) =>
         set({
           favoriteTeamCode: code ?? null,
@@ -71,10 +78,12 @@ export const useSignupDraftStore = create(
 
       clearDraft: () =>
         set({
+          signupStep: null,
           email: "",
           nickname: "",
           nicknameChecked: false,
           terms: emptyTerms,
+          teamList: [],
           favoriteTeamCode: null,
           favoriteTeamLabel: null,
           gender: null,
@@ -85,10 +94,12 @@ export const useSignupDraftStore = create(
       name: "auth-signup-draft",
       storage: signupDraftJSONStorage,
       partialize: (state) => ({
+        signupStep: state.signupStep,
         email: state.email,
         nickname: state.nickname,
         nicknameChecked: state.nicknameChecked,
         terms: state.terms,
+        teamList: state.teamList,
         favoriteTeamCode: state.favoriteTeamCode,
         favoriteTeamLabel: state.favoriteTeamLabel,
         gender: state.gender,

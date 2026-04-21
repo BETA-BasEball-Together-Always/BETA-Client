@@ -11,7 +11,10 @@ import { applySignupStatusToDraft } from "../auth/applySignupStatusToDraft";
 import { clearAuthResumeResetGuard } from "../auth/authResumeResetGuard";
 import { appQueryClient } from "../libs/appQueryClient";
 import { SIGNUP_STATUS_QUERY_KEY } from "../../features/auth/services/signupStatusMutation";
-import { hydrateSignupDraftFromStorage } from "../../features/auth/stores/useSignupDraftStore";
+import {
+  getSignupDraftSnapshot,
+  hydrateSignupDraftFromStorage,
+} from "../../features/auth/stores/useSignupDraftStore";
 
 //api.js와 sessionBootstrap.js에서 중복된 base url 환경변수 정의!!
 //api.js에서 baseURL 가져오는 것으로 수정
@@ -200,7 +203,7 @@ function isCachedUserEligibleForSignupStatusSkip(user) {
  *   | { outcome: "ok"; statusPayload: ReturnType<typeof sanitizeSignupStatusPayload>; statusData: object }
  * >}
  */
-async function fetchSignupStatusPipeline() {
+async function fetchSignupStatusPipeline(draftSnapshot) {
   const [storedAccess, storedRefresh] = await Promise.all([
     SecureStore.getItemAsync("accessToken"),
     SecureStore.getItemAsync("refreshToken"),
@@ -279,6 +282,33 @@ async function fetchSignupStatusPipeline() {
     console.warn("[bootstrapSession] loadCachedUser (fast path)", e);
   }
 
+  const draft = draftSnapshot ?? {};
+  const draftStep = normalizeSignupStep(draft?.signupStep);
+  const draftEmail =
+    typeof draft?.email === "string" ? draft.email.trim() : "";
+  const draftTeamList = Array.isArray(draft?.teamList) ? draft.teamList : [];
+
+  if (draftStep && INCOMPLETE_SIGNUP_STEPS.has(draftStep)) {
+    const needsEmail = draftStep === "CONSENT_AGREED" && !draftEmail;
+    const needsTeamList =
+      draftStep === "PROFILE_COMPLETED" && draftTeamList.length === 0;
+
+    // 요구사항: 재진입 시 teamList 목적 /signup/status 호출은 PROFILE_COMPLETED일 때만 유지
+    if (!needsEmail && !needsTeamList) {
+      const statusPayload = sanitizeSignupStatusPayload({
+        signupStep: draftStep,
+        email: draftEmail || null,
+        teamList: draftTeamList.length > 0 ? draftTeamList : null,
+      });
+      return {
+        outcome: "ok",
+        statusPayload,
+        statusData: { source: "draft" },
+        skippedSignupStatusApi: true,
+      };
+    }
+  }
+
   let statusData;
   try {
     // accessToken이 있으면 axios default header 세팅을 기다릴 필요 없이 헤더 주입으로 바로 호출
@@ -353,12 +383,14 @@ export async function bootstrapSession() {
 async function bootstrapSessionInner() {
   clearAuthResumeResetGuard();
 
-  // draft rehydrate는 부트스트랩을 불필요하게 붙잡지 않도록 백그라운드 실행
-  hydrateSignupDraftFromStorage().catch((e) => {
+  // 이탈/재진입 시 signupStep/teamList/email을 draft에서 우선 복원
+  try {
+    await hydrateSignupDraftFromStorage();
+  } catch (e) {
     console.warn("[bootstrapSession] hydrateSignupDraftFromStorage failed", e);
-  });
+  }
 
-  const pipeline = await fetchSignupStatusPipeline();
+  const pipeline = await fetchSignupStatusPipeline(getSignupDraftSnapshot());
 
   if (pipeline.outcome === "no_tokens") {
     return { destination: "auth", authErrorMessage: null };
