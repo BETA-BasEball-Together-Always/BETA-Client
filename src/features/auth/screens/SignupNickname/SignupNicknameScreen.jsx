@@ -199,6 +199,8 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   }, [routeParams, hydrateDraftNickname]);
 
   const didNicknameLayoutSyncRef = useRef(false);
+  /** 필드 -> draft 동기화 시 빈 초기값이 persist 닉네임을 지우지 않도록 */
+  const initialNicknameDraftSyncRef = useRef(true);
   useLayoutEffect(() => {
     restoreNicknameFromDraftAndRoute();
     didNicknameLayoutSyncRef.current = true;
@@ -240,9 +242,20 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
   useEffect(() => {
     if (!didNicknameLayoutSyncRef.current) return;
     const next = nicknameField.value;
-    if (useSignupDraftStore.getState().nickname !== next) {
-      setDraftNickname(next);
+    const storeNick = useSignupDraftStore.getState().nickname ?? "";
+    if (storeNick === next) {
+      initialNicknameDraftSyncRef.current = false;
+      return;
     }
+    if (
+      initialNicknameDraftSyncRef.current &&
+      !String(next).trim() &&
+      String(storeNick).trim()
+    ) {
+      return;
+    }
+    initialNicknameDraftSyncRef.current = false;
+    setDraftNickname(next);
   }, [nicknameField.value, setDraftNickname]);
 
   const isNextEnabled = useMemo(() => {
