@@ -6,6 +6,10 @@ import { isOfflineError } from "./networkErrors";
  */
 export function getApiErrorMessage(error, fallback = "요청에 실패했습니다.") {
   if (isOfflineError(error)) return null;
+  const errorCode = error?.response?.data?.code;
+  if (errorCode === "DATABASE001") {
+    return null;
+  }
   const data = error?.response?.data;
   const msg = data?.message;
   if (typeof msg === "string" && msg.trim()) return msg.trim();
