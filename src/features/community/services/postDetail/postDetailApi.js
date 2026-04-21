@@ -58,12 +58,13 @@ export const togglePostEmotionApi = async ({ postId, emotionType }) => {
   const url = `/api/v1/community/posts/${postId}/emotions`;
   const body = { emotionType };
 
-  console.log("[community emotion] → REQUEST", {
-    method: "POST",
-    url,
-    body,
-    note: "emotionType은 서버 명세: LIKE | SAD | FUN | HYPE",
-  });
+  // TODO: 민감정보 로그 - 추후 제거 예정
+  // console.log("[community emotion] → REQUEST", {
+  //   method: "POST",
+  //   url,
+  //   body,
+  //   note: "emotionType은 서버 명세: LIKE | SAD | FUN | HYPE",
+  // });
 
   let res;
   try {
@@ -78,18 +79,19 @@ export const togglePostEmotionApi = async ({ postId, emotionType }) => {
   }
 
   const d = res.data;
-  console.log("[community emotion] ← RESPONSE", {
-    postId: d?.postId,
-    emotionType: d?.emotionType,
-    toggled: d?.toggled,
-    meaning:
-      d?.toggled === true
-        ? "감정 추가 또는 다른 감정으로 변경됨"
-        : d?.toggled === false
-          ? "감정 제거(취소)"
-          : "unknown",
-    emotions: d?.emotions,
-  });
+  // TODO: 민감정보 로그 - 추후 제거 예정
+  // console.log("[community emotion] ← RESPONSE", {
+  //   postId: d?.postId,
+  //   emotionType: d?.emotionType,
+  //   toggled: d?.toggled,
+  //   meaning:
+  //     d?.toggled === true
+  //       ? "감정 추가 또는 다른 감정으로 변경됨"
+  //       : d?.toggled === false
+  //         ? "감정 제거(취소)"
+  //         : "unknown",
+  //   emotions: d?.emotions,
+  // });
 
   return d;
 };
