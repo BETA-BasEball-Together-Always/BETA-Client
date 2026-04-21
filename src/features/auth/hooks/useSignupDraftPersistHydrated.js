@@ -25,7 +25,10 @@ export function useSignupDraftPersistHydrated() {
       didAnnounceRef.current = true;
       queueMicrotask(() => {
         if (cancelled) return;
-        setHydrated(true);
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          setHydrated(true);
+        });
       });
     };
 

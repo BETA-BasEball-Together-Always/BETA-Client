@@ -59,31 +59,6 @@ function normalizeSignupStepFromStatus(status) {
   return typeof raw === "string" ? raw.trim() : "";
 }
 
-/**
- * 포커스 직후 / 서버 동기화 전: 닉네임 필드 복원 규칙
- * 1 복원할 draft 닉네임이 있으면: setValue / setTouched 등으로 덮어쓰기
- * 2 복원할 값 없고, 현재 필드 입력도 없으면: 빈 값으로 초기화
- * 3 복원할 값 없고, 현재 필드에 입력만 있는 경우: 아무 것도 하지 않음(인메모리 입력 유지)
- */
-function syncSignupDraftToNicknameFieldRespectingLocalInput(fieldRef) {
-  const f = fieldRef.current;
-  if (!f) return;
-  const d = useSignupDraftStore.getState();
-  const beforeTrim = String(f.value ?? "").trim();
-  const draftNick = String(d.nickname ?? "").trim();
-  if (draftNick) {
-    f.setValue(d.nickname ?? "");
-    f.setTouched(!!(d.nickname ?? "").trim());
-    f.setError("");
-    f.setIsAvailable(!!d.nicknameChecked);
-  } else if (!beforeTrim) {
-    f.setValue("");
-    f.setTouched(false);
-    f.setError("");
-    f.setIsAvailable(false);
-  }
-}
-
 function signupFlowErrorMessage(e, fallback) {
   const raw = e?.response?.data;
   let msg =
@@ -99,12 +74,25 @@ function signupFlowErrorMessage(e, fallback) {
 }
 
 /** draft persist rehydrate 이후에만 mount — 닉네임 필드 초기값이 스토어와 일치 */
-function SocialSignupHydratedBody({ navigation, route, handleBack }) {
+function SocialSignupHydratedBody({
+  navigation,
+  route,
+  handleBack,
+  onMounted,
+}) {
   const mountedRef = useRef(true);
   useEffect(() => {
     return () => {
       mountedRef.current = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const draftNick = String(
+      useSignupDraftStore.getState().nickname ?? "",
+    ).trim();
+    onMounted?.(draftNick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount 1회, 부모 ref 동기화
   }, []);
 
   const signup = normalizeSignupParams(route?.params?.signup);
@@ -126,6 +114,10 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
   const queryClient = useQueryClient();
   const signupProfileMutation = useSignupProfileMutation();
   const signupStatusMutation = useSignupStatusMutation();
+  const signupStatusMutationRef = useRef(signupStatusMutation);
+  useEffect(() => {
+    signupStatusMutationRef.current = signupStatusMutation;
+  });
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9]+$/;
 
@@ -166,54 +158,38 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
     if (!f) return;
     const draftNick = String(draftNickname ?? "").trim();
     if (!draftNick) return;
-    if (String(f.value ?? "").trim() === draftNick) return;
-    f.setValue(draftNickname ?? "");
-    f.setTouched(true);
-    f.setError("");
+
+    const currentVal = String(f.value ?? "").trim();
+    const valueChanged = currentVal !== draftNick;
+    const availableChanged = f.isAvailable !== !!draftNicknameChecked;
+
+    if (!valueChanged && !availableChanged) return;
+
+    if (valueChanged) {
+      f.setValue(draftNickname ?? "");
+      f.setTouched(true);
+      f.setError("");
+    }
     f.setIsAvailable(!!draftNicknameChecked);
   }, [draftNickname, draftNicknameChecked]);
 
-  /** 뒤로가기/재진입: draft 즉시 복원 후 서버 signup/status 동기화 */
   useFocusEffect(
     useCallback(() => {
-      syncSignupDraftToNicknameFieldRespectingLocalInput(nicknameFieldRef);
       let cancelled = false;
       (async () => {
         try {
-          const status = await signupStatusMutation.mutateAsync();
+          const status = await signupStatusMutationRef.current.mutateAsync();
           if (cancelled) return;
           applySignupStatusToDraft(status);
-          const d = useSignupDraftStore.getState();
-          const f = nicknameFieldRef.current;
-          const beforeTrim = String(f.value ?? "").trim();
-          const beforeAvailable = f.isAvailable;
-          const draftNick = String(d.nickname ?? "").trim();
-          /* 서버 반영 후에도 1/2/3 동일: draft 있을 때만 덮어쓰기, 둘 다 비었을 때만 클리어, draft 없고 입력만 있으면 유지 */
-          if (draftNick) {
-            f.setValue(d.nickname ?? "");
-            f.setTouched(!!(d.nickname ?? "").trim());
-          } else if (!beforeTrim) {
-            f.setValue("");
-            f.setTouched(false);
-          }
-          const nickAligned =
-            draftNick !== "" &&
-            draftNick === beforeTrim &&
-            beforeAvailable &&
-            !d.nicknameChecked;
-          if (nickAligned) {
-            setDraftNicknameChecked(true);
-          } else if (draftNick || !beforeTrim) {
-            f.setIsAvailable(!!d.nicknameChecked);
-          }
         } catch {
           /* 오프라인 등 */
         }
       })();
+
       return () => {
         cancelled = true;
       };
-    }, [signupStatusMutation, setDraftNicknameChecked]),
+    }, []),
   );
 
   useEffect(() => {
@@ -411,6 +387,22 @@ function SocialSignupHydratedBody({ navigation, route, handleBack }) {
 const SocialSignupScreen = ({ navigation, route }) => {
   const draftHydrated = useSignupDraftPersistHydrated();
   const handleBack = useStepBack("TermsDetail");
+  const [focusKey, setFocusKey] = useState(0);
+  const lastMountedNicknameRef = useRef("");
+
+  useFocusEffect(
+    useCallback(() => {
+      const draftNick = String(
+        useSignupDraftStore.getState().nickname ?? "",
+      ).trim();
+      const lastNick = lastMountedNicknameRef.current;
+
+      if (draftNick !== lastNick) {
+        lastMountedNicknameRef.current = draftNick;
+        setFocusKey((k) => k + 1);
+      }
+    }, []),
+  );
 
   if (!draftHydrated) {
     return (
@@ -432,9 +424,13 @@ const SocialSignupScreen = ({ navigation, route }) => {
       <AuthBackground />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
         <SocialSignupHydratedBody
+          key={focusKey}
           navigation={navigation}
           route={route}
           handleBack={handleBack}
+          onMounted={(nickname) => {
+            lastMountedNicknameRef.current = nickname;
+          }}
         />
       </SafeAreaView>
     </View>
