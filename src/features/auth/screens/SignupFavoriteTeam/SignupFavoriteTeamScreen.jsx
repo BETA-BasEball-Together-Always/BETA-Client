@@ -52,7 +52,7 @@ function normalizeTeamCode(code) {
 
 function getTeamCodeFromStatusDto(team) {
   if (!team || typeof team !== "object") return "";
-  const c = team.code ?? team.teamCode ?? team.team_code;
+  const c = team.teamCode ?? team.code ?? team.team_code;
   if (c == null) return "";
   const s = String(c).trim();
   return s.length > 0 ? s : "";
@@ -61,16 +61,17 @@ function getTeamCodeFromStatusDto(team) {
 function pickTeamDisplayLabel(team, apiTeamCode) {
   if (!team || typeof team !== "object") return apiTeamCode;
   const kr =
-    typeof team.team_name_kr === "string" ? team.team_name_kr.trim() : "";
+    typeof team.teamNameKr === "string" ? team.teamNameKr.trim() : "";
   if (kr) return kr;
   const en =
-    typeof team.team_name_en === "string" ? team.team_name_en.trim() : "";
+    typeof team.teamNameEn === "string" ? team.teamNameEn.trim() : "";
   if (en) return en;
+  // 하위 호환 snake_case 폴백
   const legacyKr =
-    typeof team.teamNameKr === "string" ? team.teamNameKr.trim() : "";
+    typeof team.team_name_kr === "string" ? team.team_name_kr.trim() : "";
   if (legacyKr) return legacyKr;
   const legacyEn =
-    typeof team.teamNameEn === "string" ? team.teamNameEn.trim() : "";
+    typeof team.team_name_en === "string" ? team.team_name_en.trim() : "";
   if (legacyEn) return legacyEn;
   return apiTeamCode;
 }
@@ -136,6 +137,14 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
     queryFn: fetchSignupStatus,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (failureCount >= 2) return false;
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) return true;
+      if (error?.message === "NO_ACCESS_TOKEN") return true;
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(800 * (attemptIndex + 1), 2000),
   });
 
   useEffect(() => {
