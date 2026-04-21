@@ -223,6 +223,7 @@ const ProfileSettingScreen = () => {
             routes: [
               {
                 name: "Auth",
+                params: { resume: null, authErrorMessage: null },
                 state: {
                   routes: [{ name: "Login" }],
                   index: 0,

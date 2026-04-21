@@ -33,6 +33,7 @@ export async function forceLogoutToLogin(message = DEFAULT_MSG) {
           routes: [
             {
               name: "Auth",
+              params: { resume: null, authErrorMessage: null },
               state: {
                 routes: [
                   { name: "Login", params: { authErrorMessage: message } },
