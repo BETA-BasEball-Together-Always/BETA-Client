@@ -20,6 +20,7 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 
 import AuthBackground from "../../components/AuthBackground";
@@ -375,8 +376,7 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
 }
 
 const SignupNicknameScreen = ({ navigation, route }) => {
-  // hydrate는 백그라운드에서 진행 — 입력 자체를 막지 않기 위해 UI gating은 하지 않음
-  useSignupDraftPersistHydrated();
+  const draftHydrated = useSignupDraftPersistHydrated();
   const handleBack = useStepBack("Login");
   const draftEmailShell = useSignupDraftStore((s) => s.email);
   const signupFromRoute = normalizeSignupParams(route?.params?.signup);
@@ -384,6 +384,21 @@ const SignupNicknameScreen = ({ navigation, route }) => {
   const draftShellTrim =
     typeof draftEmailShell === "string" ? draftEmailShell.trim() : "";
   const shellEmail = paramShell || draftShellTrim;
+
+  if (!draftHydrated) {
+    return (
+      <View style={styles.root}>
+        <AuthBackground />
+        <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+          <ActivityIndicator
+            color="#FFFFFF"
+            size="large"
+            style={{ flex: 1, justifyContent: "center", alignSelf: "center" }}
+          />
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -407,6 +422,10 @@ const SignupNicknameScreen = ({ navigation, route }) => {
 export default SignupNicknameScreen;
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#000000",
+  },
   safeArea: {
     flex: 1,
     backgroundColor: "#000000",
