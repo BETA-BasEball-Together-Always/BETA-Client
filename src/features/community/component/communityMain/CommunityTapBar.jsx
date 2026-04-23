@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontWeight: "700",
     fontSize: 19,
+    lineHeight: 26,
     fontStyle: "italic",
     width: 60,
     opacity: 0,
@@ -58,5 +59,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontStyle: "italic",
     fontWeight: "800",
+    lineHeight: 38,
+
   },
 });
