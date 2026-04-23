@@ -44,7 +44,9 @@ const SearchResultTabs = ({
               onPress={() => onTabChange(tab.key)}
               style={styles.tabButton}
             >
-              <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+              <Text
+                style={[styles.tabLabel, isActive && styles.activeTabLabel]}
+              >
                 {tab.label}
               </Text>
               <View
@@ -123,7 +125,8 @@ const SearchResultTabs = ({
                         }}
                         style={[
                           styles.sortMenuItem,
-                          index < POST_SORTS.length - 1 && styles.sortMenuDivider,
+                          index < POST_SORTS.length - 1 &&
+                            styles.sortMenuDivider,
                         ]}
                       >
                         <Text
@@ -171,6 +174,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     color: "#8F95A7",
     fontSize: 15,
+    lineHeight: 19,
     fontFamily: "NotoSansKR_Medium",
   },
   activeTabLabel: {
@@ -210,6 +214,7 @@ const styles = StyleSheet.create({
   channelLabel: {
     color: "rgba(228, 228, 228, 0.5)",
     fontSize: 14,
+    lineHeight: 16,
     fontFamily: "NotoSansKR_Medium",
   },
   activeChannelLabel: {
@@ -241,6 +246,7 @@ const styles = StyleSheet.create({
     color: "#F9F9F9",
     fontSize: 12,
     fontFamily: "NotoSansKR_Medium",
+    lineHeight: 15,
   },
   sortIconWrap: {
     opacity: 0.7,
@@ -269,6 +275,7 @@ const styles = StyleSheet.create({
     color: "rgba(228, 228, 228, 0.5)",
     fontSize: 13,
     fontFamily: "NotoSansKR_Medium",
+    lineHeight: 18,
   },
   activeSortMenuLabel: {
     color: "#F9F9F9",

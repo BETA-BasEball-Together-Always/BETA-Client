@@ -84,7 +84,9 @@ function isSignupStepMismatchError(error) {
         : typeof error?.message === "string"
           ? error.message
           : "";
-  return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+  return (
+    typeof message === "string" && message.includes("잘못된 회원가입 단계")
+  );
 }
 
 /** draft persist rehydrate 이후에만 mount — 닉네임 필드 초기값이 스토어와 일치 */
@@ -424,6 +426,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "rgba(255,255,255,0.6)",
     marginBottom: 12,
+    lineHeight: 15,
   },
   readonlyEmailBox: {
     borderRadius: 10,

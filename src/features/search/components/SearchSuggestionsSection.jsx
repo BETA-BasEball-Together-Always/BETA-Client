@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import CommunityLoadingSpinner from "@shared/components/CommunityLoadingSpinner";
 import SearchUserRow from "./SearchUserRow";
 
@@ -94,6 +89,7 @@ const styles = StyleSheet.create({
     color: "#9E9EA4",
     fontSize: 13,
     fontFamily: "NotoSansKR_Medium",
+    lineHeight: 18,
   },
   keywordRow: {
     paddingVertical: 10,

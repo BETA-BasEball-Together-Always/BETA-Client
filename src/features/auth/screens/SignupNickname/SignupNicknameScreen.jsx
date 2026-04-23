@@ -130,7 +130,9 @@ function SignupNicknameHydratedBody({ navigation, route, handleBack }) {
           : typeof error?.message === "string"
             ? error.message
             : "";
-    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+    return (
+      typeof message === "string" && message.includes("잘못된 회원가입 단계")
+    );
   }
 
   const nicknameRegex = /^[가-힣a-zA-Z0-9._]+$/;
@@ -490,6 +492,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "rgba(255,255,255,0.6)",
     marginBottom: 12,
+    lineHeight: 15,
   },
   readonlyEmailBox: {
     borderRadius: 10,

@@ -513,6 +513,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 13,
     fontWeight: "600",
+    lineHeight: 18,
   },
   profileText: {
     flex: 1,
@@ -654,6 +655,7 @@ const styles = StyleSheet.create({
     color: "#6F9D48",
     fontSize: 13,
     fontFamily: "NotoSansKR-Medium",
+    lineHeight: 18,
   },
   /** 본문에 없는 서버 해시태그 한 줄 (텍스트 색만) */
   extraHashtagLine: {
