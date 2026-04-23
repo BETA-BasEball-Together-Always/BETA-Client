@@ -567,8 +567,7 @@ const LoginScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* 네이버 로그인 버튼 — 실기기 테스트 등에서 임시 비활성화 */}
-            {/* <TouchableOpacity
+            <TouchableOpacity
               style={[styles.fullButton, styles.naverButton]}
               onPress={handleNaverLogin}
               activeOpacity={0.85}
@@ -578,7 +577,7 @@ const LoginScreen = ({ navigation, route }) => {
               <Text style={[styles.fullButtonText, styles.naverText]}>
                 네이버 로그인
               </Text>
-            </TouchableOpacity> */}
+            </TouchableOpacity>
 
             {/* <TouchableOpacity onPress={hardResetKakao}>
             <Text style={{color: "white"}}>카카오 세션 초기화</Text>
