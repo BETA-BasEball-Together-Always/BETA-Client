@@ -1,9 +1,9 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import * as Application from "expo-application";
-import { v4 as uuidv4 } from "uuid";
+import * as Crypto from "expo-crypto";
 
-// todo: expo-secure-store, expo-application, uuid 설치할 것
+// todo: expo-secure-store, expo-application
 
 const DEVICE_ID_KEY = "DEVICE_ID";
 
@@ -34,7 +34,7 @@ export const getDeviceId = async () => {
 
     // 고유 ID를 못 가져왔으면 UUID 생성
     if (!deviceId) {
-      deviceId = uuidv4();
+      deviceId = Crypto.randomUUID();
     }
 
     // SecureStore에 저장
@@ -43,6 +43,6 @@ export const getDeviceId = async () => {
     return deviceId;
   } catch (error) {
     console.warn("getDeviceId error:", error);
-    return uuidv4();
+    return Crypto.randomUUID();
   }
 };

@@ -23,10 +23,11 @@ module.exports = {
       },
       // Noto Sans 폰트 패밀리
       fontFamily: {
-        "noto-regular": ["NotoSansKR-Regular"],
-        "noto-medium": ["NotoSansKR-Medium"],
-        "noto-semibold": ["NotoSansKR-SemiBold"],
-        "noto-light": ["NotoSansKR-Light"],
+        // NOTE: useFonts()로 등록한 key와 동일한 이름을 사용해야 RN에서 매칭됩니다.
+        "noto-regular": ["NotoSansKR_Regular"],
+        "noto-medium": ["NotoSansKR_Medium"],
+        "noto-semibold": ["NotoSansKR_SemiBold"],
+        "noto-light": ["NotoSansKR_Light"],
       },
 
       // Typography 사이즈

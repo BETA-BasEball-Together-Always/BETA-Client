@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
   inlineHashtagText: {
     color: "#6F9D48",
     fontSize: 13,
-    fontFamily: "NotoSansKR-Medium",
+    fontFamily: "NotoSansKR_Medium",
     lineHeight: 18,
   },
   /** 본문에 없는 서버 해시태그 한 줄 (텍스트 색만) */
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 15,
     marginTop: 4,
-    fontFamily: "NotoSansKR-Medium",
+    fontFamily: "NotoSansKR_Medium",
   },
   unavailableText: {
     color: "rgba(228, 228, 228, 0.55)",

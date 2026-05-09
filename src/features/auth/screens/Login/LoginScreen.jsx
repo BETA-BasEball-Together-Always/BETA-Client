@@ -1,6 +1,13 @@
 // src/features/auth/screens/LoginScreen.jsx
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Platform,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { login, unlink } from "@react-native-seoul/kakao-login";
 
@@ -355,11 +362,9 @@ const LoginScreen = ({ navigation, route }) => {
         return;
       }
 
-      // console.log("카카오 토큰:", token);
       // console.log("카카오 프로필:", profile);
 
       const deviceId = await getDeviceId();
-      // console.log("deviceID: ", deviceId);
 
       socialLoginMutation.mutate(
         { provider: "KAKAO", token: token.accessToken, deviceId },
@@ -543,17 +548,19 @@ const LoginScreen = ({ navigation, route }) => {
 
           {/* 하단 버튼 영역 */}
           <View style={styles.bottomArea}>
-            <TouchableOpacity
-              style={[styles.fullButton, styles.appleButton]}
-              onPress={handleAppleLogin}
-              activeOpacity={0.85}
-              disabled={isSocialLoading}
-            >
-              <AppleIcon width={20} height={20} />
-              <Text style={[styles.fullButtonText, styles.appleText]}>
-                Apple 로그인
-              </Text>
-            </TouchableOpacity>
+            {Platform.OS === "ios" ? (
+              <TouchableOpacity
+                style={[styles.fullButton, styles.appleButton]}
+                onPress={handleAppleLogin}
+                activeOpacity={0.85}
+                disabled={isSocialLoading}
+              >
+                <AppleIcon width={20} height={20} />
+                <Text style={[styles.fullButtonText, styles.appleText]}>
+                  Apple 로그인
+                </Text>
+              </TouchableOpacity>
+            ) : null}
 
             <TouchableOpacity
               style={[styles.fullButton, styles.kakaoButton]}
