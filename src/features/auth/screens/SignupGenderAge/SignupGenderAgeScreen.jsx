@@ -285,19 +285,25 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
             <View style={styles.floatingBottomArea}>
               {isNextEnabled && (
                 <TouchableOpacity
-                  style={styles.nextButton}
+                  style={[
+                    styles.nextButton,
+                    isSubmitPending && styles.nextButtonDisabled,
+                  ]}
                   activeOpacity={isSubmitPending ? 1 : 0.85}
                   disabled={isSubmitPending}
                   onPress={handleNext}
                 >
                   <AppText variant="heading" style={styles.nextButtonText}>
-                    {isSubmitPending ? "처리 중..." : "선택완료"}
+                    {isSubmitPending ? "처리 중..." : "다음"}
                   </AppText>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={styles.skipButton}
+                style={[
+                  styles.skipButton,
+                  isSubmitPending && styles.skipButtonDisabled,
+                ]}
                 activeOpacity={isSubmitPending ? 1 : 0.8}
                 disabled={isSubmitPending}
                 onPress={handleSkip}
@@ -435,9 +441,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  nextButtonText: {
-    color: "#121212",
-    lineHeight: 25,
+  nextButtonDisabled: {
+    opacity: 0.65,
   },
   skipButton: {
     height: 52,
@@ -445,6 +450,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#232323",
     justifyContent: "center",
     alignItems: "center",
+  },
+  skipButtonDisabled: {
+    opacity: 0.65,
+  },
+
+  nextButtonText: {
+    color: "#ffffff",
+    lineHeight: 25,
   },
   skipButtonText: {
     color: "#FFFFFF",
