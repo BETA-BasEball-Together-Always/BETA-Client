@@ -281,9 +281,9 @@ const styles = StyleSheet.create({
   },
   bannerButtonText: {
     color: "#373737",
+    lineHeight: 18,
     fontSize: 14,
-    fontWeight: "800",
-    fontStyle: "italic",
+    fontWeight: "bold",
   },
 
   popularHeader: {

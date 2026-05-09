@@ -504,6 +504,7 @@ const styles = StyleSheet.create({
   },
   readonlyEmailText: {
     color: "rgba(255,255,255,0.6)",
+    lineHeight: 19,
   },
   title: {
     fontSize: 22,
@@ -519,6 +520,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#FFFFFF",
     textAlign: "right",
+    lineHeight: 15,
   },
   floatingBottomArea: {
     position: "absolute",
@@ -544,8 +546,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#111111",
+    lineHeight: 25,
   },
   nextButtonTextDisabled: {
     color: "rgba(255,255,255,0.45)",
+    lineHeight: 25,
   },
 });

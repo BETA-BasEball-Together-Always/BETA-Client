@@ -173,9 +173,11 @@ const styles = StyleSheet.create({
   termText: {
     color: "#F9F9F9",
     marginLeft: 6,
+    lineHeight: 19,
   },
   termAllText: {
     fontWeight: "600",
+    lineHeight: 19,
   },
   termDivider: {
     height: StyleSheet.hairlineWidth,

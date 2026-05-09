@@ -102,7 +102,9 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
           : typeof error?.message === "string"
             ? error.message
             : "";
-    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+    return (
+      typeof message === "string" && message.includes("잘못된 회원가입 단계")
+    );
   }
 
   // 재진입 시 route.params.signup만 사용해 데이터 복구
@@ -283,30 +285,24 @@ function SignupGenderAgeScreenBody({ navigation, route }) {
             <View style={styles.floatingBottomArea}>
               {isNextEnabled && (
                 <TouchableOpacity
-                  style={[
-                    styles.nextButton,
-                    isSubmitPending && styles.nextButtonDisabled,
-                  ]}
+                  style={styles.nextButton}
                   activeOpacity={isSubmitPending ? 1 : 0.85}
                   disabled={isSubmitPending}
                   onPress={handleNext}
                 >
-                  <AppText variant="heading" className="text-[#111111]">
-                    {isSubmitPending ? "처리 중..." : "다음"}
+                  <AppText variant="heading" style={styles.nextButtonText}>
+                    {isSubmitPending ? "처리 중..." : "선택완료"}
                   </AppText>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={[
-                  styles.skipButton,
-                  isSubmitPending && styles.skipButtonDisabled,
-                ]}
+                style={styles.skipButton}
                 activeOpacity={isSubmitPending ? 1 : 0.8}
                 disabled={isSubmitPending}
                 onPress={handleSkip}
               >
-                <AppText variant="heading" className="text-[#FFFFFF]">
+                <AppText variant="heading" style={styles.skipButtonText}>
                   {isSubmitPending ? "처리 중..." : "건너뛰기"}
                 </AppText>
               </TouchableOpacity>
@@ -376,6 +372,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.6)",
     alignSelf: "flex-end",
     paddingBlock: 7,
+    lineHeight: 18,
   },
 
   /* Gender */
@@ -396,6 +393,7 @@ const styles = StyleSheet.create({
   },
   genderText: {
     color: "rgba(255,255,255,0.6)",
+    lineHeight: 25,
   },
 
   genderSelected: {
@@ -405,6 +403,7 @@ const styles = StyleSheet.create({
   },
   genderTextSelected: {
     color: "#8BC45A",
+    lineHeight: 25,
   },
 
   /* Age */
@@ -436,8 +435,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  nextButtonDisabled: {
-    opacity: 0.65,
+  nextButtonText: {
+    color: "#121212",
+    lineHeight: 25,
   },
   skipButton: {
     height: 52,
@@ -446,7 +446,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  skipButtonDisabled: {
-    opacity: 0.65,
+  skipButtonText: {
+    color: "#FFFFFF",
+    lineHeight: 25,
   },
 });

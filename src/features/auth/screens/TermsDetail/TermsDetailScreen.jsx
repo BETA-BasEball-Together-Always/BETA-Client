@@ -1,5 +1,11 @@
 // src/features/auth/screens/TermsDetail/TermsDetailScreen.jsx
-import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -65,7 +71,9 @@ const TermsDetailScreen = ({ navigation }) => {
           : typeof error?.message === "string"
             ? error.message
             : "";
-    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+    return (
+      typeof message === "string" && message.includes("잘못된 회원가입 단계")
+    );
   }
 
   const handleChangeTerms = useCallback(
@@ -217,6 +225,7 @@ const styles = StyleSheet.create({
   },
   mainText: {
     color: "#FFFFFF",
+    lineHeight: 33,
   },
   bottomArea: {
     paddingHorizontal: 20,
@@ -234,8 +243,10 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: "#111111",
+    lineHeight: 25,
   },
   nextButtonTextDisabled: {
     color: "#3E3E3E",
+    lineHeight: 25,
   },
 });

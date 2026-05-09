@@ -57,11 +57,9 @@ function getTeamCodeFromStatusDto(team) {
 
 function pickTeamDisplayLabel(team, apiTeamCode) {
   if (!team || typeof team !== "object") return apiTeamCode;
-  const kr =
-    typeof team.teamNameKr === "string" ? team.teamNameKr.trim() : "";
+  const kr = typeof team.teamNameKr === "string" ? team.teamNameKr.trim() : "";
   if (kr) return kr;
-  const en =
-    typeof team.teamNameEn === "string" ? team.teamNameEn.trim() : "";
+  const en = typeof team.teamNameEn === "string" ? team.teamNameEn.trim() : "";
   if (en) return en;
   // 하위 호환 snake_case 폴백
   const legacyKr =
@@ -140,7 +138,9 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
           : typeof error?.message === "string"
             ? error.message
             : "";
-    return typeof message === "string" && message.includes("잘못된 회원가입 단계");
+    return (
+      typeof message === "string" && message.includes("잘못된 회원가입 단계")
+    );
   }
 
   const teamRows = useMemo(() => {
@@ -226,11 +226,12 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
       favoriteTeamLabel: selectedTeamLabel,
     });
 
-    SecureStore.setItemAsync("favoriteTeamLabel", selectedTeamLabel ?? "").catch(
-      (e) => {
-        console.warn("[signup] store favoriteTeamLabel failed", e);
-      },
-    );
+    SecureStore.setItemAsync(
+      "favoriteTeamLabel",
+      selectedTeamLabel ?? "",
+    ).catch((e) => {
+      console.warn("[signup] store favoriteTeamLabel failed", e);
+    });
   };
 
   const handleNext = async () => {
@@ -335,7 +336,10 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
 
                 {teamListPhase === "missing" ? (
                   <View style={styles.teamListStateBlock}>
-                    <AppText variant="bodyMedium" style={styles.teamListErrorText}>
+                    <AppText
+                      variant="bodyMedium"
+                      style={styles.teamListErrorText}
+                    >
                       구단 목록을 불러오지 못했습니다.
                       {"\n"}이전 단계로 돌아가 다시 시도해 주세요.
                     </AppText>
@@ -344,7 +348,10 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                       activeOpacity={0.85}
                       onPress={() => navigation.goBack()}
                     >
-                      <AppText variant="heading" style={styles.teamListRetryText}>
+                      <AppText
+                        variant="heading"
+                        style={styles.teamListRetryText}
+                      >
                         이전으로
                       </AppText>
                     </TouchableOpacity>
@@ -386,7 +393,8 @@ function SignupFavoriteTeamScreenBody({ navigation, route }) {
                                 variant="bodyMedium"
                                 style={[
                                   styles.fallbackTeamInitials,
-                                  selected && styles.fallbackTeamInitialsOnLight,
+                                  selected &&
+                                    styles.fallbackTeamInitialsOnLight,
                                 ]}
                               >
                                 {fallbackInitial}
@@ -605,9 +613,11 @@ const styles = StyleSheet.create({
 
   completeButtonText: {
     color: "#111111",
+    lineHeight: 25,
   },
 
   completeButtonTextDisabled: {
     color: "#3E3E3E",
+    lineHeight: 25,
   },
 });
